@@ -15,7 +15,9 @@ let package = Package(
         .executableTarget(name: "ilibrary"),
         // Validates private reference files under reference-private/; not part of the public suite.
         .executableTarget(name: "ReferenceProbe", dependencies: ["MP4Core", "FLACCore"]),
-        .testTarget(name: "MP4CoreTests", dependencies: ["MP4Core"]),
+        // Synthetic media shared by the test targets.
+        .target(name: "SyntheticMedia", path: "Tests/SyntheticMedia"),
+        .testTarget(name: "MP4CoreTests", dependencies: ["MP4Core", "SyntheticMedia"]),
         .testTarget(name: "FLACCoreTests", dependencies: ["FLACCore"]),
         .testTarget(name: "CatalogCoreTests", dependencies: ["CatalogCore"]),
         .testTarget(name: "LibraryMacTests", dependencies: ["LibraryMac"]),

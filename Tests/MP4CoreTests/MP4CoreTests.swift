@@ -1,4 +1,5 @@
 import Foundation
+import SyntheticMedia
 import Testing
 
 @testable import MP4Core
