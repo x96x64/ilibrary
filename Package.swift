@@ -9,8 +9,10 @@ let package = Package(
         // Foundation-only targets build and test on Linux.
         .target(name: "MP4Core"),
         .target(name: "FLACCore"),
+        .target(name: "CatalogCore"),
         .executableTarget(name: "ilibrary"),
         .testTarget(name: "MP4CoreTests", dependencies: ["MP4Core"]),
         .testTarget(name: "FLACCoreTests", dependencies: ["FLACCore"]),
+        .testTarget(name: "CatalogCoreTests", dependencies: ["CatalogCore"]),
     ]
 )

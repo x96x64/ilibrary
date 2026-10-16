@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/x96x64/ilibrary/main/docs/schema/ilibrary-catalog-1.schema.json",
+  "title": "iLibrary catalog, format ilibrary-catalog-1",
+  "description": "A reference record of albums and tracks from which iLibrary applies metadata. Album-level values apply to every track and may be overridden per track. An empty string means that a value is unknown.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "albums"],
+  "properties": {
+    "format": {
+      "description": "Identifies the format. The numeric suffix changes for any incompatible change.",
+      "const": "ilibrary-catalog-1"
+    },
+    "titleRules": { "$ref": "#/$defs/titleRules" },
+    "artists": {
+      "description": "Per-artist settings, keyed by artist name.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/artist" }
+    },
+    "albums": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/album" }
+    }
+  },
+  "$defs": {
+    "date": {
+      "description": "A calendar date, YYYY-MM-DD, or an empty string when unknown.",
+      "type": "string",
+      "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"
+    },
+    "strings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "titleRules": {
+      "description": "Rules that normalize source titles and support matching. Explicit titles in the catalog take precedence.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "case": {
+          "description": "Capitalization style. keep leaves titles unchanged.",
+          "enum": ["keep", "mla", "apa", "start"]
+        },
+        "removeQualifiers": {
+          "description": "Trailing parenthesized qualifiers that contain one of these terms are removed.",
+          "$ref": "#/$defs/strings"
+        },
+        "bracketNested": {
+          "description": "A parenthetical that contains another parenthetical is written with square brackets.",
+          "type": "boolean"
+        },
+        "preserve": {
+          "description": "Words that are never changed.",
+          "$ref": "#/$defs/strings"
+        }
+      }
+    },
+    "artist": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "folderDate": { "$ref": "#/$defs/date" }
+      }
+    },
+    "album": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["album", "discs"],
+      "properties": {
+        "album": { "type": "string", "minLength": 1 },
+        "aliases": {
+          "description": "Other names under which the album's files may be tagged.",
+          "$ref": "#/$defs/strings"
+        },
+        "albumArtist": { "type": "string" },
+        "artist": { "type": "string" },
+        "genre": { "type": "string" },
+        "composer": { "type": "string" },
+        "copyright": { "type": "string" },
+        "releaseDate": { "$ref": "#/$defs/date" },
+        "compilation": { "type": "boolean" },
+        "artwork": {
+          "description": "A path to a PNG or JPEG file, relative to the catalog.",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Evidence for the values; ignored when metadata is applied.",
+          "type": "string"
+        },
+        "sources": {
+          "description": "Sources of the evidence; ignored when metadata is applied.",
+          "$ref": "#/$defs/strings"
+        },
+        "discs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/disc" }
+        }
+      }
+    },
+    "disc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tracks"],
+      "properties": {
+        "tracks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/track" }
+        }
+      }
+    },
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "artist": { "type": "string" },
+        "composer": { "type": "string" },
+        "genre": { "type": "string" },
+        "copyright": { "type": "string" },
+        "releaseDate": { "$ref": "#/$defs/date" },
+        "notes": { "type": "string" },
+        "sources": { "$ref": "#/$defs/strings" }
+      }
+    }
+  }
+}
