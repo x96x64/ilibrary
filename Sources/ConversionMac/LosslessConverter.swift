@@ -251,6 +251,7 @@
                 throw ConversionError.writeFailed(
                     path: destination.path, reason: "ExtAudioFileCreateWithURL returned \(created)")
             }
+            var open = true
             do {
                 var clientCopy = client
                 try check(
@@ -270,13 +271,15 @@
                             path: destination.path, reason: "ExtAudioFileWrite returned \(status)")
                     }
                 }
+                // The writer is disposed exactly once, before verification reads the file back.
+                open = false
                 let disposed = ExtAudioFileDispose(writer)
                 guard disposed == noErr else {
                     throw ConversionError.writeFailed(path: destination.path, reason: "closing returned \(disposed)")
                 }
                 return try verify(source: source, output: destination)
             } catch {
-                ExtAudioFileDispose(writer)
+                if open { ExtAudioFileDispose(writer) }
                 try? FileManager.default.removeItem(at: destination)
                 throw error
             }
