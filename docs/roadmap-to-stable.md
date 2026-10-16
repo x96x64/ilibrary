@@ -25,6 +25,8 @@ The next milestone is M2: `MP4Core`, `FLACCore`, and `CatalogCore` with syntheti
 9. (October 16, 2026.) Timestamp operations refuse missing paths and symbolic links, run after all writes and moves, and set folders after their contents.
 10. (October 16, 2026.) Purchase metadata is removed by the atom list and the sample-entry allowlist of the spike report, with all padding zeroed. `iTunSMPB` and `stik` are retained, and `xid ` is removed.
 11. (October 16, 2026.) At the end of M2, the agent proposes creating the GitHub repository `x96x64/ilibrary` as a public repository and pushing `main`, so that continuous integration runs on macOS; About text and topics follow the planning study. Before that push, the README is expanded to the structure of the iLyrics README, describing implemented behavior as implemented and planned behavior as planned. Repository creation and the push require the maintainer's approval in the session that performs them.
+12. (October 16, 2026.) Only encrypted audio is refused: `drms` sample entries and `.m4p` files. Purchaser information in files that are not encrypted is removed, not refused.
+13. (October 16, 2026.) For this first publication, `m2-core` is merged into `main` before `main` is pushed. From M3 onward, milestone branches are pushed and merged into `main` through pull requests, as in iLyrics.
 
 ## Recommended Models and Effort
 
