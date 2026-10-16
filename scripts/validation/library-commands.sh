@@ -65,6 +65,23 @@ tell application "Music"
 end tell
 APPLESCRIPT
 )
+# A separate user can still select a shared media folder. Require the resolved destination to stay
+# inside this user's Music folder before any library-changing command runs.
+media_url=$(defaults read com.apple.Music media-folder-url 2>/dev/null) || {
+    echo 'Music のメディアフォルダを設定してから、もう一度確認してください。'; exit 1;
+}
+if ! python3 -I - "$media_url" "$HOME/Music" <<'PY'
+import os, sys, urllib.parse
+url = urllib.parse.urlparse(sys.argv[1])
+assert url.scheme == 'file' and url.netloc in ('', 'localhost')
+media = os.path.realpath(urllib.parse.unquote(url.path))
+root = os.path.join(os.path.realpath(os.path.dirname(sys.argv[2])), 'Music')
+assert os.path.realpath(sys.argv[2]) == root
+assert os.path.isdir(media) and os.path.commonpath([media, root]) == root
+PY
+then
+    echo 'メディアフォルダが検証用ユーザーの Music フォルダ内にありません。設定を確認してください。'; exit 1
+fi
 results="$HOME/Desktop/ilibrary-command-results.txt"
 [ ! -e "$results" ] || { echo '前回の結果ファイルがあります。上書きせず終了します。'; exit 1; }
 log() { printf '%s\n' "$*" | tee -a "$results"; }
@@ -124,6 +141,8 @@ mv "$second" "$hidden"
 check 'missing or relocated library file is detected' "$status" 1
 restore
 trap - EXIT HUP INT TERM
+"$ilibrary" check "$artist_folder" --library >"$work/restored-library.log" 2>&1 && status=0 || status=$?
+check 'restored synthetic files and library agree' "$status" 0
 log "failures: $failures"
 log 'No private library was used. No library entries were deleted.'
 echo '結果はデスクトップの ilibrary-command-results.txt にあります。この内容をそのまま報告してください。'
