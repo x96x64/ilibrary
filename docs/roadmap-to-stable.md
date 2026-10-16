@@ -2,7 +2,9 @@
 
 ## Current Status as of October 16, 2026
 
-Milestones M0 to M2 are complete. M2 implemented the Foundation-only targets `MP4Core`, `FLACCore`, and `CatalogCore` with 72 synthetic tests, the catalog JSON Schema, a private reference validation, continuous integration for macOS and Linux, and an expanded README; see [Core Targets](reports/core-targets.md). All tests, the release build, and the formatting check passed on the maintainer's Mac. Continuous integration has not yet run, because the repository has not been pushed. As proposed under Decision 11, the next step is to create the public repository `x96x64/ilibrary`, merge `m2-core` into `main`, push `main`, and confirm both CI jobs. No release has been published.
+Milestones M0 to M2 are complete. M2 implemented the Foundation-only targets `MP4Core`, `FLACCore`, and `CatalogCore` with 72 synthetic tests, the catalog JSON Schema, a private reference validation, continuous integration for macOS and Linux, and an expanded README; see [Core Targets](reports/core-targets.md). All tests, the release build, and the formatting check passed on the maintainer's Mac.
+
+The public repository [x96x64/ilibrary](https://github.com/x96x64/ilibrary) was created on October 16, 2026. The `m2-core` branch was merged into `main` at commit `3412da1`, and `main` was pushed. [CI run 38886543086](https://github.com/x96x64/ilibrary/actions/runs/38886543086), triggered by that push, completed successfully: the macOS job passed the release build, tests, and formatting check, and the Linux job passed the Core tests (measured). The M2 CI gate is satisfied. The Core Targets report preserves the findings recorded before publication; this status records the subsequent publication and CI results. No release has been published.
 
 Open items:
 
