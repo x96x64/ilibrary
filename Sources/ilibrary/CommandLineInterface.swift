@@ -12,7 +12,7 @@ enum CommandLineInterface {
         ("apply", "apply a catalog to files, optionally renaming them and setting their dates", true),
         ("timestamps", "set file and folder dates to release dates", true),
         ("import", "convert or copy downloads into a staging folder without loss", true),
-        ("add", "add albums to Music in order (planned)", false),
+        ("add", "add albums to Music one at a time, in order", true),
         ("check", "compare files with the library (planned)", false),
         ("doctor", "report the environment (planned)", false),
     ]
@@ -35,7 +35,7 @@ enum CommandLineInterface {
     static let syntaxes: [String: CommandSyntax] = [
         "export": ExportCommand.syntax, "prompt": PromptCommand.syntax, "schema": SchemaCommand.syntax,
         "validate": ValidateCommand.syntax, "apply": ApplyCommand.syntax, "timestamps": TimestampsCommand.syntax,
-        "import": ImportCommand.syntax,
+        "import": ImportCommand.syntax, "add": AddCommand.syntax,
     ]
 
     static func run(_ arguments: [String], console: Console, environment: Environment) -> Int32 {
@@ -86,6 +86,7 @@ enum CommandLineInterface {
         case "apply": return try ApplyCommand.run(rest, console: console, environment: environment)
         case "timestamps": return try TimestampsCommand.run(rest, console: console, environment: environment)
         case "import": return try ImportCommand.run(rest, console: console, environment: environment)
+        case "add": return try AddCommand.run(rest, console: console, environment: environment)
         default:
             if commands.contains(where: { $0.name == command }) {
                 throw CommandError.usage("\(command) is planned and not implemented in version \(version)")
