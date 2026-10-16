@@ -176,8 +176,30 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
         #expect(
             report.unmatched.map(\.reason) == [
                 "the file has no album name", "album \"Unknown Album\" is not in the catalog",
-                "album 1, disc 1, track 1 is \"A1\", but the file's title is \"Something Else\"",
+                "the titles of 1 files differ from those of \"Example Album\" at their disc and track numbers, and only 0 agree; check the numbering and the album",
             ])
+    }
+
+    @Test func aCorrectedTitleIsAcceptedWhileMostTitlesAgree() {
+        let report = match([
+            file("Example Album", 1, 1, "A1"), file("Example Album", 1, 2, "A2 Misspelt"),
+            file("Example Album", 1, 3, "A3"),
+        ])
+        #expect(report.unmatched.isEmpty)
+        #expect(report.matches.map(\.titleDiffers) == [false, true, false])
+        #expect(report.matches[1].reference == TrackReference(album: 0, disc: 1, track: 2))
+        // Files without a title tag do not support a correction; only agreeing titles do.
+        let untitled = match([
+            file("Example Album", 1, 1, nil), file("Example Album", 1, 2, "A2 Misspelt"),
+            file("Example Album", 1, 3, nil),
+        ])
+        #expect(untitled.matches.isEmpty)
+        #expect(untitled.unmatched.count == 3)
+        let balanced = match([file("Example Album", 1, 1, "A1"), file("Example Album", 1, 2, "A2 Misspelt")])
+        #expect(balanced.matches.isEmpty)
+        // A title that belongs to another track is never overridden by numbers.
+        let swapped = match([file("Example Album", 1, 1, "A2"), file("Example Album", 1, 2, "A1")])
+        #expect(swapped.matches.map(\.method) == [.title, .title])
     }
 
     @Test func filesClaimingTheSameTrackAreBothRefused() {

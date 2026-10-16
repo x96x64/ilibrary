@@ -10,11 +10,21 @@ let package = Package(
         .target(name: "MP4Core"),
         .target(name: "FLACCore"),
         .target(name: "CatalogCore"),
-        .executableTarget(name: "ilibrary"),
+        // macOS-only file operations; the sources are empty on other platforms.
+        .target(name: "LibraryMac"),
+        .executableTarget(
+            name: "ilibrary",
+            dependencies: [
+                "MP4Core", "CatalogCore", .target(name: "LibraryMac", condition: .when(platforms: [.macOS])),
+            ]),
         // Validates private reference files under reference-private/; not part of the public suite.
         .executableTarget(name: "ReferenceProbe", dependencies: ["MP4Core", "FLACCore"]),
-        .testTarget(name: "MP4CoreTests", dependencies: ["MP4Core"]),
+        // Synthetic media shared by the test targets.
+        .target(name: "SyntheticMedia", path: "Tests/SyntheticMedia"),
+        .testTarget(name: "MP4CoreTests", dependencies: ["MP4Core", "SyntheticMedia"]),
         .testTarget(name: "FLACCoreTests", dependencies: ["FLACCore"]),
         .testTarget(name: "CatalogCoreTests", dependencies: ["CatalogCore"]),
+        .testTarget(name: "LibraryMacTests", dependencies: ["LibraryMac"]),
+        .testTarget(name: "ilibraryTests", dependencies: ["ilibrary", "MP4Core", "CatalogCore", "SyntheticMedia"]),
     ]
 )

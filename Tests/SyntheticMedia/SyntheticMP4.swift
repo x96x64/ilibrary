@@ -2,28 +2,34 @@ import Foundation
 
 /// Builds small, structurally complete MP4 audio files from synthetic bytes. The media data is a
 /// deterministic pattern, not decodable audio; the tests verify structure and byte preservation.
-struct SyntheticMP4 {
-    enum Layout {
+public struct SyntheticMP4 {
+    public init() {}
+
+    public init(layout: Layout) {
+        self.layout = layout
+    }
+
+    public enum Layout: Sendable {
         /// `ftyp moov free mdat`, as Core Audio and the iTunes Store write files.
         case movieFirst(padding: Int)
         /// `ftyp free mdat moov`, as FFmpeg writes files by default.
         case movieLast
     }
 
-    var layout: Layout = .movieFirst(padding: 0)
-    var chunkCount = 6
-    var chunkSize = 1_000
-    var sampleEntry: String = "mp4a"
-    var sampleEntryExtras: [Data] = []
-    var items: [Data] = []
-    var metaPadding = 0
-    var useCo64 = false
+    public var layout: Layout = .movieFirst(padding: 0)
+    public var chunkCount = 6
+    public var chunkSize = 1_000
+    public var sampleEntry: String = "mp4a"
+    public var sampleEntryExtras: [Data] = []
+    public var items: [Data] = []
+    public var metaPadding = 0
+    public var useCo64 = false
     /// A QuickTime-style `meta` atom without version and flags.
-    var quickTimeMeta = false
+    public var quickTimeMeta = false
     /// Contents of the top-level padding of `movieFirst`, such as residual metadata left by an editor.
-    var topPaddingContent: Data?
+    public var topPaddingContent: Data?
 
-    static func box(_ type: String, _ payload: Data = Data()) -> Data {
+    public static func box(_ type: String, _ payload: Data = Data()) -> Data {
         var data = Data()
         data.appendUInt32(UInt32(8 + payload.count))
         data.append(type.data(using: .isoLatin1)!)
@@ -31,11 +37,11 @@ struct SyntheticMP4 {
         return data
     }
 
-    static func box(_ type: String, children: [Data], prefix: Data = Data()) -> Data {
+    public static func box(_ type: String, children: [Data], prefix: Data = Data()) -> Data {
         box(type, prefix + children.reduce(Data(), +))
     }
 
-    static func textItem(_ type: String, _ text: String) -> Data {
+    public static func textItem(_ type: String, _ text: String) -> Data {
         var payload = Data()
         payload.appendUInt32(1)
         payload.appendUInt32(0)
@@ -43,7 +49,7 @@ struct SyntheticMP4 {
         return box(type, children: [box("data", payload)])
     }
 
-    static func integerItem(_ type: String, _ value: UInt64, width: Int) -> Data {
+    public static func integerItem(_ type: String, _ value: UInt64, width: Int) -> Data {
         var payload = Data()
         payload.appendUInt32(21)
         payload.appendUInt32(0)
@@ -51,7 +57,7 @@ struct SyntheticMP4 {
         return box(type, children: [box("data", payload)])
     }
 
-    static func freeformItem(mean: String, name: String, _ text: String) -> Data {
+    public static func freeformItem(mean: String, name: String, _ text: String) -> Data {
         var meanPayload = Data(count: 4)
         meanPayload.append(Data(mean.utf8))
         var namePayload = Data(count: 4)
@@ -64,13 +70,13 @@ struct SyntheticMP4 {
     }
 
     /// The byte pattern of chunk `index`.
-    func chunk(_ index: Int) -> Data {
+    public func chunk(_ index: Int) -> Data {
         Data((0..<chunkSize).map { UInt8(truncatingIfNeeded: ($0 * 31 + index * 97 + 7) % 251) })
     }
 
-    var mediaData: Data { (0..<chunkCount).reduce(Data()) { $0 + chunk($1) } }
+    public var mediaData: Data { (0..<chunkCount).reduce(Data()) { $0 + chunk($1) } }
 
-    func movie(chunkBase: Int) -> Data {
+    public func movie(chunkBase: Int) -> Data {
         var sampleEntryPayload = Data(count: 6)
         sampleEntryPayload.appendUInt16(1)
         sampleEntryPayload.append(Data(count: 8))
@@ -129,7 +135,7 @@ struct SyntheticMP4 {
         return SyntheticMP4.box("moov", children: [SyntheticMP4.box("mvhd", Data(count: 100)), track, udta])
     }
 
-    var data: Data {
+    public var data: Data {
         var ftypPayload = Data("M4A ".utf8)
         ftypPayload.appendUInt32(0)
         ftypPayload.append(Data("M4A mp42isom".utf8))
@@ -151,17 +157,17 @@ struct SyntheticMP4 {
 }
 
 extension Data {
-    mutating func appendUInt16(_ value: UInt16) {
+    public mutating func appendUInt16(_ value: UInt16) {
         Swift.withUnsafeBytes(of: value.bigEndian) { append(contentsOf: $0) }
     }
-    mutating func appendUInt32(_ value: UInt32) {
+    public mutating func appendUInt32(_ value: UInt32) {
         Swift.withUnsafeBytes(of: value.bigEndian) { append(contentsOf: $0) }
     }
-    mutating func appendUInt64(_ value: UInt64) {
+    public mutating func appendUInt64(_ value: UInt64) {
         Swift.withUnsafeBytes(of: value.bigEndian) { append(contentsOf: $0) }
     }
 
-    func occurrences(of needle: Data) -> Int {
+    public func occurrences(of needle: Data) -> Int {
         guard !needle.isEmpty, count >= needle.count else { return 0 }
         var found = 0
         var start = startIndex

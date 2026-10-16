@@ -1,10 +1,14 @@
 # Roadmap to the Stable Release
 
-## Current Status as of October 16, 2026
+## Current Status as of October 17, 2026
 
-Milestones M0 to M2 are complete. M2 implemented the Foundation-only targets `MP4Core`, `FLACCore`, and `CatalogCore` with 72 synthetic tests, the catalog JSON Schema, a private reference validation, continuous integration for macOS and Linux, and an expanded README; see [Core Targets](reports/core-targets.md). All tests, the release build, and the formatting check passed on the maintainer's Mac.
+Milestones M0 to M2 are complete and published in [x96x64/ilibrary](https://github.com/x96x64/ilibrary); the M2 CI gate was satisfied by [CI run 38886543086](https://github.com/x96x64/ilibrary/actions/runs/38886543086) and the later run 38887532717 (measured). No release has been published.
 
-The public repository [x96x64/ilibrary](https://github.com/x96x64/ilibrary) was created on October 16, 2026. The `m2-core` branch was merged into `main` at commit `3412da1`, and `main` was pushed. [CI run 38886543086](https://github.com/x96x64/ilibrary/actions/runs/38886543086), triggered by that push, completed successfully: the macOS job passed the release build, tests, and formatting check, and the Linux job passed the Core tests (measured). The M2 CI gate is satisfied. The Core Targets report preserves the findings recorded before publication; this status records the subsequent publication and CI results. No release has been published.
+Milestone M3 is implemented on the branch `m3-catalog-commands`. It adds the commands `export`, `prompt`, `schema`, `validate`, `apply` (with `--dry-run`, `--rename`, and `--timestamps`), and `timestamps` (with `--dry-run` and `--script`), and the macOS-only target `LibraryMac` for file dates; see [Catalog Commands](reports/catalog-commands.md), the [Command-Line Interface](command-line-interface.md) reference, and [Completing Catalogs with AI Agents](catalog-for-agents.md).
+
+- **Local verification (measured).** On the maintainer's Mac, all 101 tests and the formatting check passed after the review corrections below, and `scripts/validation/catalog-commands.sh` passed all 21 checks in each run. Export and reapplication of synthetic library copies changed no byte, name, or date. Only synthetic files were used (Decision 16).
+- **Continuous integration (measured).** For commit `2e37aaa`, [CI run 38975173162](https://github.com/x96x64/ilibrary/actions/runs/38975173162) passed both jobs: the macOS job ran the release build, all tests, and the formatting check, and the Linux job ran the Core and command tests. The command tests thereby passed on Linux for the first time. [CI run 38975516374](https://github.com/x96x64/ilibrary/actions/runs/38975516374) for the status commit `5bf4048` also passed. For commit `b7b0d7a`, which contains the review corrections, [CI run 38975895653](https://github.com/x96x64/ilibrary/actions/runs/38975895653) passed both jobs. [CI run 38976279710](https://github.com/x96x64/ilibrary/actions/runs/38976279710) for the status commit `6731ff0` passed both jobs. The result for the further corrections below appears on the pull request.
+- **Pull request and merge.** [Pull request #1](https://github.com/x96x64/ilibrary/pull/1) from `m3-catalog-commands` to `main` is open and has not been merged; the merge awaits the maintainer's approval (Decision 13). The automated Codex code review of `2e37aaa` reported three findings: corrected titles counted untitled files as support, free space was checked on one volume only, and `export` could not be previewed. All three were corrected on the branch, as recorded in the Catalog Commands report, and the three review threads were answered and resolved. A second automated review of `6731ff0` was requested with an `@codex review` comment and was running when this status was recorded. A review of the corrected code before that review found that the free-space check underestimated rewrites that add artwork and checked folders of one volume separately; this was corrected on the branch.
 
 Open items:
 
@@ -12,8 +16,9 @@ Open items:
 2. S5 rests on one purchased file. Further purchased files under `reference-private/` would strengthen it before M4.
 3. The private FLAC file contains nine comment fields with uncommon names whose contents are unknown; they are examined before tags are carried into converted files in M4.
 4. The maintainer reviews the refusal of `enca` sample entries, which extends Decision 12 to ISO Common Encryption.
+5. The maintainer reviews the design choices recorded in the Catalog Commands report, in particular the matching of corrected titles and the all-or-nothing behavior of `apply`.
 
-The next milestone is M3: the commands `export`, `schema`, `prompt`, `validate`, `apply`, and `timestamps`, on a branch merged through a pull request (Decision 13).
+The next step is the outcome of the second automated review, and then the maintainer's decision on merging pull request #1. After M3 is merged, the next milestone is M4: `import` for mora and the iTunes Store, with `ConversionMac`.
 
 ## Decisions in Force
 
@@ -30,6 +35,9 @@ The next milestone is M3: the commands `export`, `schema`, `prompt`, `validate`,
 11. (October 16, 2026.) At the end of M2, the agent proposes creating the GitHub repository `x96x64/ilibrary` as a public repository and pushing `main`, so that continuous integration runs on macOS; About text and topics follow the planning study. Before that push, the README is expanded to the structure of the iLyrics README, describing implemented behavior as implemented and planned behavior as planned. Repository creation and the push require the maintainer's approval in the session that performs them.
 12. (October 16, 2026.) Only encrypted audio is refused: `drms` sample entries and `.m4p` files. Purchaser information in files that are not encrypted is removed, not refused.
 13. (October 16, 2026.) For this first publication, `m2-core` is merged into `main` before `main` is pushed. From M3 onward, milestone branches are pushed and merged into `main` through pull requests, as in iLyrics.
+14. (October 17, 2026.) `export --artwork DIR` writes each embedded cover in its original JPEG or PNG format, without re-encoding, instead of converting it to PNG as the planning study proposed. This supersedes that detail of the study.
+15. (October 17, 2026.) The dates of an artist folder are set only when the catalog gives the artist a `folderDate`; otherwise the folder is left unchanged.
+16. (October 17, 2026.) M3 is verified with synthetic files only. Private reference files are not used unless the maintainer instructs otherwise.
 
 ## Recommended Models and Effort
 

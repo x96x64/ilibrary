@@ -10,3 +10,9 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 - `FLACCore`: reading of FLAC stream information, Vorbis comments, and pictures.
 - `CatalogCore`: the `ilibrary-catalog-1` catalog format with validation and a JSON Schema, matching of files to catalog tracks, Music-style naming, four album orders, title rules, and release dates.
 - Continuous integration on macOS and Linux.
+- The commands `export` with `--dry-run`, `prompt`, `schema`, `validate`, `apply` with `--dry-run`, `--rename`, and `--timestamps`, and `timestamps` with `--dry-run` and `--script`.
+- `LibraryMac`: setting file and folder dates on macOS without creating missing paths or following symbolic links.
+
+### Changed
+
+- A file whose title differs from the catalog's at its disc and track numbers is matched there when no other track carries its title and more of the album's titles agree than differ, so that catalogs can correct titles.
