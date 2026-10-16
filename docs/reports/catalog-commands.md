@@ -33,7 +33,7 @@ The following choices were made during implementation and are recorded for the m
 
 ### Synthetic Tests
 
-Measured on the maintainer's Mac (macOS 27.0.1, Swift 6.4 from the Command Line Tools) on October 17, 2026: all 100 tests passed, namely 23 in `ilibraryTests`, 24 in `MP4CoreTests`, 4 in `LibraryMacTests`, 8 in `FLACCoreTests`, and 41 in `CatalogCoreTests`, after the review corrections below. `swift format lint --strict` reported no problem.
+Measured on the maintainer's Mac (macOS 27.0.1, Swift 6.4 from the Command Line Tools) on October 17, 2026: all 101 tests passed, namely 24 in `ilibraryTests`, 24 in `MP4CoreTests`, 4 in `LibraryMacTests`, 8 in `FLACCoreTests`, and 41 in `CatalogCoreTests`, after the review corrections below. `swift format lint --strict` reported no problem.
 
 The command tests build synthetic libraries of three albums and nine files, including a two-disc album, a compilation with per-track artists, PNG and JPEG covers, and a title containing `:` and `/`. They verify that `export --dry-run` writes nothing, that export followed by reapplication reports no change and leaves every file byte for byte identical, and that a second export equals the first. They verify that edits are previewed without change, applied with the audio streams intact, and stable when reapplied; that renaming produces the Music app's names; and that collisions, unmatched files, symbolic links, missing paths, missing artwork, and insufficient free space on the volume of any changed file change nothing. They also verify the order and folder rules of the date plan, the reporting of a skipped midnight, the quoting of the script, the refusal of missing paths and links before any date is set, dates read back after `apply --rename --timestamps`, and a run of the generated script that skips a deleted file without creating it.
 
@@ -61,6 +61,8 @@ The automated Codex review of commit `2e37aaa` on pull request #1 reported three
 - **Corrected titles counted untitled files as support.** With one differing title and two files without title tags, the album was accepted although no title agreed. Agreeing titles must now outnumber differing ones.
 - **Free space was checked on one volume only.** When changed files lay on several volumes, only the first file's volume was checked. Every changed file's folder is now checked.
 - **`export` could not be previewed.** `export` now lists every file it will write, offers `--dry-run`, and reads written covers back as well as the catalog.
+
+A review of the corrected code before a second automated review found a further defect in the free-space check (inferred from the code; corrected with a test). Each rewrite was estimated from the file's current size plus 1 MiB, so artwork added by a catalog could exceed the estimate, and files growing in several folders of one volume were checked separately. The size of each rewrite is now taken from its write plan, and each volume must hold the largest rewritten file plus the growth of all changed files on it.
 
 ## Not Verified
 

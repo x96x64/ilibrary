@@ -87,7 +87,7 @@ The fields written are the title, artist, album artist, album, genre, composer, 
 - `--rename` moves each file to `PATH/Album Artist/Album/NN Title.m4a`, or `D-NN Title.m4a` on multi-disc albums, with `_` in place of `:` and `/`. Every `PATH` must be a directory. Nothing is changed when a destination exists or two files would share one. Folders left empty are reported and not removed.
 - `--timestamps` sets dates as `timestamps` does, after every write and move. It requires macOS.
 
-Each rewrite needs free space for one copy of the file. Before anything is written, the plain available capacity is checked for the folder of every changed file against the largest changed file in it, so that files on several volumes are each checked (decision 8).
+Each rewrite writes a complete new copy of its file before replacing it. Before anything is written, the plain available capacity of every volume that holds a changed file must cover the largest rewritten file plus the growth of all changed files on that volume, with a margin of 1 MiB; the sizes come from the exact write plans, so that added artwork is counted (decision 8).
 
 ### timestamps
 
