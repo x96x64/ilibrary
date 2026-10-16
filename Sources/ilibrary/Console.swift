@@ -33,6 +33,8 @@ struct Environment: Sendable {
     var readDates: (@Sendable (URL) throws -> (created: Date?, modified: Date?))?
     /// The plain available capacity of the volume of a path, when known (decision 8).
     var availableCapacity: @Sendable (URL) -> Int?
+    /// An identifier of the volume of a path, when known, so that paths on one volume are checked together.
+    var volumeIdentifier: @Sendable (URL) -> String? = Environment.volumeIdentifier
 
     static var system: Environment {
         #if canImport(LibraryMac) && os(macOS)
@@ -45,6 +47,10 @@ struct Environment: Sendable {
         #else
             Environment(timeZone: .current, setDates: nil, readDates: nil, availableCapacity: plainAvailableCapacity)
         #endif
+    }
+
+    @Sendable static func volumeIdentifier(_ url: URL) -> String? {
+        ((try? url.resourceValues(forKeys: [.volumeIdentifierKey]))?.volumeIdentifier).map { "\($0)" }
     }
 
     @Sendable static func plainAvailableCapacity(_ url: URL) -> Int? {

@@ -264,9 +264,31 @@ import Testing
         var environment = Environment.testing
         let full = library.root.appendingPathComponent("Download Three").path
         environment.availableCapacity = { $0.path == full ? 10 : 1 << 40 }
+        environment.volumeIdentifier = { $0.path }
         let run = Run(["apply", url.path, library.root.path], environment: environment)
         #expect(run.status == 1)
         #expect(run.errorText.contains("10 bytes are available on the volume of \(full)"))
+        #expect(try library.snapshot() == before)
+    }
+
+    @Test func addedArtworkCountsTowardTheRequiredSpace() throws {
+        let library = try SyntheticLibrary()
+        defer { library.remove() }
+        var (url, catalog) = try exported(library)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let cover = url.deletingLastPathComponent().appendingPathComponent("large-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: cover) }
+        try (SyntheticLibrary.png + Data(count: 2 << 20)).write(to: cover)
+        let album = try #require(catalog.albums.firstIndex { $0.album == "Tribute Collection" })
+        catalog.albums[album].artwork = cover.lastPathComponent
+        try write(catalog, to: url)
+        let before = try library.snapshot()
+        // Room for the old files and the margin, but not for two rewritten files that each gain 2 MiB.
+        var environment = Environment.testing
+        environment.availableCapacity = { _ in 3 << 20 }
+        let run = Run(["apply", url.path, library.root.path], environment: environment)
+        #expect(run.status == 1)
+        #expect(run.errorText.contains("but rewriting needs"))
         #expect(try library.snapshot() == before)
     }
 

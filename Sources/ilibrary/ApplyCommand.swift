@@ -166,26 +166,38 @@ enum ApplyCommand {
         return 0
     }
 
-    /// Each rewrite needs room for one complete copy of its file beside it (decision 8). The capacity is checked
-    /// for the folder of every changed file, so that files on several volumes are each checked against their own.
+    /// Each rewrite writes a complete new copy of its file beside it before replacing it (decision 8). For every
+    /// volume, the capacity must hold the largest rewritten file plus the growth of all files on that volume, with
+    /// a margin of 1 MiB. Sizes come from the exact write plans, so that added artwork is counted.
     static func checkFreeSpace(_ changed: [FilePlan], environment: Environment, console: Console) throws {
-        var required: [String: Int] = [:]
-        for plan in changed {
-            let size =
-                (try? FileManager.default.attributesOfItem(atPath: plan.file.url.path)[.size] as? NSNumber)?.intValue
-                ?? 0
-            let folder = plan.file.url.deletingLastPathComponent().path
-            required[folder] = max(required[folder] ?? 0, size + (1 << 20))
+        struct Need {
+            var folder: String
+            var largest = 0
+            var growth = 0
         }
-        for (folder, needed) in required.sorted(by: { $0.key < $1.key }) {
-            guard let available = environment.availableCapacity(URL(fileURLWithPath: folder, isDirectory: true)) else {
-                console.warning("the free space of the volume of \(folder) could not be determined")
+        var needs: [String: Need] = [:]
+        for plan in changed {
+            var file = plan.file.file
+            for change in plan.changes { try file.setMetadata(change.value.key, change.value.values) }
+            let size = try file.writePlan().size
+            let folder = plan.file.url.deletingLastPathComponent()
+            let key = environment.volumeIdentifier(folder) ?? folder.path
+            var need = needs[key] ?? Need(folder: folder.path)
+            need.largest = max(need.largest, size)
+            need.growth += max(0, size - plan.file.file.source.count)
+            needs[key] = need
+        }
+        for need in needs.values.sorted(by: { $0.folder < $1.folder }) {
+            let required = need.largest + need.growth + (1 << 20)
+            guard let available = environment.availableCapacity(URL(fileURLWithPath: need.folder, isDirectory: true))
+            else {
+                console.warning("the free space of the volume of \(need.folder) could not be determined")
                 continue
             }
-            if available < needed {
+            if available < required {
                 throw CommandError.failure(
-                    "\(available) bytes are available on the volume of \(folder), but rewriting needs \(needed); nothing was changed"
-                )
+                    "\(available) bytes are available on the volume of \(need.folder), but rewriting needs \(required); "
+                        + "nothing was changed")
             }
         }
     }
