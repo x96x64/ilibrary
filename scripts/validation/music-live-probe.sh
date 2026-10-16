@@ -31,11 +31,12 @@ if defaults read MobileMeAccounts Accounts 2>/dev/null | grep -q AccountID; then
     exit 1
 fi
 
-# The library may hold only tracks of this probe, so that no real library is ever changed.
-others=$(music "$artist" <<'APPLESCRIPT'
+# The library must be empty, so that no real library is ever changed and every measurement starts from a
+# fresh library. A second run needs a new test user.
+others=$(music <<'APPLESCRIPT'
 on run argv
     with timeout of 120 seconds
-        tell application "Music" to return count of (every track of library playlist 1 whose album artist is not (item 1 of argv))
+        tell application "Music" to return count of tracks of library playlist 1
     end timeout
 end run
 APPLESCRIPT
@@ -44,7 +45,7 @@ APPLESCRIPT
     exit 1
 }
 if [ "$others" != "0" ]; then
-    echo "This Music library holds $others other tracks. Use a new test user with an empty library. Nothing was changed."
+    echo "This Music library holds $others tracks. Use a new test user, whose library is empty. Nothing was changed."
     exit 1
 fi
 
@@ -148,7 +149,24 @@ printf '%s\n' "$added" | while IFS= read -r line; do [ -n "$line" ] && log "  tr
 log "library tracks after add: $(count_tracks)"
 log "m4a files in the media folder: before $files_before, after $(find "$media" -type f -name '*.m4a' | wc -l | tr -d ' ')"
 log "file dates (modification, creation) of track 1: before $dates_before, after $(stat -f '%m %B' "$inside/01 Probe Song 1.m4a")"
-ids=$(printf '%s\n' "$added" | field 1 | grep . || true)
+# The tracks of album A are found by their album, independently of what add returned.
+album_ids() { # album
+    osascript - "$1" <<'APPLESCRIPT' || true
+on run argv
+    set output to ""
+    with timeout of 120 seconds
+        tell application "Music"
+            repeat with t in (every file track of library playlist 1 whose album is (item 1 of argv))
+                set output to output & (persistent ID of t) & linefeed
+            end repeat
+        end tell
+    end timeout
+    return output
+end run
+APPLESCRIPT
+}
+ids=$(album_ids "$albumA" | grep . || true)
+log "tracks of album A found by album: $(printf '%s\n' "$ids" | grep -c . || true)"
 
 log ""
 log "== M3 adding the same file again"
@@ -177,10 +195,15 @@ done
 
 first=$(printf '%s\n' "$ids" | sed -n 1p)
 second=$(printf '%s\n' "$ids" | sed -n 2p)
+# Files are changed where Music says the tracks are, which may differ from where they were added.
+firstFile=$([ -n "$first" ] && find_id "$first" | field 4 | sed -n 1p || true)
+secondFile=$([ -n "$second" ] && find_id "$second" | field 4 | sed -n 1p || true)
 log ""
 log "== M6 a title changed in the file, before and after refresh"
-"$work/bin/MP4Spike" tag "$inside/01 Probe Song 1.m4a" "$work/retitled.m4a" --set "©nam=Probe Song 1 Changed" >/dev/null
-mv "$work/retitled.m4a" "$inside/01 Probe Song 1.m4a"
+if [ -n "$first" ] && [ -n "$firstFile" ] && [ -f "$firstFile" ]; then
+"$work/bin/MP4Spike" tag "$firstFile" "$work/retitled.m4a" --set "©nam=Probe Song 1 Changed" >/dev/null
+mv "$work/retitled.m4a" "$firstFile"
+log "file changed: the location that Music reports for the track"
 log "name in Music before refresh: $(find_id "$first" | field 2)"
 { printf '%s\n' "$describe"; cat <<'APPLESCRIPT'
 on run argv
@@ -193,11 +216,15 @@ APPLESCRIPT
 } | osascript - "$first" >/dev/null 2>&1 || log "refresh: error"
 sleep 2
 log "name in Music after refresh: $(find_id "$first" | field 2)"
+else
+    log "skipped: no track of album A with a file location was found"
+fi
 
 log ""
 log "== M7 a file moved within the media folder, then relinked"
+if [ -n "$second" ] && [ -n "$secondFile" ] && [ -f "$secondFile" ]; then
 mkdir -p "$media/Music/$artist/Relinked"
-mv "$inside/02 Probe Song 2.m4a" "$media/Music/$artist/Relinked/02 Probe Song 2.m4a"
+mv "$secondFile" "$media/Music/$artist/Relinked/02 Probe Song 2.m4a"
 sleep 2
 log "location after the move, before relinking: $(find_id "$second" | field 4)"
 osascript - "$second" "$media/Music/$artist/Relinked/02 Probe Song 2.m4a" <<'APPLESCRIPT' >/dev/null 2>&1 || log "relinking: error"
@@ -209,6 +236,9 @@ on run argv
 end run
 APPLESCRIPT
 log "location after relinking: $(find_id "$second" | field 4)"
+else
+    log "skipped: no second track of album A with a file location was found"
+fi
 
 log ""
 log "== M8 renaming album A in Music, one track per call"

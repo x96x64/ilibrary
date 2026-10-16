@@ -12,7 +12,7 @@ These measurements are made in a separate local macOS user that is not signed in
 2. Log in as that user. Skip every offer to sign in to an Apple Account during setup.
 3. Open Music once, dismiss its welcome screens without signing in, and quit it. This creates an empty library and media folder.
 4. In Terminal, run `git clone https://github.com/x96x64/ilibrary.git` and `cd ilibrary`.
-5. Run `scripts/validation/music-live-probe.sh`, type `YES` when asked, and allow Terminal to control Music when macOS asks. The script refuses to run when the user is signed in to an Apple Account or the library holds other tracks.
+5. Run `scripts/validation/music-live-probe.sh`, type `YES` when asked, and allow Terminal to control Music when macOS asks. The script refuses to run when the user is signed in to an Apple Account or the library holds any track, so that every run starts from an empty library; a second run needs a new test user.
 6. When it ends, open `ilibrary-live-results.txt` on the Desktop, check that it contains no personal information, and give its contents to the agent.
 7. Log out of the test user. The user and its library may be kept for later measurements or deleted in Users & Groups.
 
