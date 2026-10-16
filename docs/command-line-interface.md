@@ -41,7 +41,7 @@ ilibrary export ~/Music/Staging -o catalog.json --artwork covers
 Writes a draft catalog from the tags of the `.m4a` files. Files are grouped into albums by album and album artist, and into discs and tracks by their disc and track numbers. A value that every track of an album shares is written at album level; other values are written per track. Release dates are written as `YYYY-MM-DD` when a file carries a complete date, and omitted when it carries only a year.
 
 - `-o`, `--output FILE` names the catalog to write. It is required, and an existing file is never overwritten.
-- `--dry-run` lists the catalog and covers that would be written and writes nothing. Without it, the same list is printed before writing, and every written file is read back.
+- `--dry-run` lists the catalog and covers that would be written and writes nothing. Without it, the same list is printed before writing, and every written file is read back. The catalog's folder and the artwork location must be writable directories; when a write or readback fails, the files and the directory that the export created are removed.
 - `--artwork DIR` writes each album's cover to `DIR` in its embedded JPEG or PNG format, without re-encoding (decision 14), and references it from the catalog by a path relative to the catalog. Without this option, the catalog names no artwork, and `apply` leaves the files' covers unchanged.
 
 Files without an album tag or a track number are not exported. Gaps or repetitions in disc and track numbers are reported, because a catalog numbers its discs and tracks by position.
@@ -84,7 +84,7 @@ Writes the catalog's values to the matched files without re-encoding.
 
 The fields written are the title, artist, album artist, album, genre, composer, copyright, release date (`YYYY-MM-DDT00:00:00Z`), track and disc numbers with their totals from the catalog's structure, the compilation flag when the catalog states it, and the artwork when the catalog names it. A value that the catalog leaves empty or omits is not changed. Reapplying a catalog whose values the files already carry changes nothing and leaves the files byte for byte identical.
 
-- `--rename` moves each file to `PATH/Album Artist/Album/NN Title.m4a`, or `D-NN Title.m4a` on multi-disc albums, with `_` in place of `:` and `/`. Every `PATH` must be a directory. Nothing is changed when a destination exists or two files would share one. Folders left empty are reported and not removed.
+- `--rename` moves each file to `PATH/Album Artist/Album/NN Title.m4a`, or `D-NN Title.m4a` on multi-disc albums, with `_` in place of `:` and `/`. Every `PATH` must be a directory. Nothing is changed when a destination exists, when two files would share one, when a name derived from the catalog is empty, `.`, `..`, or longer than 255 bytes, or when a destination would lie outside its `PATH`. Folders left empty are reported and not removed.
 - `--timestamps` sets dates as `timestamps` does, after every write and move. It requires macOS.
 
 Each rewrite writes a complete new copy of its file before replacing it. Before anything is written, the plain available capacity of every volume that holds a changed file must cover the largest rewritten file plus the growth of all changed files on that volume, with a margin of 1 MiB; the sizes come from the exact write plans, so that added artwork is counted (decision 8).
