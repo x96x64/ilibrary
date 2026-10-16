@@ -12,7 +12,7 @@ Milestone M3 is complete. [Pull request #1](https://github.com/x96x64/ilibrary/p
 
 Milestone M4 is implemented on the branch `m4-import` and has not been pushed. It adds the macOS-only target `ConversionMac` and the command `import` (with `--from`, `--delete-originals`, and `--dry-run`); see [Import](reports/import.md) and the [Command-Line Interface](command-line-interface.md) reference.
 
-- **Local verification (measured).** On the maintainer's Mac, all 120 tests and the formatting check passed, `scripts/validation/import.sh` passed all 30 checks, and `scripts/validation/catalog-commands.sh` passed all 21 checks. Copies of one mora FLAC file and one purchased iTunes Store file, processed inside `reference-private/work/` with the maintainer's approval, passed all 8 checks of `scripts/reference_validation/validate-import.sh`; the originals were unchanged and the copies were removed.
+- **Local verification (measured).** On the maintainer's Mac, all 121 tests and the formatting check passed, `scripts/validation/import.sh` passed all 30 checks, and `scripts/validation/catalog-commands.sh` passed all 21 checks. Copies of one mora FLAC file and one purchased iTunes Store file, processed inside `reference-private/work/` with the maintainer's approval, passed all 8 checks of `scripts/reference_validation/validate-import.sh`; the originals were unchanged and the copies were removed.
 - **Continuous integration.** Not yet run for this branch.
 - **Pull request and merge.** Not yet opened; pushing the branch and opening a pull request await the maintainer's approval (Decision 13).
 
