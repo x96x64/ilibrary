@@ -116,6 +116,32 @@ import Testing
         #expect(try library.snapshot() == before)
     }
 
+    @Test func aFailedExportLeavesNoFilesBehind() throws {
+        let library = try SyntheticLibrary()
+        defer { library.remove() }
+        let covers = library.root.appendingPathComponent("covers")
+        let unwritable = library.root.appendingPathComponent("missing-folder/catalog.json")
+        let preflight = Run(["export", library.root.path, "-o", unwritable.path, "--artwork", covers.path])
+        #expect(preflight.status == 1)
+        #expect(preflight.errorText.contains("is not a writable directory; nothing was written"))
+        #expect(pathKind(covers) == .missing)
+        // A read-only catalog folder is also refused before any cover is written; root may write anyway.
+        let catalog = library.root.appendingPathComponent("catalog.json")
+        try FileManager.default.createDirectory(
+            at: library.root.appendingPathComponent("blocked"), withIntermediateDirectories: false)
+        let blockedCatalog = library.root.appendingPathComponent("blocked/catalog.json")
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o500], ofItemAtPath: blockedCatalog.deletingLastPathComponent().path)
+        defer {
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o700], ofItemAtPath: blockedCatalog.deletingLastPathComponent().path)
+        }
+        if FileManager.default.isWritableFile(atPath: blockedCatalog.deletingLastPathComponent().path) { return }
+        #expect(Run(["export", library.root.path, "-o", blockedCatalog.path, "--artwork", covers.path]).status == 1)
+        #expect(pathKind(covers) == .missing)
+        #expect(pathKind(catalog) == .missing)
+    }
+
     @Test func exportNeverOverwrites() throws {
         let library = try SyntheticLibrary()
         defer { library.remove() }

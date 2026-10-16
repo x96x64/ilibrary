@@ -53,12 +53,31 @@ enum ExportCommand {
         for cover in covers where pathKind(cover.url) != .missing {
             throw CommandError.failure("\(cover.url.path) already exists; it is not overwritten")
         }
+        for cover in covers where cover.url.lastPathComponent.utf8.count > 255 {
+            throw CommandError.failure(
+                "the cover name \(cover.url.lastPathComponent) exceeds 255 bytes; nothing was written")
+        }
+        let manager = FileManager.default
+        func writableDirectory(_ url: URL) -> Bool {
+            pathKind(url) == .directory && manager.isWritableFile(atPath: url.path)
+        }
+        guard writableDirectory(output.deletingLastPathComponent()) else {
+            throw CommandError.failure(
+                "\(output.deletingLastPathComponent().path) is not a writable directory; nothing was written")
+        }
+        let createsArtworkDirectory = artworkDirectory.map { pathKind($0) == .missing && !covers.isEmpty } ?? false
+        if let artworkDirectory, !covers.isEmpty {
+            let target = createsArtworkDirectory ? artworkDirectory.deletingLastPathComponent() : artworkDirectory
+            guard writableDirectory(target) else {
+                throw CommandError.failure("\(target.path) is not a writable directory; nothing was written")
+            }
+        }
         let trackCount = catalog.resolvedTracks().count
         console.print("Planned writes: \(1 + covers.count) files")
         console.print(
             "  catalog \(output.path): \(catalog.albums.count) albums and \(trackCount) tracks from \(files.count) files"
         )
-        if let artworkDirectory, !covers.isEmpty, pathKind(artworkDirectory) == .missing {
+        if let artworkDirectory, createsArtworkDirectory {
             console.print("  directory \(artworkDirectory.path) (created)")
         }
         for cover in covers {
@@ -70,19 +89,30 @@ enum ExportCommand {
             console.print("Dry run: nothing was written.")
             return 0
         }
-        if let artworkDirectory, !covers.isEmpty {
-            try FileManager.default.createDirectory(at: artworkDirectory, withIntermediateDirectories: true)
-        }
-        for cover in covers { try cover.data.write(to: cover.url, options: .withoutOverwriting) }
-        try catalog.encoded().write(to: output, options: .withoutOverwriting)
-
-        // Verify by reading every written file back.
-        for cover in covers where (try? Data(contentsOf: cover.url)) != cover.data {
-            throw CommandError.failure("\(cover.url.path) did not read back as written")
-        }
-        let reread = Catalog.validate(try Data(contentsOf: output))
-        guard reread.catalog == catalog else {
-            throw CommandError.failure("\(outputPath) did not read back as written")
+        // On any failure, the files and the directory that this run created are removed again.
+        var written: [URL] = []
+        do {
+            if let artworkDirectory, createsArtworkDirectory {
+                try manager.createDirectory(at: artworkDirectory, withIntermediateDirectories: false)
+            }
+            for cover in covers {
+                try cover.data.write(to: cover.url, options: .withoutOverwriting)
+                written.append(cover.url)
+            }
+            try catalog.encoded().write(to: output, options: .withoutOverwriting)
+            written.append(output)
+            // Verify by reading every written file back.
+            for cover in covers where (try? Data(contentsOf: cover.url)) != cover.data {
+                throw CommandError.failure("\(cover.url.path) did not read back as written")
+            }
+            guard Catalog.validate(try Data(contentsOf: output)).catalog == catalog else {
+                throw CommandError.failure("\(outputPath) did not read back as written")
+            }
+        } catch {
+            for url in written.reversed() { try? manager.removeItem(at: url) }
+            if let artworkDirectory, createsArtworkDirectory { try? manager.removeItem(at: artworkDirectory) }
+            let message = (error as? CommandError)?.message ?? "\(error)"
+            throw CommandError.failure("\(message); the files written by this export were removed")
         }
         console.print(
             "Exported \(catalog.albums.count) albums and \(trackCount) tracks from \(files.count) files to \(outputPath)"
