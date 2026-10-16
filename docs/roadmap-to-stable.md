@@ -26,7 +26,9 @@ Open items:
 6. Whether real libraries contain values that a catalog cannot represent, such as gaps in track numbers or year-only dates, is unknown until a catalog is exported from one.
 7. Moves to the real Trash through `FileManager.trashItem` are untested; the tests use a substitute Trash.
 
-The next milestone is M5: `add` with the four orders and resumption. Because it changes a Music library, the live S3 measurements come first; the maintainer performs them in a separate local macOS user without an Apple Account, with the procedure in [Live Music Measurements](live-music-measurements.md), and M5 and the library parts of M6 wait for their results.
+The live S3 measurements were made by the maintainer on October 17, 2026, in a separate macOS user and recorded in [Music Behavior](reports/music-behavior.md).
+
+Milestone M5 is implemented on the branch `m5-add`: the command `add` and the Music automation in `LibraryMac`; see [Ordered Addition](reports/ordered-addition.md). All 132 tests and the formatting check passed on the maintainer's Mac, with a substitute library for Music (measured). `add` has not yet been run against Music; its gate, a test library, is met by a live validation in a new separate macOS user, which is prepared together with M6. The maintainer approved proceeding through M7 without further approvals on October 17, 2026.
 
 ## Decisions in Force
 
