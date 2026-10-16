@@ -3,6 +3,7 @@
 ## Current Documents
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
+- [Agent Handoff](agent-handoff.md): a prompt for resuming work in Codex or Claude Code at any milestone
 
 ## Historical Baseline
 

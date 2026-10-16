@@ -1,0 +1,40 @@
+# Agent Handoff
+
+## Purpose
+
+This document contains a general-purpose prompt for resuming work in Codex or Claude Code from the repository alone. It applies at any milestone. The prompt is written in Japanese, the maintainer's working language; the rules it refers to are defined in [AGENTS.md](../AGENTS.md). Recommended models and effort levels are listed in the [roadmap](roadmap-to-stable.md#recommended-models-and-effort).
+
+## Prompt
+
+```
+作業ディレクトリは ~/ilibrary です。この会話の前の経緯は、リポジトリにすべて記録されています。
+
+1. まず AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md（特に Current Status と
+   Decisions in Force）を読み、git log と git status で現在の状態を確認してください。
+2. Current Status に書かれた次のマイルストーンを特定し、作業に入る前に、次の内容を日本語で私に示してください。
+   - 今回やる作業の範囲
+   - 完了条件（ゲート）
+   - 私の Mac が必要かどうか
+   私の承認を得てから作業を始めてください。途中の作業が残っている場合は、その続きから再開してください。
+3. 作業はマイルストーン用のブランチで行い、AGENTS.md の規約に従ってください。
+   - コミットは iLyrics と同じ Conventional Commits、正式な英語、小さな単位とし、
+     実質的に関与したコミットには Co-authored-by: Codex <codex@openai.com> を付けてください。
+   - 文書の見出しは MLA のタイトルケースにしてください。
+   - 根拠は測定・推測・未確認に区分し、確かめていないことを事実として書かないでください。
+4. 私の実ライブラリ（~/Music/Music/Media.localized/Music）と Apple Music のライブラリには、
+   私の明示的な指示なしに触れないでください。検証はコピーまたは合成ファイルで行ってください。
+   実際の音楽ファイル、Apple ID、個人パスは reference-private/ 以外に置かず、公開物に含めないでください。
+5. push、タグ、リポジトリ作成、リリース、レジストリへの公開は、私の明示的な承認なしに行わないでください。
+   push の前には、変更した文書のプレビュー、主要な変更の要約、その日本語訳を示してください。
+6. 区切りごとに docs/roadmap-to-stable.md の Current Status を更新してコミットし、
+   Claude Code に戻っても続けられる状態にしてください。
+7. 最後に日本語で、次の4点を報告してください。
+   - やったこと、検証結果、残っている課題
+   - 次の作業
+   - 次の作業の推奨モデルとエフォート（Claude Code と Codex それぞれ。Codex は GPT のモデル名で、ultra は使わない）
+   - 次のセッション用のプロンプト
+```
+
+## Use in Claude Code
+
+The same prompt applies in Claude Code. Replace the Codex attribution in item 3 with `Co-Authored-By: Claude <noreply@anthropic.com>`, optionally preceded by the model name, as defined in AGENTS.md.
