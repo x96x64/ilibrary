@@ -6,14 +6,14 @@
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![Linux: Core targets](https://img.shields.io/badge/Linux-Core%20targets-FCC624?logo=linux&logoColor=black)](#how-it-works)
 
-iLibrary prepares downloaded music for a local Apple Music library and adds it in a controlled order. It applies metadata from a catalog file without re-encoding, names files as the Music app does, and sets file dates to release dates. Conversion of lossless downloads to Apple Lossless, removal of iTunes Store purchase metadata on import, and the addition of albums to Music one at a time are planned.
+iLibrary prepares downloaded music for a local Apple Music library and adds it in a controlled order. It converts lossless downloads to Apple Lossless, copies iTunes Store purchases without their purchase metadata, applies metadata from a catalog file without re-encoding, names files as the Music app does, and sets file dates to release dates. The addition of albums to Music one at a time is planned.
 
 ```bash
 ilibrary apply catalog.json ~/Music/Staging
 ```
 
 > [!IMPORTANT]
-> iLibrary is in development. The catalog commands `export`, `prompt`, `schema`, `validate`, `apply`, and `timestamps` are implemented and tested with synthetic files; `import`, `add`, `check`, and `doctor` follow in later milestones of the [roadmap](docs/roadmap-to-stable.md). No release has been published. iLibrary does not touch the Music app or its library yet. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary is in development. The commands `import`, `export`, `prompt`, `schema`, `validate`, `apply`, and `timestamps` are implemented and tested with synthetic files; `add`, `check`, and `doctor` follow in later milestones of the [roadmap](docs/roadmap-to-stable.md). No release has been published. iLibrary does not touch the Music app or its library yet. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Contents
 
@@ -35,6 +35,7 @@ ilibrary apply catalog.json ~/Music/Staging
 
 Implemented:
 
+- **Lossless import.** `import` converts FLAC, WAV, and AIFF downloads to Apple Lossless through AudioToolbox, verified by decoded PCM equality, and copies iTunes Store files without re-encoding while removing purchase metadata. Standard FLAC tags and the front cover are carried; with `--delete-originals`, originals are moved to the Trash only after every output has been verified.
 - **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files. Every planned change is listed first; `--dry-run` stops there, and every written file is read back and compared with the plan.
 - **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Title.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
 - **MP4 metadata without re-encoding.** `MP4Core` reads and writes the item list of M4A files, rebuilds only the movie box, copies the audio data unchanged, relocates chunk offsets, and replaces items in place, so that repeated application yields identical bytes. Every rewrite goes through a hidden partial file that is parsed again and compared with the source before it replaces the destination.
@@ -44,7 +45,6 @@ Implemented:
 
 Planned:
 
-- **Lossless conversion.** FLAC, WAV, and AIFF to Apple Lossless through AudioToolbox, verified by decoded PCM equality before any original is deleted.
 - **Ordered, local-only import.** Albums moved into the Music media folder and added one at a time in release or artist order, stopping when the library already contains a matching track.
 - **Checks.** Comparison of files with the library, cloud status, duplicates, and timestamps, and a `doctor` command for the environment.
 
@@ -69,24 +69,28 @@ The executable is `.build/release/ilibrary`. Homebrew, npm, and pip packages are
 
 ## Quick Start
 
-The catalog workflow is implemented:
+The workflow up to the addition to Music is implemented:
 
 ```bash
-# 1. Draft a catalog from the files' tags, with their covers
+# 1. Convert downloads and copy purchases into a staging folder, after a dry run
+ilibrary import ~/Downloads/mora -o ~/Music/Staging --dry-run
+ilibrary import ~/Downloads/mora -o ~/Music/Staging
+
+# 2. Draft a catalog from the files' tags, with their covers
 ilibrary export ~/Music/Staging -o catalog.json --artwork covers
 
-# 2. Complete it with an AI agent or chat, or by hand
+# 3. Complete it with an AI agent or chat, or by hand
 ilibrary prompt catalog.json > prompt.md
 
-# 3. Validate it, and preview every change
+# 4. Validate it, and preview every change
 ilibrary validate catalog.json ~/Music/Staging
 ilibrary apply catalog.json ~/Music/Staging --rename --timestamps --dry-run
 
-# 4. Apply it
+# 5. Apply it
 ilibrary apply catalog.json ~/Music/Staging --rename --timestamps
 ```
 
-Converting downloads before step 1 (`ilibrary import`) and adding the albums to Music afterwards (`ilibrary add`) are planned.
+Adding the albums to Music afterwards (`ilibrary add`) is planned.
 
 ## Usage
 
@@ -98,7 +102,7 @@ ilibrary prompt CATALOG.json
 ilibrary schema
 ilibrary validate CATALOG.json [PATH...]
 ilibrary apply CATALOG.json PATH... [--dry-run] [--rename] [--timestamps]
-ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals]
+ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]
 ilibrary add PATH... [--order release|artist|artist-desc|artist-release] [--dry-run]
 ilibrary timestamps CATALOG.json PATH... [--dry-run] [--script FILE]
 ilibrary check [PATH] [--library]
@@ -106,7 +110,7 @@ ilibrary doctor
 ilibrary help [COMMAND] | --help | --version
 ```
 
-`import`, `add`, `check`, and `doctor` are planned. Exit status is 0 on success, 1 on a runtime failure, and 2 on a usage error.
+`add`, `check`, and `doctor` are planned. Exit status is 0 on success, 1 on a runtime failure, and 2 on a usage error.
 
 ## Catalog Format
 
@@ -145,7 +149,7 @@ The package separates domain logic from platform integration, as iLyrics does. N
 | `MP4Core` | Box parsing and rewriting, item lists, chunk offsets, purchase metadata | Implemented; Foundation only |
 | `FLACCore` | FLAC metadata blocks | Implemented; Foundation only |
 | `CatalogCore` | Catalog format, validation, matching, naming, ordering, title rules, dates | Implemented; Foundation only |
-| `ConversionMac` | Conversion to Apple Lossless through AudioToolbox and PCM verification | Planned |
+| `ConversionMac` | Conversion to Apple Lossless through AudioToolbox and PCM verification | Implemented; macOS only |
 | `LibraryMac` | File dates; Music automation and the media folder | File dates implemented; macOS only |
 | `ilibrary` | Commands | Catalog commands implemented; Foundation only except dates |
 
@@ -157,10 +161,10 @@ Albums imported into a library with iCloud Music Library may be identified with 
 
 ## Limitations
 
-- `import`, `add`, `check`, and `doctor` are not implemented. Catalogs are exported from `.m4a` files only.
-- Setting creation dates requires macOS. On Linux, the catalog commands run, but `timestamps` offers only `--dry-run` and `--script`.
+- `add`, `check`, and `doctor` are not implemented. Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
+- Conversion and setting creation dates require macOS. On Linux, the catalog commands and copies by `import` run, but `timestamps` offers only `--dry-run` and `--script`.
 - A catalog numbers discs and tracks by position; `export` reports gaps and repetitions in the files' numbers.
-- Conversion will support mono and stereo only, and refuses floating-point PCM.
+- Conversion supports mono and stereo only, and refuses floating-point PCM. FLAC fields outside the standard set are not carried.
 - Files that would need chunk offsets beyond 32 bits are refused rather than converted to 64-bit offsets.
 - Protected audio (`.m4p`) is out of scope. iLibrary does not download audio.
 - Further naming rules of the Music app, such as length limits, are unknown; affected names are reported instead of changed.
@@ -185,7 +189,7 @@ scripts/test.sh
 swift format lint --strict --recursive Sources Tests Package.swift scripts
 ```
 
-`scripts/test.sh` runs `swift test` with the paths that Swift Testing needs under the Command Line Tools. On macOS, `scripts/validation/catalog-commands.sh` also exercises the release build on decodable synthetic audio and checks the results with FFmpeg, Core Audio, exiftool, and `stat`. The public test suite uses only original synthetic data and needs neither the network, private files, nor a Music library. Read [AGENTS.md](AGENTS.md) for the engineering constraints, including library safety, evidence classification, and the rules for private reference material. Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
+`scripts/test.sh` runs `swift test` with the paths that Swift Testing needs under the Command Line Tools. On macOS, `scripts/validation/catalog-commands.sh` and `scripts/validation/import.sh` also exercise the release build on decodable synthetic audio and checks the results with FFmpeg, Core Audio, exiftool, and `stat`. The public test suite uses only original synthetic data and needs neither the network, private files, nor a Music library. Read [AGENTS.md](AGENTS.md) for the engineering constraints, including library safety, evidence classification, and the rules for private reference material. Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## Acknowledgments
 
