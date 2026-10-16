@@ -39,7 +39,10 @@ on run argv
     end timeout
 end run
 APPLESCRIPT
-)
+) || {
+    echo "Terminal could not control Music. Open Music once, then allow Terminal in System Settings, Privacy & Security, Automation. Nothing was changed."
+    exit 1
+}
 if [ "$others" != "0" ]; then
     echo "This Music library holds $others other tracks. Use a new test user with an empty library. Nothing was changed."
     exit 1
@@ -88,19 +91,19 @@ dates_before=$(stat -f '%m %B' "$inside/01 Probe Song 1.m4a")
 describe='on describeTracks(theTracks)
     set fieldSeparator to character id 31
     set output to ""
-    repeat with t in theTracks
-        set thePath to ""
-        try
-            set thePath to POSIX path of (get location of t)
-        end try
-        set theStatus to ""
-        try
-            set theStatus to (cloud status of t) as text
-        end try
-        tell application "Music"
+    tell application "Music"
+        repeat with t in theTracks
+            set thePath to ""
+            try
+                set thePath to POSIX path of (get location of t)
+            end try
+            set theStatus to ""
+            try
+                set theStatus to (cloud status of t) as text
+            end try
             set output to output & (persistent ID of t) & fieldSeparator & (name of t) & fieldSeparator & (album of t) & fieldSeparator & thePath & fieldSeparator & theStatus & linefeed
-        end tell
-    end repeat
+        end repeat
+    end tell
     return output
 end describeTracks'
 
@@ -130,16 +133,16 @@ on run argv
     return my describeTracks(found)
 end run
 APPLESCRIPT
-    } | osascript - "$1"
+    } | osascript - "$1" || true
 }
 count_tracks() {
-    osascript -e 'with timeout of 120 seconds' -e 'tell application "Music" to return count of tracks of library playlist 1' -e 'end timeout'
+    osascript -e 'with timeout of 120 seconds' -e 'tell application "Music" to return count of tracks of library playlist 1' -e 'end timeout' || echo "error"
 }
 field() { cut -d "$(printf '\037')" -f "$1"; }
 
 log ""
 log "== M2 addition of files inside the media folder (album A, 3 files)"
-added=$(add_files "$inside/01 Probe Song 1.m4a" "$inside/02 Probe Song 2.m4a" "$inside/03 Probe Song 3.m4a")
+added=$(add_files "$inside/01 Probe Song 1.m4a" "$inside/02 Probe Song 2.m4a" "$inside/03 Probe Song 3.m4a" || echo "")
 log "tracks returned by add: $(printf '%s' "$added" | grep -c . || true)"
 printf '%s\n' "$added" | while IFS= read -r line; do [ -n "$line" ] && log "  track: id $(printf '%s' "$line" | field 1), location $(printf '%s' "$line" | field 4), cloud status $(printf '%s' "$line" | field 5)"; done
 log "library tracks after add: $(count_tracks)"
@@ -156,7 +159,7 @@ log "library tracks: before $before, after $(count_tracks)"
 
 log ""
 log "== M4 addition of files outside the media folder (album B, 2 files)"
-addedB=$(add_files "$outside/01 Probe Song 1.m4a" "$outside/02 Probe Song 2.m4a")
+addedB=$(add_files "$outside/01 Probe Song 1.m4a" "$outside/02 Probe Song 2.m4a" || echo "")
 printf '%s\n' "$addedB" | while IFS= read -r line; do [ -n "$line" ] && log "  track: location $(printf '%s' "$line" | field 4)"; done
 log "source files still in the staging folder: $(find "$outside" -type f -name '*.m4a' | wc -l | tr -d ' ')"
 
@@ -199,8 +202,9 @@ sleep 2
 log "location after the move, before relinking: $(find_id "$second" | field 4)"
 osascript - "$second" "$media/Music/$artist/Relinked/02 Probe Song 2.m4a" <<'APPLESCRIPT' >/dev/null 2>&1 || log "relinking: error"
 on run argv
+    set newFile to POSIX file (item 2 of argv)
     with timeout of 120 seconds
-        tell application "Music" to set location of (first file track of library playlist 1 whose persistent ID is (item 1 of argv)) to (POSIX file (item 2 of argv))
+        tell application "Music" to set location of (first file track of library playlist 1 whose persistent ID is (item 1 of argv)) to newFile
     end timeout
 end run
 APPLESCRIPT
