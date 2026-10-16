@@ -22,11 +22,13 @@ let package = Package(
         .executableTarget(name: "ReferenceProbe", dependencies: ["MP4Core", "FLACCore"]),
         // Synthetic media shared by the test targets.
         .target(name: "SyntheticMedia", path: "Tests/SyntheticMedia"),
+        .target(name: "SyntheticMediaMac", path: "Tests/SyntheticMediaMac"),
         .testTarget(name: "MP4CoreTests", dependencies: ["MP4Core", "SyntheticMedia"]),
         .testTarget(name: "FLACCoreTests", dependencies: ["FLACCore"]),
         .testTarget(name: "CatalogCoreTests", dependencies: ["CatalogCore"]),
         .testTarget(name: "LibraryMacTests", dependencies: ["LibraryMac"]),
-        .testTarget(name: "ConversionMacTests", dependencies: ["ConversionMac", "SyntheticMedia"]),
+        .testTarget(
+            name: "ConversionMacTests", dependencies: ["ConversionMac", "SyntheticMedia", "SyntheticMediaMac"]),
         .testTarget(name: "ilibraryTests", dependencies: ["ilibrary", "MP4Core", "CatalogCore", "SyntheticMedia"]),
     ]
 )
