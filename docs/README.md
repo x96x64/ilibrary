@@ -14,3 +14,4 @@
 The reports below record findings and decisions in the order the work was done. They are historical records and are not revised afterwards.
 
 - 2026-10-16 — [Manual Library Curation](reports/manual-library-curation.md)
+- 2026-10-16 — [Architecture Spike](reports/architecture-spike.md)
