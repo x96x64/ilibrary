@@ -173,6 +173,8 @@ extension Environment {
     static var testing: Environment {
         var environment = Environment.system
         environment.timeZone = TimeZone(identifier: "Asia/Tokyo")!
+        // Tests never reach the real Music app; each test that needs a library supplies a substitute.
+        environment.music = nil
         return environment
     }
 }

@@ -67,6 +67,10 @@ struct Environment: Sendable {
     var converter: Converter? = Environment.systemConverter
     /// Moves a file to the Trash and returns its new location; nil where there is no Trash.
     var moveToTrash: (@Sendable (URL) throws -> URL?)? = Environment.systemTrash
+    /// Checks decoded duration, codec, and PCM before a cross-volume move removes its source.
+    var verifyAudioCopy: (@Sendable (URL, URL) throws -> Void)? = Environment.systemAudioCopyVerification
+    /// The Music library; nil where Music cannot be automated.
+    var music: (any MusicLibrary)? = Environment.systemMusic
 
     static var system: Environment {
         #if canImport(LibraryMac) && os(macOS)
@@ -92,6 +96,29 @@ struct Environment: Sendable {
                         estimatedSize: LosslessConverter.estimatedOutputSize(format))
                 }, convert: { try LosslessConverter.convert($0, to: $1) },
                 verify: { try LosslessConverter.verify(source: $0, output: $1) })
+        #else
+            nil
+        #endif
+    }
+
+    static var systemAudioCopyVerification: (@Sendable (URL, URL) throws -> Void)? {
+        #if canImport(ConversionMac) && os(macOS)
+            return { source, output in
+                let (sourceFormat, sourcePCM) = try LosslessConverter.decode(source)
+                let (outputFormat, outputPCM) = try LosslessConverter.decode(output)
+                guard sourceFormat == outputFormat, sourcePCM == outputPCM,
+                    sourcePCM.frames > 0, sourcePCM.frames == sourceFormat.declaredFrames,
+                    outputPCM.frames == outputFormat.declaredFrames
+                else { throw CommandError.failure("the moved copy differs in codec, duration, or decoded PCM") }
+            }
+        #else
+            return nil
+        #endif
+    }
+
+    static var systemMusic: (any MusicLibrary)? {
+        #if canImport(LibraryMac) && os(macOS)
+            SystemMusicLibrary()
         #else
             nil
         #endif

@@ -2,10 +2,11 @@
 
 ## Overview
 
-`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in the current development version; `add`, `check`, and `doctor` are planned and end with exit status 2 and a message that they are not implemented.
+`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in the current development version; `check` and `doctor` are planned and end with exit status 2 and a message that they are not implemented.
 
 ```
 ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]
+ilibrary add PATH... [--order release|artist|artist-desc|artist-release] [--dry-run]
 ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--dry-run]
 ilibrary prompt CATALOG.json
 ilibrary schema
@@ -54,6 +55,30 @@ Every file is planned and checked before anything is written. Nothing is changed
 - `-o`, `--output DIR` names the staging folder. It is created if it does not exist, provided that its parent exists.
 - `--dry-run` lists every planned conversion and copy and changes nothing.
 - `--delete-originals` moves the originals to the Trash after every output has been verified, and only if the whole import succeeded. Originals are never deleted permanently.
+
+### add
+
+```bash
+ilibrary add ~/Music/Staging --order release --dry-run
+ilibrary add ~/Music/Staging --order release
+```
+
+Adds the albums in the staging folders to Music, one album at a time. Music must be able to be controlled from the Terminal, which macOS asks to allow the first time.
+
+1. The `.m4a` files are grouped into albums by their album and album artist tags; a file without either is refused.
+2. The albums are ordered: `release` (the default) by release date, `artist` by album artist and then album name, `artist-desc` by both in descending order, and `artist-release` by album artist and then release date.
+3. For each album in turn, the library is searched for a track with the same album artist, album, and title. If one exists, the run stops before this album.
+4. The album's files are moved into the media folder named by Music's preferences, to `Music/Album Artist/Album/` with their names unchanged, and added there in one call. Music adds files inside the media folder in place (measured; see [Music Behavior](reports/music-behavior.md)).
+5. Music must report one new track per file, each at the place of its file, before the next album begins. Otherwise the run stops and reports the album as not confirmed.
+
+Nothing is moved when any file is refused, a destination already exists, or a folder on the way is a file or a symbolic link. A staging folder may not overlap the media folder. Track properties are never set in Music, because Music then moves and renames files. Files are expected to carry Music's names already, as `apply --rename` gives them; other names are reported, because Music may rename such files later.
+
+Folder names `.` and `..` are refused. Cross-volume moves check available space and verify the copied bytes, codec, decoded duration, and PCM before removing the selected source. Failed verification retains the source.
+
+Progress is recorded in `.ilibrary-add.json` in the first staging folder, with the persistent ID of every added track. When a run stops after moving an album but before Music confirmed it, the next run completes that album first: it moves any file left behind, recognizes tracks already added, and otherwise adds the files. Resumption repeats duplicate checks, validates journal paths, and requires every destination and persistent ID to be distinct before continuing.
+
+- `--order ORDER` selects the order.
+- `--dry-run` lists the order, every move, and any track that would stop the run, and changes nothing. It reads the library.
 
 ### export
 

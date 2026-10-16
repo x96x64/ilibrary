@@ -22,3 +22,5 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-16 — [Core Targets](reports/core-targets.md)
 - 2026-10-17 — [Catalog Commands](reports/catalog-commands.md)
 - 2026-10-17 — [Import](reports/import.md)
+- 2026-10-17 — [Music Behavior](reports/music-behavior.md)
+- 2026-10-17 — [Ordered Addition](reports/ordered-addition.md)
