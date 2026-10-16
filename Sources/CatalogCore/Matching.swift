@@ -56,7 +56,7 @@ public struct MatchReport: Equatable, Sendable {
 
 /// Matches files to catalog tracks: by album name or alias, then by disc and track number, by numbering that
 /// continues across discs, and by title. Numbers whose title disagrees are accepted only when no track of the
-/// album carries the file's title, and only while the titles of most of an album's files agree: continuous
+/// album carries the file's title, and only while more of the album's titles agree than differ: continuous
 /// numbering read as disc and track numbers applied metadata to the wrong tracks during manual curation.
 /// Every match and every refusal is reported.
 public struct CatalogMatcher: Sendable {
@@ -118,15 +118,17 @@ public struct CatalogMatcher: Sendable {
                 }
             }
         }
-        // An album whose files mostly disagree with the catalog's titles is refused as a whole: its numbering,
+        // An album with as many differing titles as agreeing ones is refused as a whole: its numbering,
         // or the release that the catalog describes, may differ from the files.
         for album in Set(report.matches.map(\.reference.album)) {
             let matches = report.matches.filter { $0.reference.album == album }
+            // Only titles that agree support the numbering; files without a title tag support nothing.
             let differing = matches.filter(\.titleDiffers).count
-            guard differing * 2 > matches.count else { continue }
+            let confirmed = matches.filter(\.titleConfirmed).count
+            guard differing > 0, differing >= confirmed else { continue }
             let reason =
-                "the titles of \(differing) of \(matches.count) files differ from those of \"\(catalog.albums[album].album)\" "
-                + "at their disc and track numbers; check the numbering and the album"
+                "the titles of \(differing) files differ from those of \"\(catalog.albums[album].album)\" at their disc "
+                + "and track numbers, and only \(confirmed) agree; check the numbering and the album"
             report.unmatched += matches.map { UnmatchedFile(file: $0.file, reason: reason) }
             report.matches.removeAll { $0.reference.album == album }
         }
