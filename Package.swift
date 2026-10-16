@@ -12,6 +12,7 @@ let package = Package(
         .target(name: "CatalogCore"),
         // macOS-only file operations; the sources are empty on other platforms.
         .target(name: "LibraryMac"),
+        .target(name: "ConversionMac"),
         .executableTarget(
             name: "ilibrary",
             dependencies: [
@@ -25,6 +26,7 @@ let package = Package(
         .testTarget(name: "FLACCoreTests", dependencies: ["FLACCore"]),
         .testTarget(name: "CatalogCoreTests", dependencies: ["CatalogCore"]),
         .testTarget(name: "LibraryMacTests", dependencies: ["LibraryMac"]),
+        .testTarget(name: "ConversionMacTests", dependencies: ["ConversionMac", "SyntheticMedia"]),
         .testTarget(name: "ilibraryTests", dependencies: ["ilibrary", "MP4Core", "CatalogCore", "SyntheticMedia"]),
     ]
 )
