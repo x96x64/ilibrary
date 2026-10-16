@@ -32,7 +32,7 @@ jobs:
         run: scripts/test.sh
 
   linux:
-    name: Linux Core Tests
+    name: Linux Core and Command Tests
     runs-on: ubuntu-24.04
     container: swift:6.4-noble
     timeout-minutes: 30
@@ -43,5 +43,5 @@ jobs:
         run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
       - name: Report toolchain
         run: swift --version
-      - name: Run Core tests
-        run: swift test --disable-xctest --filter 'MP4CoreTests|FLACCoreTests|CatalogCoreTests'
+      - name: Run Core and command tests
+        run: swift test --disable-xctest --filter 'MP4CoreTests|FLACCoreTests|CatalogCoreTests|ilibraryTests'
