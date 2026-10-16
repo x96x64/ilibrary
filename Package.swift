@@ -12,7 +12,11 @@ let package = Package(
         .target(name: "CatalogCore"),
         // macOS-only file operations; the sources are empty on other platforms.
         .target(name: "LibraryMac"),
-        .executableTarget(name: "ilibrary"),
+        .executableTarget(
+            name: "ilibrary",
+            dependencies: [
+                "MP4Core", "CatalogCore", .target(name: "LibraryMac", condition: .when(platforms: [.macOS])),
+            ]),
         // Validates private reference files under reference-private/; not part of the public suite.
         .executableTarget(name: "ReferenceProbe", dependencies: ["MP4Core", "FLACCore"]),
         // Synthetic media shared by the test targets.
