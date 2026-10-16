@@ -19,6 +19,10 @@
         public var year: Int
         public var trackNumber: Int
         public var discNumber: Int
+        public var comment: String
+        public var trackCount: Int
+        public var discCount: Int
+        public var compilation: Bool
         /// The POSIX path of the track's file, when Music knows one.
         public var location: String?
         public var cloudStatus: String
@@ -73,7 +77,8 @@
                             fieldSeparator & (composer of t) & fieldSeparator & (genre of t) & fieldSeparator & ¬
                             ((year of t) as text) & fieldSeparator & ((track number of t) as text) & fieldSeparator & ¬
                             ((disc number of t) as text) & fieldSeparator & thePath & fieldSeparator & theStatus & ¬
-                            recordSeparator
+                            fieldSeparator & (comment of t) & fieldSeparator & ((track count of t) as text) & ¬
+                            fieldSeparator & ((disc count of t) as text) & fieldSeparator & ((compilation of t) as text) & recordSeparator
                     end repeat
                 end tell
                 return output
@@ -95,16 +100,31 @@
         static func parse(_ text: String) throws -> [MusicTrackInfo] {
             try text.components(separatedBy: recordSeparator).filter { !$0.isEmpty }.map { record in
                 let fields = record.components(separatedBy: fieldSeparator)
-                guard fields.count == 12 else {
+                guard fields.count == 16 else {
                     throw MusicAppError.unexpectedResult("a track record has \(fields.count) fields")
                 }
                 return MusicTrackInfo(
                     persistentID: fields[0], name: fields[1], album: fields[2], artist: fields[3],
                     albumArtist: fields[4],
                     composer: fields[5], genre: fields[6], year: Int(fields[7]) ?? 0, trackNumber: Int(fields[8]) ?? 0,
-                    discNumber: Int(fields[9]) ?? 0, location: fields[10].isEmpty ? nil : fields[10],
+                    discNumber: Int(fields[9]) ?? 0, comment: fields[12], trackCount: Int(fields[13]) ?? 0,
+                    discCount: Int(fields[14]) ?? 0, compilation: fields[15] == "true",
+                    location: fields[10].isEmpty ? nil : fields[10],
                     cloudStatus: fields[11])
             }
+        }
+
+        /// A read-only snapshot of file tracks, used to compare by location when cached tags are stale.
+        public static func allTracks() throws -> [MusicTrackInfo] {
+            try parse(
+                run(
+                    describeHandler + """
+
+                        with timeout of 300 seconds
+                            tell application "Music" to set theTracks to every file track of library playlist 1
+                            return my describeTracks(theTracks)
+                        end timeout
+                        """))
         }
 
         /// The file tracks of the library whose album has the given name. Reads only.

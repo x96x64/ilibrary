@@ -175,6 +175,7 @@ extension Environment {
         environment.timeZone = TimeZone(identifier: "Asia/Tokyo")!
         // Tests never reach the real Music app; each test that needs a library supplies a substitute.
         environment.music = nil
+        environment.musicStatus = nil
         return environment
     }
 }
