@@ -49,7 +49,7 @@ Converts lossless downloads to Apple Lossless and copies iTunes Store files with
 
 `--from` selects what is imported: `mora` imports FLAC files, `itunes` imports M4A files, and `auto`, the default, imports both and WAV and AIFF. Other files, such as WAV files under `--from mora`, are left untouched and counted.
 
-Every file is planned and checked before anything is written. Nothing is changed when any file is refused, when two sources would produce the same output, when an output exists, when `DIR` lies inside a `SOURCE` directory, or when the volume of `DIR` lacks room for all outputs (decision 8). Each output is written under a hidden temporary name beside its destination, verified, and only then moved into place; a failure removes the temporary file and stops the import, and outputs completed before it remain.
+Every file is planned and checked before anything is written. Nothing is changed when any file is refused, when two sources would produce the same output, when an output exists, when `DIR` lies inside a `SOURCE` directory, or when the volume of `DIR` lacks room for all outputs, including carried covers, plus one further copy of the largest output for writing tags (decision 8). Each output is written under a hidden temporary name beside its destination, verified, and only then moved into place; a failure removes the temporary file and stops the import, and outputs completed before it remain.
 
 - `-o`, `--output DIR` names the staging folder. It is created if it does not exist, provided that its parent exists.
 - `--dry-run` lists every planned conversion and copy and changes nothing.

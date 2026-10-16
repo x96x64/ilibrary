@@ -13,7 +13,7 @@ Historical record, October 17, 2026. This report records milestone M4: the macOS
 - FLAC, WAV, and AIFF files are converted, M4A files are copied without re-encoding with purchase metadata removed (decisions 10 and 12), and `.m4p` files, encrypted sample entries, and symbolic links are refused.
 - FLAC tags are carried by an allowlist of standard fields and the front cover. Recognized fields that are not carried, such as COMMENT, are named in the report; fields outside the standard set are dropped and only counted.
 - Output keeps each source's relative structure: the files under a source directory keep their paths relative to it under the output folder, and a source file is placed directly in it.
-- Nothing is changed when any file is refused, an output exists or would be produced twice, the output folder lies inside a source, or the output volume lacks room for all outputs (decision 8).
+- Nothing is changed when any file is refused, an output exists or would be produced twice, the output folder lies inside a source, or the output volume lacks room for all outputs, their carried covers, and one further copy of the largest output, which writing tags needs (decision 8). A review of the code before the pull request found that the first estimate omitted the covers and the further copy (inferred from the code); this was corrected with a test.
 - Each output is written under a hidden temporary name, verified, and then moved into place. A converted file is verified once more after its tags are written.
 - `--delete-originals` moves originals to the Trash only after the whole import has been verified, as the maintainer decided.
 
@@ -23,7 +23,7 @@ Conversion and the Trash are injected into the command layer, which remains Foun
 
 ### Synthetic Tests
 
-Measured on the maintainer's Mac (macOS 27.0.1, Swift 6.4 from the Command Line Tools) on October 17, 2026: all 120 tests passed, namely 38 in `ilibraryTests`, 5 in `ConversionMacTests`, 24 in `MP4CoreTests`, 4 in `LibraryMacTests`, 8 in `FLACCoreTests`, and 41 in `CatalogCoreTests`. `swift format lint --strict` reported no problem. FLAC fixtures were encoded with Core Audio, which encodes FLAC on this system (measured), so the public suite needs no external encoder.
+Measured on the maintainer's Mac (macOS 27.0.1, Swift 6.4 from the Command Line Tools) on October 17, 2026: all 121 tests passed, namely 39 in `ilibraryTests`, 5 in `ConversionMacTests`, 24 in `MP4CoreTests`, 4 in `LibraryMacTests`, 8 in `FLACCoreTests`, and 41 in `CatalogCoreTests`. `swift format lint --strict` reported no problem. FLAC fixtures were encoded with Core Audio, which encodes FLAC on this system (measured), so the public suite needs no external encoder.
 
 - **Success.** WAV, AIFF, and FLAC sources at 16 and 24 bits, 44.1 to 192 kHz, mono and stereo converted with equal decoded PCM. A tagged FLAC file kept its allowlisted tags and cover, a purchased-style M4A file lost its purchase metadata with its stream unchanged, and the sources were byte for byte unchanged. `--from mora` imported FLAC only.
 - **Refusals.** Floating-point PCM, six channels, a truncated WAV, AIFF, or FLAC file, an encrypted sample entry, an `.m4p` file, a symbolic link, colliding outputs, an existing output, an output folder inside a source, and insufficient space each changed nothing.
