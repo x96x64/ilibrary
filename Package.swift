@@ -6,6 +6,15 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [.executable(name: "ilibrary", targets: ["ilibrary"])],
     targets: [
-        .executableTarget(name: "ilibrary")
+        // Foundation-only targets build and test on Linux.
+        .target(name: "MP4Core"),
+        .target(name: "FLACCore"),
+        .target(name: "CatalogCore"),
+        .executableTarget(name: "ilibrary"),
+        // Validates private reference files under reference-private/; not part of the public suite.
+        .executableTarget(name: "ReferenceProbe", dependencies: ["MP4Core", "FLACCore"]),
+        .testTarget(name: "MP4CoreTests", dependencies: ["MP4Core"]),
+        .testTarget(name: "FLACCoreTests", dependencies: ["FLACCore"]),
+        .testTarget(name: "CatalogCoreTests", dependencies: ["CatalogCore"]),
     ]
 )
