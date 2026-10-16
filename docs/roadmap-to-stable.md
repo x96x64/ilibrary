@@ -24,7 +24,7 @@ The next milestone is M2: `MP4Core`, `FLACCore`, and `CatalogCore` with syntheti
 8. (October 16, 2026.) Free space is checked against the plain available capacity of the destination volume.
 9. (October 16, 2026.) Timestamp operations refuse missing paths and symbolic links, run after all writes and moves, and set folders after their contents.
 10. (October 16, 2026.) Purchase metadata is removed by the atom list and the sample-entry allowlist of the spike report, with all padding zeroed. `iTunSMPB` and `stik` are retained, and `xid ` is removed.
-11. (October 16, 2026.) At the end of M2, the agent proposes creating the GitHub repository `x96x64/ilibrary` as a private repository and pushing `main`, so that continuous integration runs on macOS; About text and topics follow the planning study. The repository becomes public at M9. Both steps require the maintainer's approval in the session that performs them.
+11. (October 16, 2026.) At the end of M2, the agent proposes creating the GitHub repository `x96x64/ilibrary` as a public repository and pushing `main`, so that continuous integration runs on macOS; About text and topics follow the planning study. Before that push, the README is expanded to the structure of the iLyrics README, describing implemented behavior as implemented and planned behavior as planned. Repository creation and the push require the maintainer's approval in the session that performs them.
 
 ## Recommended Models and Effort
 
