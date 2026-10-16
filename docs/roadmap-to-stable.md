@@ -2,15 +2,15 @@
 
 ## Current Status as of October 16, 2026
 
-Milestone M0, the planning baseline, is complete. Milestone M1, the technical spikes S1 to S5, is complete on the branch `m1-spikes` and awaits the maintainer's review of the [Architecture Spike](reports/architecture-spike.md) report, which is the gate to M2. The spike programs and scripts are in `scripts/spikes/`. No release has been published, and the repository has not been pushed.
+Milestones M0, the planning baseline, and M1, the technical spikes S1 to S5, are complete. The maintainer reviewed the [Architecture Spike](reports/architecture-spike.md) report on October 16, 2026, adopted all six proposals as Decisions 5 to 10, and merged `m1-spikes` into `main`. The spike programs and scripts are in `scripts/spikes/`. No release has been published, and the repository has not been pushed.
 
-The spikes used synthetic files and copies of the private references in `reference-private/`: one purchased iTunes Store file, nine Apple Lossless files and one FLAC file from mora, and a file cleaned during manual curation. S1, S2, S4, and S5 support the planned architecture with qualifications. S3 located Music's scripting interfaces and configuration keys but measured no live behavior, because no library that may be modified was available. Open items before later milestones:
+S1, S2, S4, and S5 support the planned architecture with qualifications. S3 located Music's scripting interfaces and configuration keys but measured no live behavior. Open items:
 
-1. The maintainer decides the six proposals in the report's section "Decisions Proposed for M2".
-2. The maintainer decides the environment for the live S3 measurements; the report proposes a separate local macOS user without an Apple Account. These measurements are required before M5.
-3. S5 rests on one purchased file. Further purchased files under `reference-private/` would strengthen it before M4.
+1. The live S3 measurements are performed when needed, at the latest before M5, in a separate local macOS user without an Apple Account, which the maintainer creates.
+2. S5 rests on one purchased file. Further purchased files under `reference-private/` would strengthen it before M4.
+3. The untracked spike outputs in `reference-private/work/` and `artifacts/spikes/` are to be deleted at the start of the next session, after confirming that they are untracked and that `reference-private/` originals are unaffected.
 
-After the review, the next milestone is M2: `MP4Core` and `CatalogCore` with synthetic tests.
+The next milestone is M2: `MP4Core`, `FLACCore`, and `CatalogCore` with synthetic tests, and continuous integration on macOS and Linux.
 
 ## Decisions in Force
 
@@ -18,6 +18,13 @@ After the review, the next milestone is M2: `MP4Core` and `CatalogCore` with syn
 2. (October 16, 2026.) The software license is the Apache License, Version 2.0.
 3. (October 16, 2026.) Version 0.1.0 is an experimental source release. Package names for npm and PyPI are decided before version 0.2.0.
 4. (October 16, 2026.) Pushes, repository creation, tags, and releases require the maintainer's explicit approval, preceded by a documentation preview, a summary of principal changes, and its Japanese translation.
+5. (October 16, 2026.) MP4Core rebuilds `moov` as proposed in the spike report. In version 0.1.0, files that require chunk offsets beyond 32 bits are refused rather than converted to `co64`.
+6. (October 16, 2026.) The Foundation-only FLAC metadata reader is a separate target, `FLACCore`.
+7. (October 16, 2026.) Version 0.1.0 converts mono and stereo only and refuses floating-point PCM. Conversions are verified by PCM digests, declared and decoded frame counts, and WAV and AIFF chunk lengths; stream copies are verified by media-data and sample-table equality.
+8. (October 16, 2026.) Free space is checked against the plain available capacity of the destination volume.
+9. (October 16, 2026.) Timestamp operations refuse missing paths and symbolic links, run after all writes and moves, and set folders after their contents.
+10. (October 16, 2026.) Purchase metadata is removed by the atom list and the sample-entry allowlist of the spike report, with all padding zeroed. `iTunSMPB` and `stik` are retained, and `xid ` is removed.
+11. (October 16, 2026.) At the end of M2, the agent proposes creating the GitHub repository `x96x64/ilibrary` as a private repository and pushing `main`, so that continuous integration runs on macOS; About text and topics follow the planning study. The repository becomes public at M9. Both steps require the maintainer's approval in the session that performs them.
 
 ## Recommended Models and Effort
 
