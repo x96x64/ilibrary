@@ -4,9 +4,11 @@
 
 Milestones M0 to M2 are complete and published in [x96x64/ilibrary](https://github.com/x96x64/ilibrary); the M2 CI gate was satisfied by [CI run 38886543086](https://github.com/x96x64/ilibrary/actions/runs/38886543086) and the later run 38887532717 (measured). No release has been published.
 
-Milestone M3 is implemented on the branch `m3-catalog-commands` and has not been pushed. It adds the commands `export`, `prompt`, `schema`, `validate`, `apply` (with `--dry-run`, `--rename`, and `--timestamps`), and `timestamps` (with `--dry-run` and `--script`), and the macOS-only target `LibraryMac` for file dates; see [Catalog Commands](reports/catalog-commands.md), the [Command-Line Interface](command-line-interface.md) reference, and [Completing Catalogs with AI Agents](catalog-for-agents.md). On the maintainer's Mac, all 98 tests, the formatting check, and the 21 checks of `scripts/validation/catalog-commands.sh` passed; export and reapplication of synthetic library copies changed nothing (measured). The Linux CI job, which now also runs the command tests, has not run for this branch.
+Milestone M3 is implemented on the branch `m3-catalog-commands`. It adds the commands `export`, `prompt`, `schema`, `validate`, `apply` (with `--dry-run`, `--rename`, and `--timestamps`), and `timestamps` (with `--dry-run` and `--script`), and the macOS-only target `LibraryMac` for file dates; see [Catalog Commands](reports/catalog-commands.md), the [Command-Line Interface](command-line-interface.md) reference, and [Completing Catalogs with AI Agents](catalog-for-agents.md).
 
-The next step is the maintainer's approval to push `m3-catalog-commands` and open a pull request to `main` (Decision 13), after a documentation preview, an English summary, and its Japanese translation. The pull request is merged once both CI jobs pass.
+- **Local verification (measured).** On the maintainer's Mac, all 98 tests and the formatting check passed, and `scripts/validation/catalog-commands.sh` passed all 21 checks in three runs. Export and reapplication of synthetic library copies changed no byte, name, or date. Only synthetic files were used (Decision 16).
+- **Continuous integration (measured).** For commit `2e37aaa`, [CI run 38975173162](https://github.com/x96x64/ilibrary/actions/runs/38975173162) passed both jobs: the macOS job ran the release build, all tests, and the formatting check, and the Linux job ran the Core and command tests. The command tests thereby passed on Linux for the first time. The result for the commit that records this status appears on the pull request.
+- **Pull request and merge.** [Pull request #1](https://github.com/x96x64/ilibrary/pull/1) from `m3-catalog-commands` to `main` is open and has not been merged; the merge awaits the maintainer's approval (Decision 13). The automated Codex code review of `2e37aaa` was still running when this status was recorded and had reported no findings.
 
 Open items:
 
@@ -16,7 +18,7 @@ Open items:
 4. The maintainer reviews the refusal of `enca` sample entries, which extends Decision 12 to ISO Common Encryption.
 5. The maintainer reviews the design choices recorded in the Catalog Commands report, in particular the matching of corrected titles and the all-or-nothing behavior of `apply`.
 
-After M3 is merged, the next milestone is M4: `import` for mora and the iTunes Store, with `ConversionMac`.
+The next step is the maintainer's decision on merging pull request #1, after the automated review has finished and its findings, if any, have been addressed. After M3 is merged, the next milestone is M4: `import` for mora and the iTunes Store, with `ConversionMac`.
 
 ## Decisions in Force
 
