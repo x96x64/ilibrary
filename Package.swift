@@ -31,6 +31,12 @@ let package = Package(
         .testTarget(name: "LibraryMacTests", dependencies: ["LibraryMac"]),
         .testTarget(
             name: "ConversionMacTests", dependencies: ["ConversionMac", "SyntheticMedia", "SyntheticMediaMac"]),
-        .testTarget(name: "ilibraryTests", dependencies: ["ilibrary", "MP4Core", "CatalogCore", "SyntheticMedia"]),
+        .testTarget(
+            name: "ilibraryTests",
+            dependencies: [
+                "ilibrary", "MP4Core", "FLACCore", "CatalogCore", "SyntheticMedia",
+                .target(name: "SyntheticMediaMac", condition: .when(platforms: [.macOS])),
+                .target(name: "ConversionMac", condition: .when(platforms: [.macOS])),
+            ]),
     ]
 )
