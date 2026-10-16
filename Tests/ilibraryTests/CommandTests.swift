@@ -236,6 +236,24 @@ import Testing
         #expect(pathKind(library.root.appendingPathComponent("Missing")) == .missing)
     }
 
+    @Test func freeSpaceIsCheckedOnTheVolumeOfEveryChangedFile() throws {
+        let library = try SyntheticLibrary()
+        defer { library.remove() }
+        var (url, catalog) = try exported(library)
+        defer { try? FileManager.default.removeItem(at: url) }
+        for index in catalog.albums.indices { catalog.albums[index].copyright = "℗ 2001 Example Records, Inc." }
+        try write(catalog, to: url)
+        let before = try library.snapshot()
+        // The first folder has room; the folder of the last album does not.
+        var environment = Environment.testing
+        let full = library.root.appendingPathComponent("Download Three").path
+        environment.availableCapacity = { $0.path == full ? 10 : 1 << 40 }
+        let run = Run(["apply", url.path, library.root.path], environment: environment)
+        #expect(run.status == 1)
+        #expect(run.errorText.contains("10 bytes are available on the volume of \(full)"))
+        #expect(try library.snapshot() == before)
+    }
+
     @Test func missingArtworkStopsBeforeAnyChange() throws {
         let library = try SyntheticLibrary()
         defer { library.remove() }

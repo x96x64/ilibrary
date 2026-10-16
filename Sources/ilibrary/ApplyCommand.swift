@@ -104,17 +104,7 @@ enum ApplyCommand {
         plans.sort { $0.file.url.path < $1.file.url.path }
         if rename { try planMoves(&plans, roots: roots) }
 
-        // Each rewrite needs room for one complete copy of the file beside it (decision 8).
-        let largest = plans.filter { !$0.changes.isEmpty }.compactMap { plan -> Int? in
-            (try? FileManager.default.attributesOfItem(atPath: plan.file.url.path)[.size] as? NSNumber)?.intValue
-        }.max()
-        if let largest, let first = plans.first(where: { !$0.changes.isEmpty }),
-            let available = environment.availableCapacity(first.file.url.deletingLastPathComponent()),
-            available < largest + (1 << 20)
-        {
-            throw CommandError.failure(
-                "\(available) bytes are available, but rewriting needs \(largest + (1 << 20)); nothing was changed")
-        }
+        try checkFreeSpace(plans.filter { !$0.changes.isEmpty }, environment: environment, console: console)
 
         let finalFiles = plans.map { ($0.destination ?? $0.file.url, $0.track) }
         let datePlan =
@@ -174,6 +164,30 @@ enum ApplyCommand {
             "Applied: \(written) files rewritten and verified, \(moved) moved\(timestamps ? ", \(dated) paths dated" : "")"
         )
         return 0
+    }
+
+    /// Each rewrite needs room for one complete copy of its file beside it (decision 8). The capacity is checked
+    /// for the folder of every changed file, so that files on several volumes are each checked against their own.
+    static func checkFreeSpace(_ changed: [FilePlan], environment: Environment, console: Console) throws {
+        var required: [String: Int] = [:]
+        for plan in changed {
+            let size =
+                (try? FileManager.default.attributesOfItem(atPath: plan.file.url.path)[.size] as? NSNumber)?.intValue
+                ?? 0
+            let folder = plan.file.url.deletingLastPathComponent().path
+            required[folder] = max(required[folder] ?? 0, size + (1 << 20))
+        }
+        for (folder, needed) in required.sorted(by: { $0.key < $1.key }) {
+            guard let available = environment.availableCapacity(URL(fileURLWithPath: folder, isDirectory: true)) else {
+                console.warning("the free space of the volume of \(folder) could not be determined")
+                continue
+            }
+            if available < needed {
+                throw CommandError.failure(
+                    "\(available) bytes are available on the volume of \(folder), but rewriting needs \(needed); nothing was changed"
+                )
+            }
+        }
     }
 
     /// Plans destinations under the directory argument that contains each file. Refuses collisions.
