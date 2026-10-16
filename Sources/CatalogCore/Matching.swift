@@ -35,8 +35,11 @@ public struct TrackMatch: Equatable, Sendable {
     public var file: FileTags
     public var reference: TrackReference
     public var method: MatchMethod
-    /// False when the file has no title to cross-check.
+    /// False when the file has no title to cross-check, or when its title differs.
     public var titleConfirmed: Bool
+    /// True when the numbers were accepted although the file's title differs from the catalog's, which is
+    /// the case when a catalog corrects a title. Applying the catalog then changes the title.
+    public var titleDiffers = false
 }
 
 public struct UnmatchedFile: Equatable, Sendable {
@@ -52,9 +55,10 @@ public struct MatchReport: Equatable, Sendable {
 }
 
 /// Matches files to catalog tracks: by album name or alias, then by disc and track number, by numbering that
-/// continues across discs, and by title. Numbers are accepted only when the file's title, if present, agrees,
-/// because continuous numbering read as disc and track numbers applied metadata to the wrong tracks during
-/// manual curation. Every match and every refusal is reported.
+/// continues across discs, and by title. Numbers whose title disagrees are accepted only when no track of the
+/// album carries the file's title, and only while the titles of most of an album's files agree: continuous
+/// numbering read as disc and track numbers applied metadata to the wrong tracks during manual curation.
+/// Every match and every refusal is reported.
 public struct CatalogMatcher: Sendable {
     public let catalog: Catalog
     let rules: TitleRules
@@ -113,6 +117,18 @@ public struct CatalogMatcher: Sendable {
                         UnmatchedFile(file: match.file, reason: "\(matches.count) files match \(reference)"))
                 }
             }
+        }
+        // An album whose files mostly disagree with the catalog's titles is refused as a whole: its numbering,
+        // or the release that the catalog describes, may differ from the files.
+        for album in Set(report.matches.map(\.reference.album)) {
+            let matches = report.matches.filter { $0.reference.album == album }
+            let differing = matches.filter(\.titleDiffers).count
+            guard differing * 2 > matches.count else { continue }
+            let reason =
+                "the titles of \(differing) of \(matches.count) files differ from those of \"\(catalog.albums[album].album)\" "
+                + "at their disc and track numbers; check the numbering and the album"
+            report.unmatched += matches.map { UnmatchedFile(file: $0.file, reason: reason) }
+            report.matches.removeAll { $0.reference.album == album }
         }
         let matchedAlbums = Set(report.matches.map(\.reference.album))
         let found = Set(report.matches.map(\.reference))
@@ -186,6 +202,11 @@ public struct CatalogMatcher: Sendable {
         }
         if byTitle.count == 1 {
             return .success(TrackMatch(file: file, reference: byTitle[0], method: .title, titleConfirmed: true))
+        }
+        if let byNumber, byTitle.isEmpty {
+            return .success(
+                TrackMatch(
+                    file: file, reference: byNumber, method: .discAndTrack, titleConfirmed: false, titleDiffers: true))
         }
         let reason: String
         if byTitle.count > 1 {
