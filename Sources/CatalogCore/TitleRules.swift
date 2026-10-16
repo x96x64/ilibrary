@@ -50,7 +50,8 @@ public struct TitleRules: Sendable {
         return TitleRules.comparisonKey(unified)
     }
 
-    static func comparisonKey(_ text: String) -> String {
+    /// A key that ignores case, diacritics, width, and spacing, for comparing names.
+    public static func comparisonKey(_ text: String) -> String {
         text.precomposedStringWithCompatibilityMapping
             .folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
             .split(whereSeparator: \.isWhitespace).joined(separator: " ")
