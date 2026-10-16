@@ -100,6 +100,22 @@ import Testing
         #expect(catalog.albums.first { $0.album == "Double Album" }?.compilation == false)
     }
 
+    @Test func exportListsItsWritesAndADryRunWritesNothing() throws {
+        let library = try SyntheticLibrary()
+        defer { library.remove() }
+        let before = try library.snapshot()
+        let catalog = library.root.appendingPathComponent("catalog.json")
+        let covers = library.root.appendingPathComponent("covers")
+        let preview = Run(["export", library.root.path, "-o", catalog.path, "--artwork", covers.path, "--dry-run"])
+        #expect(preview.status == 0, "\(preview.errorText)")
+        #expect(preview.text.contains("Planned writes: 3 files"))
+        #expect(preview.text.contains("cover \(covers.path)/Example Artist - Double Album.jpg: JPEG, 304 bytes"))
+        #expect(preview.text.contains("Dry run: nothing was written."))
+        #expect(pathKind(catalog) == .missing)
+        #expect(pathKind(covers) == .missing)
+        #expect(try library.snapshot() == before)
+    }
+
     @Test func exportNeverOverwrites() throws {
         let library = try SyntheticLibrary()
         defer { library.remove() }

@@ -6,18 +6,19 @@ enum ExportCommand {
     static let syntax = CommandSyntax(
         name: "export",
         usage: """
-            Usage: ilibrary export PATH... -o CATALOG.json [--artwork DIR]
+            Usage: ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--dry-run]
 
             Writes a draft catalog from the tags of the .m4a files under the paths, grouped into albums and
             discs by their album, album artist, disc, and track tags. Values shared by every track of an album
             are written at album level. Artwork is excluded unless --artwork DIR is given; covers are then
-            written to DIR in their embedded JPEG or PNG format and referenced by the catalog. Existing files
-            are never overwritten.
+            written to DIR in their embedded JPEG or PNG format and referenced by the catalog. Every file to be
+            written is listed first, existing files are never overwritten, and written files are read back.
 
             Options:
               -o, --output FILE   the catalog to write (required)
               --artwork DIR       write album covers to DIR
-            """, valued: ["--output": ["-o"], "--artwork": []], positionals: 1...Int.max)
+              --dry-run           list the files to be written and write nothing
+            """, valued: ["--output": ["-o"], "--artwork": []], flags: ["--dry-run"], positionals: 1...Int.max)
 
     struct Entry {
         var file: AudioFile
@@ -52,22 +53,37 @@ enum ExportCommand {
         for cover in covers where pathKind(cover.url) != .missing {
             throw CommandError.failure("\(cover.url.path) already exists; it is not overwritten")
         }
+        let trackCount = catalog.resolvedTracks().count
+        console.print("Planned writes: \(1 + covers.count) files")
+        console.print(
+            "  catalog \(output.path): \(catalog.albums.count) albums and \(trackCount) tracks from \(files.count) files"
+        )
+        for cover in covers {
+            console.print(
+                "  cover \(cover.url.path): \(cover.data.starts(with: [0x89]) ? "PNG" : "JPEG"), \(cover.data.count) bytes"
+            )
+        }
+        if parsed.flag("--dry-run") {
+            console.print("Dry run: nothing was written.")
+            return 0
+        }
         if let artworkDirectory, !covers.isEmpty {
             try FileManager.default.createDirectory(at: artworkDirectory, withIntermediateDirectories: true)
         }
         for cover in covers { try cover.data.write(to: cover.url, options: .withoutOverwriting) }
         try catalog.encoded().write(to: output, options: .withoutOverwriting)
 
-        // Verify by reading the catalog back.
+        // Verify by reading every written file back.
+        for cover in covers where (try? Data(contentsOf: cover.url)) != cover.data {
+            throw CommandError.failure("\(cover.url.path) did not read back as written")
+        }
         let reread = Catalog.validate(try Data(contentsOf: output))
         guard reread.catalog == catalog else {
             throw CommandError.failure("\(outputPath) did not read back as written")
         }
-        let trackCount = catalog.resolvedTracks().count
         console.print(
             "Exported \(catalog.albums.count) albums and \(trackCount) tracks from \(files.count) files to \(outputPath)"
         )
-        for cover in covers { console.print("  wrote cover \(cover.url.path)") }
         return 0
     }
 
