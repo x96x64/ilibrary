@@ -135,6 +135,27 @@ func musicStatus(version: String? = "1.7", running: Bool = true, permission: Str
 }
 
 @Suite struct CheckCoverageTests {
+    @Test func libraryOnlyCheckLeavesOtherFormatsUnexamined() throws {
+        let library = try SyntheticLibrary()
+        defer { library.remove() }
+        let other = library.root.appendingPathComponent("synthetic.mp3")
+        try Data("synthetic unsupported format".utf8).write(to: other)
+        let music = FakeMusic(media: library.root)
+        music.library = [
+            LibraryTrack(
+                persistentID: "OTHER", name: "Synthetic Song", album: "Synthetic Album",
+                artist: "Example Artist", albumArtist: "Example Artist", location: other.path)
+        ]
+        var environment = Environment.testing
+        environment.music = music
+        let run = Run(["check", "--library"], environment: environment)
+        #expect(run.status == 0)
+        #expect(run.text.contains("1 library file(s) use other formats"))
+        #expect(!run.text.contains("not an .m4a file"))
+        // Explicitly selected unsupported input remains a usage-level file refusal.
+        #expect(Run(["check", other.path], environment: environment).status == 1)
+    }
+
     @Test func aRelocatedAlbumTrackIsReportedOutsideTheSelectedFolders() throws {
         let library = try SyntheticLibrary()
         defer { library.remove() }

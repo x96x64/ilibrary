@@ -47,7 +47,11 @@ enum CheckCommand {
             throw CommandError.usage("check requires a path or --library")
         }
         let tracks = try music?.allTracks() ?? []
-        let paths = parsed.positionals.isEmpty ? Array(Set(tracks.compactMap(\.location))).sorted() : parsed.positionals
+        let locations = Set(tracks.compactMap(\.location))
+        let supportedLocations = locations.filter {
+            ["m4a", "m4p"].contains(URL(fileURLWithPath: $0).pathExtension.lowercased())
+        }
+        let paths = parsed.positionals.isEmpty ? supportedLocations.sorted() : parsed.positionals
         var findings: [Finding] = []
         var selected: Set<URL> = []
         for path in paths {
@@ -82,6 +86,11 @@ enum CheckCommand {
             console.print("  \(shown): \(finding.message)")
         }
         if compareLibrary {
+            if parsed.positionals.isEmpty, locations.count != supportedLocations.count {
+                console.print(
+                    "note: \(locations.count - supportedLocations.count) library file(s) use other formats; their audio metadata and dates were not examined"
+                )
+            }
             console.print(
                 "note: artwork, copyright, and full release dates are not compared with Music; unknown cloud status does not confirm absence of matching"
             )
