@@ -10,16 +10,23 @@ Milestone M3 is complete. [Pull request #1](https://github.com/x96x64/ilibrary/p
 - **Continuous integration (measured).** For `ea01487`, the head that was merged, [CI run 38977103566](https://github.com/x96x64/ilibrary/actions/runs/38977103566) passed both jobs: the macOS job ran the release build, all tests, and the formatting check, and the Linux job ran the Core and command tests. Earlier heads of the pull request also passed, including `2e37aaa`, on which the command tests passed on Linux for the first time.
 - **Reviews.** Two automated Codex reviews, of `2e37aaa` and `6731ff0`, reported six findings in total, four classified P1 and two P2; among them, `--rename` could leave its directory through a name `..`. A review of the corrected code found a seventh, an underestimate of the free space that rewrites with added artwork need. All seven were corrected with tests before merging, as recorded in the Catalog Commands report, and all six review threads were answered and resolved. No automated review was requested for the final corrections, as the maintainer decided.
 
+Milestone M4 is implemented on the branch `m4-import` and has not been pushed. It adds the macOS-only target `ConversionMac` and the command `import` (with `--from`, `--delete-originals`, and `--dry-run`); see [Import](reports/import.md) and the [Command-Line Interface](command-line-interface.md) reference.
+
+- **Local verification (measured).** On the maintainer's Mac, all 123 tests and the formatting check passed, `scripts/validation/import.sh` passed all 30 checks, and `scripts/validation/catalog-commands.sh` passed all 21 checks. Copies of one mora FLAC file and one purchased iTunes Store file, processed inside `reference-private/work/` with the maintainer's approval, passed all 8 checks of `scripts/reference_validation/validate-import.sh`; the originals were unchanged and the copies were removed.
+- **Continuous integration.** Not yet run for this branch.
+- **Pull request and merge.** Not yet opened; pushing the branch and opening a pull request await the maintainer's approval (Decision 13).
+
 Open items:
 
 1. The live S3 measurements are performed when needed, at the latest before M5, in a separate local macOS user without an Apple Account, which the maintainer creates.
-2. S5 rests on one purchased file. Further purchased files under `reference-private/` would strengthen it in M4.
-3. The private FLAC file contains nine comment fields with uncommon names whose contents are unknown; they are examined before tags are carried into converted files in M4.
+2. S5 rests on one purchased file. Further purchased files under `reference-private/` would strengthen it.
+3. The private FLAC file contains nine fields outside the standard set; `import` drops them, and their contents were not examined.
 4. The maintainer reviews the refusal of `enca` sample entries, which extends Decision 12 to ISO Common Encryption.
-5. The maintainer reviews the design choices recorded in the Catalog Commands report, in particular the matching of corrected titles and the all-or-nothing behavior of `apply`.
+5. The maintainer reviews the design choices recorded in the Catalog Commands and Import reports.
 6. Whether real libraries contain values that a catalog cannot represent, such as gaps in track numbers or year-only dates, is unknown until a catalog is exported from one.
+7. Moves to the real Trash through `FileManager.trashItem` are untested; the tests use a substitute Trash.
 
-The next milestone is M4: `import` for mora and the iTunes Store, with the macOS-only target `ConversionMac`. It awaits the maintainer's approval of its scope. Its gate in the planning study is verification with synthetic sources and a small private sample; using private files requires the maintainer's explicit instruction.
+After M4 is merged, the next milestone is M5: `add` with the four orders and resumption, which changes the Music library and requires the live S3 measurements first.
 
 ## Decisions in Force
 
@@ -39,6 +46,9 @@ The next milestone is M4: `import` for mora and the iTunes Store, with the macOS
 14. (October 17, 2026.) `export --artwork DIR` writes each embedded cover in its original JPEG or PNG format, without re-encoding, instead of converting it to PNG as the planning study proposed. This supersedes that detail of the study.
 15. (October 17, 2026.) The dates of an artist folder are set only when the catalog gives the artist a `folderDate`; otherwise the folder is left unchanged.
 16. (October 17, 2026.) M3 is verified with synthetic files only. Private reference files are not used unless the maintainer instructs otherwise.
+17. (October 17, 2026.) `import --delete-originals` moves originals to the Trash, never deleting them permanently, and only after every output of the import has been verified.
+18. (October 17, 2026.) `import` keeps the relative structure of each source: the files under a source directory keep their paths relative to it under the output folder, and a source file is placed directly in it.
+19. (October 17, 2026.) `import` carries FLAC tags by an allowlist of standard fields and the front cover, and drops every other field without examining or reporting its contents. For M4, copies of one mora FLAC file and one purchased iTunes Store file under `reference-private/work/` may be used for an additional validation.
 
 ## Recommended Models and Effort
 

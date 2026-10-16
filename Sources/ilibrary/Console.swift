@@ -3,6 +3,34 @@ import Foundation
 #if canImport(LibraryMac)
     import LibraryMac
 #endif
+#if canImport(ConversionMac)
+    import ConversionMac
+#endif
+
+/// The format of a lossless source and a bound of the size of its Apple Lossless conversion.
+struct LosslessSource: Equatable, Sendable {
+    var codec: String
+    var sampleRate: Double
+    var channels: Int
+    var bits: Int
+    var frames: Int64
+    var estimatedSize: Int64
+
+    var description: String {
+        let codecName = ["lpcm": "PCM", "flac": "FLAC"][codec] ?? codec
+        return "\(codecName) \(bits)-bit \(Int(sampleRate)) Hz \(channels == 1 ? "mono" : "stereo")"
+    }
+}
+
+/// Lossless conversion, available where AudioToolbox is (macOS).
+struct Converter: Sendable {
+    /// Checks that a source can be converted losslessly (decision 7).
+    var preflight: @Sendable (URL) throws -> LosslessSource
+    /// Converts to Apple Lossless at a path that must not exist, and verifies the result.
+    var convert: @Sendable (URL, URL) throws -> Void
+    /// Verifies an Apple Lossless file against its source by decoded PCM.
+    var verify: @Sendable (URL, URL) throws -> Void
+}
 
 /// Where a command writes. Reports go to standard output; errors and warnings to standard error.
 final class Console: @unchecked Sendable {
@@ -35,6 +63,10 @@ struct Environment: Sendable {
     var availableCapacity: @Sendable (URL) -> Int?
     /// An identifier of the volume of a path, when known, so that paths on one volume are checked together.
     var volumeIdentifier: @Sendable (URL) -> String? = Environment.volumeIdentifier
+    /// Conversion to Apple Lossless; nil where AudioToolbox is unavailable.
+    var converter: Converter? = Environment.systemConverter
+    /// Moves a file to the Trash and returns its new location; nil where there is no Trash.
+    var moveToTrash: (@Sendable (URL) throws -> URL?)? = Environment.systemTrash
 
     static var system: Environment {
         #if canImport(LibraryMac) && os(macOS)
@@ -46,6 +78,34 @@ struct Environment: Sendable {
                 }, availableCapacity: plainAvailableCapacity)
         #else
             Environment(timeZone: .current, setDates: nil, readDates: nil, availableCapacity: plainAvailableCapacity)
+        #endif
+    }
+
+    static var systemConverter: Converter? {
+        #if canImport(ConversionMac) && os(macOS)
+            Converter(
+                preflight: { url in
+                    let format = try LosslessConverter.preflight(url)
+                    return LosslessSource(
+                        codec: format.codec, sampleRate: format.sampleRate, channels: format.channels,
+                        bits: format.bitsPerSample, frames: format.declaredFrames,
+                        estimatedSize: LosslessConverter.estimatedOutputSize(format))
+                }, convert: { try LosslessConverter.convert($0, to: $1) },
+                verify: { try LosslessConverter.verify(source: $0, output: $1) })
+        #else
+            nil
+        #endif
+    }
+
+    static var systemTrash: (@Sendable (URL) throws -> URL?)? {
+        #if os(macOS)
+            return { url in
+                var result: NSURL?
+                try FileManager.default.trashItem(at: url, resultingItemURL: &result)
+                return result as URL?
+            }
+        #else
+            return nil
         #endif
     }
 

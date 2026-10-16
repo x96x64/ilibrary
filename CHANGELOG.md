@@ -12,6 +12,8 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 - Continuous integration on macOS and Linux.
 - The commands `export` with `--dry-run`, `prompt`, `schema`, `validate`, `apply` with `--dry-run`, `--rename`, and `--timestamps`, and `timestamps` with `--dry-run` and `--script`.
 - `LibraryMac`: setting file and folder dates on macOS without creating missing paths or following symbolic links.
+- `ConversionMac`: conversion of FLAC, WAV, and AIFF to Apple Lossless on macOS, verified by decoded PCM.
+- The command `import` with `--from`, `--delete-originals`, and `--dry-run`: lossless conversion that carries standard FLAC tags and the front cover, and copies of iTunes Store files without purchase metadata. Originals are moved to the Trash only after every output has been verified.
 
 ### Changed
 
