@@ -24,7 +24,7 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
 
     @Test func nestedParentheticalsBecomeSquareBrackets() {
         let bracket = rules(bracket: true)
-        #expect(bracket.apply("Behind the Mask (Mike's Mix (Demo))").title == "Behind the Mask [Mike's Mix (Demo)]")
+        #expect(bracket.apply("Under the Lights (Sam's Mix (Demo))").title == "Under the Lights [Sam's Mix (Demo)]")
         #expect(bracket.apply("Song (Demo)").title == "Song (Demo)")
         let unbalanced = bracket.apply("Song (Demo")
         #expect(unbalanced.title == "Song (Demo")
@@ -32,15 +32,15 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
     }
 
     @Test func mlaAndAPADifferForLongPrepositions() {
-        #expect(rules(.mla).apply("rock with you").title == "Rock with You")
-        #expect(rules(.apa).apply("rock with you").title == "Rock With You")
-        #expect(rules(.start).apply("rock with you").title == "Rock With You")
-        #expect(rules(.keep).apply("rock with you").title == "rock with you")
+        #expect(rules(.mla).apply("walk with you").title == "Walk with You")
+        #expect(rules(.apa).apply("walk with you").title == "Walk With You")
+        #expect(rules(.start).apply("walk with you").title == "Walk With You")
+        #expect(rules(.keep).apply("walk with you").title == "walk with you")
     }
 
     @Test func mlaLowercasesMinorWordsExceptFirstAndLast() {
         let mla = rules(.mla)
-        #expect(mla.apply("the way you make me feel").title == "The Way You Make Me Feel")
+        #expect(mla.apply("the way the river runs").title == "The Way the River Runs")
         #expect(mla.apply("a Song For The Lovers And The Thieves").title == "A Song for the Lovers and the Thieves")
         #expect(mla.apply("what dreams are made of").title == "What Dreams Are Made Of")
         #expect(mla.apply("rock-a-bye baby").title == "Rock-a-Bye Baby")
@@ -57,9 +57,9 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
     }
 
     @Test func protectedWordsAreNeverChanged() {
-        let mla = rules(.mla, preserve: ["HIStory", "P.Y.T."])
-        #expect(mla.apply("HIStory and XSCAPE").title == "HIStory and XSCAPE")
-        #expect(mla.apply("P.Y.T. (pretty young thing)").title == "P.Y.T. (Pretty Young Thing)")
+        let mla = rules(.mla, preserve: ["HIGHway", "Q.R.S."])
+        #expect(mla.apply("HIGHway and ZENITH").title == "HIGHway and ZENITH")
+        #expect(mla.apply("Q.R.S. (quiet river song)").title == "Q.R.S. (Quiet River Song)")
         #expect(mla.apply("iTunes in the city").title == "iTunes in the City")
         #expect(mla.apply("君の名は").title == "君の名は")
         #expect(mla.apply("song for 東京").title == "Song for 東京")
@@ -67,21 +67,21 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
     }
 
     @Test func apostrophesStayWithinWords() {
-        #expect(rules(.start).apply("don't stop 'til you get enough").title == "Don't Stop 'Til You Get Enough")
-        let mla = rules(.mla).apply("Don't Stop 'Til You Get Enough")
-        #expect(mla.title == "Don't Stop 'Til You Get Enough")
+        #expect(rules(.start).apply("don't wait 'til morning comes").title == "Don't Wait 'Til Morning Comes")
+        let mla = rules(.mla).apply("Don't Wait 'Til Morning Comes")
+        #expect(mla.title == "Don't Wait 'Til Morning Comes")
         #expect(mla.reviews.map(\.word) == ["'Til"])
     }
 
     @Test func parentheticalsAndBracketsStartNewSegments() {
         #expect(
-            rules(.start).apply("behind the mask [mike's mix (demo)]").title == "Behind The Mask [Mike's Mix (Demo)]")
+            rules(.start).apply("under the lights [sam's mix (demo)]").title == "Under The Lights [Sam's Mix (Demo)]")
         #expect(rules(.mla).apply("song of the year (the remix)").title == "Song of the Year (The Remix)")
     }
 
     @Test func matchingKeysIgnoreQualifiersCaseWidthAndDiacritics() {
         let key = rules(remove: ["Remaster"])
-        #expect(key.matchingKey("Thriller (2012 Remaster)") == key.matchingKey("THRILLER"))
+        #expect(key.matchingKey("Midnight Garden (2012 Remaster)") == key.matchingKey("MIDNIGHT GARDEN"))
         #expect(key.matchingKey("Mix [Demo]") == key.matchingKey("mix (demo)"))
         #expect(key.matchingKey("Don\u{2019}t") == key.matchingKey("Don't"))
         #expect(key.matchingKey("ＡＢＣ  Song") == key.matchingKey("abc song"))
@@ -195,7 +195,7 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
 
 @Suite struct NamingTests {
     @Test func fileNamesFollowTheMusicApp() {
-        #expect(Naming.fileName(title: "Rock with You", disc: 1, track: 3, discCount: 1) == "03 Rock with You.m4a")
+        #expect(Naming.fileName(title: "Walk with You", disc: 1, track: 3, discCount: 1) == "03 Walk with You.m4a")
         #expect(Naming.fileName(title: "First Song", disc: 2, track: 1, discCount: 2) == "2-01 First Song.m4a")
         #expect(Naming.fileName(title: "Title: Part 1/2", disc: 1, track: 12, discCount: 1) == "12 Title_ Part 1_2.m4a")
         #expect(Naming.fileName(title: "Long", disc: 1, track: 100, discCount: 1) == "100 Long.m4a")

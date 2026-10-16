@@ -101,7 +101,7 @@ public struct TitleRules: Sendable {
     // MARK: - Nested Parentheticals
 
     /// Converts each top-level parenthetical that contains another parenthetical to square brackets:
-    /// `Behind the Mask (Mike's Mix (Demo))` becomes `Behind the Mask [Mike's Mix (Demo)]`.
+    /// `Under the Lights (Sam's Mix (Demo))` becomes `Under the Lights [Sam's Mix (Demo)]`.
     static func bracketingNested(_ title: String) -> (text: String, balanced: Bool) {
         var characters = Array(title)
         var stack: [(index: Int, nested: Bool)] = []
@@ -170,7 +170,7 @@ public struct TitleRules: Sendable {
             while start < word.endIndex, opening.contains(word[start]) { start = word.index(after: start) }
             var end = word.endIndex
             while end > start, closing.contains(word[word.index(before: end)]) {
-                // Keep periods of abbreviations such as "P.Y.T." in the core.
+                // Keep periods of abbreviations such as "Q.R.S." in the core.
                 if word[word.index(before: end)] == ".", word[start..<word.index(before: end)].contains(".") { break }
                 end = word.index(before: end)
             }
