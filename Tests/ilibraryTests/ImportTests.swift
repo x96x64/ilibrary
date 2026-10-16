@@ -59,6 +59,14 @@ let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) + Data(count: 1
         #expect(values[.trackNumber] == nil)
         #expect(values[.discNumber] == [.pair(number: 2, total: 0)])
         #expect(!tags.pictureCarried)
+        #expect(tags.invalidNumberFields == ["TRACKNUMBER"])
+    }
+
+    @Test func numbersOutsideTheMP4RangeAreNotCarried() throws {
+        let tags = ImportTags(try flacMetadata(comments: ["TRACKNUMBER=70000", "DISCNUMBER=1", "DISCTOTAL=-2"]))
+        #expect(tags.items.isEmpty)
+        #expect(tags.invalidNumberFields == ["TRACKNUMBER", "DISCNUMBER"])
+        #expect(tags.summary.contains("out of range, not carried: TRACKNUMBER, DISCNUMBER"))
     }
 }
 

@@ -12,6 +12,8 @@ struct ImportTags: Equatable {
     var excludedStandardFields: [String] = []
     /// The number of fields outside the standard set; their names are not reported.
     var unknownFieldCount = 0
+    /// Track or disc fields whose numbers are outside the range that MP4 stores; they are not carried.
+    var invalidNumberFields: [String] = []
     var pictureCarried = false
     var picturesDropped = 0
 
@@ -20,6 +22,7 @@ struct ImportTags: Equatable {
             && lhs.excludedStandardFields == rhs.excludedStandardFields
             && lhs.unknownFieldCount == rhs.unknownFieldCount
             && lhs.pictureCarried == rhs.pictureCarried && lhs.picturesDropped == rhs.picturesDropped
+            && lhs.invalidNumberFields == rhs.invalidNumberFields
     }
 
     /// Fields carried as text items.
@@ -51,13 +54,20 @@ struct ImportTags: Equatable {
         if let date = metadata.values("DATE").first?.trimmingCharacters(in: .whitespaces), !date.isEmpty {
             items.append((.releaseDate, [.text(ReleaseDate(tagValue: date)?.tagValue ?? date)]))
         }
+        // MP4 stores track and disc numbers as 16-bit values; others are not carried and are reported by name.
+        var invalid: [String] = []
         func pair(_ number: String, _ totals: [String]) -> (Int, Int)? {
             guard let text = metadata.values(number).first else { return nil }
             let parts = text.split(separator: "/").map { $0.trimmingCharacters(in: .whitespaces) }
-            guard let value = parts.first.flatMap({ Int($0) }), value > 0 else { return nil }
             let total =
                 (parts.count > 1 ? Int(parts[1]) : nil)
                 ?? totals.lazy.compactMap { metadata.values($0).first.flatMap { Int($0) } }.first
+            guard let value = parts.first.flatMap({ Int($0) }), (1...65_535).contains(value),
+                (0...65_535).contains(total ?? 0)
+            else {
+                invalid.append(number)
+                return nil
+            }
             return (value, total ?? 0)
         }
         if let (number, total) = pair("TRACKNUMBER", ["TRACKTOTAL", "TOTALTRACKS"]) {
@@ -66,6 +76,7 @@ struct ImportTags: Equatable {
         if let (number, total) = pair("DISCNUMBER", ["DISCTOTAL", "TOTALDISCS"]) {
             items.append((.discNumber, [.pair(number: number, total: total)]))
         }
+        invalidNumberFields = invalid
         let names = Set(metadata.comments.map { $0.name.uppercased() })
         excludedStandardFields = names.intersection(ImportTags.excludedFields).sorted()
         unknownFieldCount = names.subtracting(known).subtracting(ImportTags.excludedFields).count
@@ -82,6 +93,9 @@ struct ImportTags: Equatable {
         if pictureCarried { parts.append("front cover carried") }
         if !excludedStandardFields.isEmpty {
             parts.append("not carried: \(excludedStandardFields.joined(separator: ", "))")
+        }
+        if !invalidNumberFields.isEmpty {
+            parts.append("out of range, not carried: \(invalidNumberFields.joined(separator: ", "))")
         }
         if unknownFieldCount > 0 { parts.append("\(unknownFieldCount) unknown fields dropped") }
         if picturesDropped > 0 { parts.append("\(picturesDropped) other pictures dropped") }
