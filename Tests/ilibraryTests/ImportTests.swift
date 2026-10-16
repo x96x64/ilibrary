@@ -203,6 +203,34 @@ struct ImportFolder {
         #expect(pathKind(folder.staging) == .missing)
     }
 
+    @Test func overlappingSourcesAndUnsafeAncestorsAreRefused() throws {
+        let folder = try ImportFolder()
+        defer { folder.remove() }
+        let overlap = Run(
+            [
+                "import", folder.downloads.path, folder.downloads.appendingPathComponent("iTunes").path, "-o",
+                folder.staging.path,
+            ], environment: noConversion)
+        #expect(overlap.status == 2)
+        #expect(overlap.errorText.contains("give each source once"))
+        #expect(pathKind(folder.staging) == .missing)
+
+        // An existing file where a folder belongs, and a link to a folder outside the output, are both refused.
+        try FileManager.default.createDirectory(at: folder.staging, withIntermediateDirectories: true)
+        try Data("file".utf8).write(to: folder.staging.appendingPathComponent("iTunes"))
+        let file = Run(["import", folder.downloads.path, "-o", folder.staging.path], environment: noConversion)
+        #expect(file.status == 1)
+        #expect(file.text.contains("is not a directory that can hold the output"))
+        try FileManager.default.removeItem(at: folder.staging.appendingPathComponent("iTunes"))
+        let outside = folder.root.appendingPathComponent("Outside")
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: folder.staging.appendingPathComponent("iTunes"), withDestinationURL: outside)
+        let link = Run(["import", folder.downloads.path, "-o", folder.staging.path], environment: noConversion)
+        #expect(link.status == 1)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: outside.path).isEmpty)
+    }
+
     @Test func conversionAndTheTrashAreRefusedWhereUnavailable() throws {
         let folder = try ImportFolder()
         defer { folder.remove() }

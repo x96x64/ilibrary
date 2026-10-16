@@ -68,6 +68,15 @@ enum ImportCommand {
         default: throw CommandError.failure("\(outputPath) exists and is not a directory; nothing was changed")
         }
 
+        // Overlapping sources would import one file twice, and the second move to the Trash would then fail.
+        let roots = parsed.positionals.map { URL(fileURLWithPath: $0).standardizedFileURL }
+        for (index, root) in roots.enumerated() {
+            if let other = roots.enumerated().first(where: { $0.offset != index && isWithin(root, $0.element) }) {
+                throw CommandError.usage(
+                    "import: \(root.path) lies within \(other.element.path); give each source once")
+            }
+        }
+
         // Collect sources with the base that their output paths are relative to.
         var refused: [(String, String)] = []
         var candidates: [(source: URL, relative: String)] = []
@@ -121,6 +130,12 @@ enum ImportCommand {
             claimed[key] = source.path
             if pathKind(destination) != .missing {
                 refused.append((source.path, "\(destination.path) already exists and is not replaced"))
+                continue
+            }
+            // Every existing folder between the output folder and the destination must be a real directory, so
+            // that no write fails part-way or follows a link out of the output folder.
+            if let blocked = blockedAncestor(of: destination, below: output) {
+                refused.append((source.path, "\(blocked.path) is not a directory that can hold the output"))
                 continue
             }
             do {
@@ -223,6 +238,16 @@ enum ImportCommand {
         }
         console.print("Moved to the Trash: \(trashed) originals")
         return 0
+    }
+
+    static func blockedAncestor(of destination: URL, below output: URL) -> URL? {
+        var folder = destination.deletingLastPathComponent().standardizedFileURL
+        var ancestors: [URL] = []
+        while isWithin(folder, output), folder.path != output.path {
+            ancestors.append(folder)
+            folder = folder.deletingLastPathComponent()
+        }
+        return ancestors.reversed().first { [.file, .symbolicLink, .other].contains(pathKind($0)) }
     }
 
     static func walk(_ directory: URL, base: URL, refused: inout [(String, String)]) throws -> [(URL, String)] {
