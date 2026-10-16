@@ -2,15 +2,16 @@
 
 ## Current Status as of October 16, 2026
 
-Milestones M0, the planning baseline, and M1, the technical spikes S1 to S5, are complete. The maintainer reviewed the [Architecture Spike](reports/architecture-spike.md) report on October 16, 2026, adopted all six proposals as Decisions 5 to 10, and merged `m1-spikes` into `main`. The spike programs and scripts are in `scripts/spikes/`. No release has been published, and the repository has not been pushed.
+Milestones M0 to M2 are complete. M2 implemented the Foundation-only targets `MP4Core`, `FLACCore`, and `CatalogCore` with 72 synthetic tests, the catalog JSON Schema, a private reference validation, continuous integration for macOS and Linux, and an expanded README; see [Core Targets](reports/core-targets.md). All tests, the release build, and the formatting check passed on the maintainer's Mac. Continuous integration has not yet run, because the repository has not been pushed. As proposed under Decision 11, the next step is to create the public repository `x96x64/ilibrary`, merge `m2-core` into `main`, push `main`, and confirm both CI jobs. No release has been published.
 
-S1, S2, S4, and S5 support the planned architecture with qualifications. S3 located Music's scripting interfaces and configuration keys but measured no live behavior. Open items:
+Open items:
 
 1. The live S3 measurements are performed when needed, at the latest before M5, in a separate local macOS user without an Apple Account, which the maintainer creates.
 2. S5 rests on one purchased file. Further purchased files under `reference-private/` would strengthen it before M4.
-3. The untracked spike outputs in `reference-private/work/` and `artifacts/spikes/` are to be deleted at the start of the next session, after confirming that they are untracked and that `reference-private/` originals are unaffected.
+3. The private FLAC file contains nine comment fields with uncommon names whose contents are unknown; they are examined before tags are carried into converted files in M4.
+4. The maintainer reviews the refusal of `enca` sample entries, which extends Decision 12 to ISO Common Encryption.
 
-The next milestone is M2: `MP4Core`, `FLACCore`, and `CatalogCore` with synthetic tests, and continuous integration on macOS and Linux.
+The next milestone is M3: the commands `export`, `schema`, `prompt`, `validate`, `apply`, and `timestamps`, on a branch merged through a pull request (Decision 13).
 
 ## Decisions in Force
 
