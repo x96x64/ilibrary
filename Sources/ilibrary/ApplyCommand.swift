@@ -214,7 +214,23 @@ enum ApplyCommand {
                 throw CommandError.failure(
                     "\"\(plans[index].track.album)\" has no album artist, which --rename requires; nothing was changed")
             }
-            let destination = components.reduce(root) { $0.appendingPathComponent($1) }
+            // A name that the file system cannot hold, or that would leave the directory, is refused before
+            // anything is written.
+            for component in components {
+                if component.isEmpty || component == "." || component == ".." {
+                    throw CommandError.failure(
+                        "the name \"\(component)\" derived from the catalog cannot be a folder or file name; nothing was changed"
+                    )
+                }
+                if component.utf8.count > 255 {
+                    throw CommandError.failure(
+                        "\"\(component)\" exceeds 255 bytes, which file systems do not accept; nothing was changed")
+                }
+            }
+            let destination = components.reduce(root) { $0.appendingPathComponent($1) }.standardizedFileURL
+            guard isWithin(destination, root), destination.path != root.standardizedFileURL.path else {
+                throw CommandError.failure("\(destination.path) lies outside \(root.path); nothing was changed")
+            }
             let key = destination.path.lowercased()
             if let other = claimed[key], other != source.path {
                 throw CommandError.failure(

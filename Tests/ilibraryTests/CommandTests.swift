@@ -292,6 +292,24 @@ import Testing
         #expect(try library.snapshot() == before)
     }
 
+    @Test(arguments: ["..", String(repeating: "あ", count: 90)])
+    func unsafeOrOversizedNamesStopRenamingBeforeAnyChange(name: String) throws {
+        let library = try SyntheticLibrary()
+        defer { library.remove() }
+        var (url, catalog) = try exported(library)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let album = try #require(catalog.albums.firstIndex { $0.album == "Tribute Collection" })
+        catalog.albums[album].albumArtist = name
+        try write(catalog, to: url)
+        let before = try library.snapshot()
+        let outside = library.root.deletingLastPathComponent().appendingPathComponent("Tribute Collection")
+        let run = Run(["apply", url.path, library.root.path, "--rename"])
+        #expect(run.status == 1)
+        #expect(run.errorText.contains("nothing was changed"))
+        #expect(try library.snapshot() == before)
+        #expect(pathKind(outside) == .missing)
+    }
+
     @Test func missingArtworkStopsBeforeAnyChange() throws {
         let library = try SyntheticLibrary()
         defer { library.remove() }
