@@ -10,11 +10,11 @@ Milestone M3 is complete. [Pull request #1](https://github.com/x96x64/ilibrary/p
 - **Continuous integration (measured).** For `ea01487`, the head that was merged, [CI run 38977103566](https://github.com/x96x64/ilibrary/actions/runs/38977103566) passed both jobs: the macOS job ran the release build, all tests, and the formatting check, and the Linux job ran the Core and command tests. Earlier heads of the pull request also passed, including `2e37aaa`, on which the command tests passed on Linux for the first time.
 - **Reviews.** Two automated Codex reviews, of `2e37aaa` and `6731ff0`, reported six findings in total, four classified P1 and two P2; among them, `--rename` could leave its directory through a name `..`. A review of the corrected code found a seventh, an underestimate of the free space that rewrites with added artwork need. All seven were corrected with tests before merging, as recorded in the Catalog Commands report, and all six review threads were answered and resolved. No automated review was requested for the final corrections, as the maintainer decided.
 
-Milestone M4 is implemented on the branch `m4-import` and has not been pushed. It adds the macOS-only target `ConversionMac` and the command `import` (with `--from`, `--delete-originals`, and `--dry-run`); see [Import](reports/import.md) and the [Command-Line Interface](command-line-interface.md) reference.
+Milestone M4 is complete. [Pull request #2](https://github.com/x96x64/ilibrary/pull/2) from `m4-import` was merged into `main` on October 17, 2026, at merge commit `431321d`. M4 adds the macOS-only target `ConversionMac` and the command `import` (with `--from`, `--delete-originals`, and `--dry-run`); see [Import](reports/import.md) and the [Command-Line Interface](command-line-interface.md) reference.
 
-- **Local verification (measured).** On the maintainer's Mac, all 123 tests and the formatting check passed, `scripts/validation/import.sh` passed all 30 checks, and `scripts/validation/catalog-commands.sh` passed all 21 checks. Copies of one mora FLAC file and one purchased iTunes Store file, processed inside `reference-private/work/` with the maintainer's approval, passed all 8 checks of `scripts/reference_validation/validate-import.sh`; the originals were unchanged and the copies were removed.
-- **Continuous integration.** Not yet run for this branch.
-- **Pull request and merge.** Not yet opened; pushing the branch and opening a pull request await the maintainer's approval (Decision 13).
+- **Local verification (measured).** On the maintainer's Mac, all 123 tests and the formatting check passed for the merged code, `scripts/validation/import.sh` passed all 30 checks, and `scripts/validation/catalog-commands.sh` passed all 21 checks. Copies of one mora FLAC file and one purchased iTunes Store file, processed inside `reference-private/work/` with the maintainer's approval, passed all 8 checks of `scripts/reference_validation/validate-import.sh`; the originals were unchanged and the copies were removed. These satisfy the M4 gate of synthetic sources and a small private sample.
+- **Continuous integration (measured).** For `dc08c9f`, the head that was merged, [CI run 38979818680](https://github.com/x96x64/ilibrary/actions/runs/38979818680) passed both jobs; the Linux job ran the command tests, including the copy path of `import`.
+- **Reviews.** The automated Codex review of `ae5c567` reported five findings, all classified P2; one had already been corrected by a review of the code before the pull request, and all five were corrected with tests before merging and their threads resolved, as recorded in the Import report.
 
 Open items:
 
@@ -26,7 +26,7 @@ Open items:
 6. Whether real libraries contain values that a catalog cannot represent, such as gaps in track numbers or year-only dates, is unknown until a catalog is exported from one.
 7. Moves to the real Trash through `FileManager.trashItem` are untested; the tests use a substitute Trash.
 
-After M4 is merged, the next milestone is M5: `add` with the four orders and resumption, which changes the Music library and requires the live S3 measurements first.
+The next milestone is M5: `add` with the four orders and resumption. Because it changes a Music library, the live S3 measurements come first; the maintainer performs them in a separate local macOS user without an Apple Account, with the procedure in [Live Music Measurements](live-music-measurements.md), and M5 and the library parts of M6 wait for their results.
 
 ## Decisions in Force
 
