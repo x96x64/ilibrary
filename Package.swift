@@ -25,5 +25,6 @@ let package = Package(
         .testTarget(name: "FLACCoreTests", dependencies: ["FLACCore"]),
         .testTarget(name: "CatalogCoreTests", dependencies: ["CatalogCore"]),
         .testTarget(name: "LibraryMacTests", dependencies: ["LibraryMac"]),
+        .testTarget(name: "ilibraryTests", dependencies: ["ilibrary", "MP4Core", "CatalogCore", "SyntheticMedia"]),
     ]
 )
