@@ -6,6 +6,10 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ### Added
 
+- `check`: file diagnostics and optional Music comparisons by location, including duplicates, stale metadata, cloud status, and missing files.
+- `doctor`: environment diagnostics with recovery steps, without launching Music or requesting permission.
+- A separate-user validation script for ordered addition and library checks, with a preparation-only mode.
+
 - `MP4Core`: parsing and rewriting of M4A item lists without re-encoding, chunk-offset relocation, verified writing through a partial file, and removal of iTunes Store purchase metadata.
 - `FLACCore`: reading of FLAC stream information, Vorbis comments, and pictures.
 - `CatalogCore`: the `ilibrary-catalog-1` catalog format with validation and a JSON Schema, matching of files to catalog tracks, Music-style naming, four album orders, title rules, and release dates.

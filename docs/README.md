@@ -6,6 +6,7 @@
 - [Agent Handoff](agent-handoff.md): a prompt for resuming work in Codex or Claude Code at any milestone
 - [Command-Line Interface](command-line-interface.md): commands, options, and exit status
 - [Completing Catalogs with AI Agents](catalog-for-agents.md): the authoring workflow for agents and chats
+- [Test Library Validation](test-library-validation.md): step-by-step Japanese instructions for validating the implemented M5/M6 commands in a separate user
 - [Live Music Measurements](live-music-measurements.md): the procedure for measuring Music in a separate macOS user
 - [Catalog JSON Schema](schema/ilibrary-catalog-1.schema.json): the schema of the `ilibrary-catalog-1` format
 
@@ -24,3 +25,5 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Import](reports/import.md)
 - 2026-10-17 — [Music Behavior](reports/music-behavior.md)
 - 2026-10-17 — [Ordered Addition](reports/ordered-addition.md)
+- 2026-10-17 — [Ordered Addition Corrections](reports/ordered-addition-corrections.md)
+- 2026-10-17 — [Library Checks and Diagnostics](reports/library-checks.md)

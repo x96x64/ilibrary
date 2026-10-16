@@ -2,7 +2,7 @@
 
 ## Overview
 
-`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in the current development version; `check` and `doctor` are planned and end with exit status 2 and a message that they are not implemented.
+`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in the current development version. Live qualification of `add` and `check --library` remains pending; use the separate-user procedure before operating a personal library.
 
 ```
 ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]
@@ -13,6 +13,8 @@ ilibrary schema
 ilibrary validate CATALOG.json [PATH...]
 ilibrary apply CATALOG.json PATH... [--dry-run] [--rename] [--timestamps]
 ilibrary timestamps CATALOG.json PATH... [--dry-run] [--script FILE]
+ilibrary check [PATH...] [--library]
+ilibrary doctor
 ilibrary help [COMMAND] | --help | --version
 ```
 
@@ -23,7 +25,7 @@ ilibrary help [COMMAND] | --help | --version
 | Status | Meaning |
 | --- | --- |
 | 0 | Success |
-| 1 | A runtime failure, an invalid catalog, or a refusal to change anything |
+| 1 | A runtime failure, an invalid catalog, a refusal, or a problem reported by `check` or `doctor` |
 | 2 | A usage error: an unknown command or option, or a missing argument |
 
 Reports are written to standard output, and errors and warnings to standard error with the prefixes `ilibrary: error:` and `ilibrary: warning:`.
@@ -153,6 +155,30 @@ Folders outside the given directories are never changed. Where a time zone skips
 
 - `--dry-run` lists the planned dates and changes nothing.
 - `--script FILE` also writes an equivalent shell script. The script sets the time zone, checks that each path exists and is not a symbolic link before it calls `SetFile -d` and `touch -c -m -t`, reports and skips other paths, and exits with status 1 when any path was skipped. An existing file is never overwritten.
+
+### check
+
+```bash
+ilibrary check ~/Music/Staging
+ilibrary check ~/Music/Staging --library
+ilibrary check --library
+```
+
+Reads M4A files and reports missing tags, duplicate titles or disc/track positions within an album, damaged files, and creation or modification dates that disagree with a complete release date at local midnight. An unreadable file or date is a finding; other readable files are still checked. Year-only dates do not establish an expected day. File dates are unavailable on Linux and explicitly reported as unexamined.
+
+`--library` takes a snapshot of Music's file tracks, matching by file location even when Music holds an old album name. It reports files absent from Music, duplicate library entries, missing or relocated album files, and differences in title, album, artist, album artist, composer, genre, comment, track and disc numbers and totals, compilation, and year. Every duplicate entry is compared. With directory paths, another track of a selected album outside those folders is reported; select the whole album when intentional splits should not be findings. With no paths, all file tracks reported by Music are checked. Cloud-only tracks that are not exposed as file tracks are outside this snapshot.
+
+Artwork, copyright, and the full release date are not compared with Music. Notable cloud statuses, including `matched`, `subscription`, and `purchased`, are reported as findings; `unknown` does not establish the absence of cloud matching. The command diagnoses differences and never repairs files or library entries. Its output can contain metadata and paths: do not publish an unredacted report from a personal library. Library access can launch Music and request Automation permission; the command does not add tracks or change properties.
+
+### doctor
+
+```bash
+ilibrary doctor
+```
+
+Reports the iLibrary version, build-toolchain range, platform capabilities, installed Music version, media folder, available capacity, and stored Automation permission, with a recovery step for each problem. A media volume with less than 1 GB available is reported as a problem; this threshold is a diagnostic warning, not the per-operation space calculation.
+
+The command reads installed application information, preferences, and existing permission state. It does not launch Music, request permission, or read library tracks. Undetermined permissions and unavailable platform features are notes, not proof that an operation will succeed. Status 0 means no diagnosed blocking problem; status 1 means at least one problem. Review output for personal paths before sharing it.
 
 ## Environment
 
