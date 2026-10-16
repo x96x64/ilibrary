@@ -6,6 +6,7 @@
 - [Agent Handoff](agent-handoff.md): a prompt for resuming work in Codex or Claude Code at any milestone
 - [Command-Line Interface](command-line-interface.md): commands, options, and exit status
 - [Completing Catalogs with AI Agents](catalog-for-agents.md): the authoring workflow for agents and chats
+- [Live Music Measurements](live-music-measurements.md): the procedure for measuring Music in a separate macOS user
 - [Catalog JSON Schema](schema/ilibrary-catalog-1.schema.json): the schema of the `ilibrary-catalog-1` format
 
 ## Historical Baseline
