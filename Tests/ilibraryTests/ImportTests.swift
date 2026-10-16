@@ -304,6 +304,28 @@ struct ImportFolder {
             #expect(leftovers.isEmpty)
         }
 
+        @Test func theRequiredSpaceCountsCoversAndTheTagRewrite() throws {
+            let folder = try ImportFolder()
+            defer { folder.remove() }
+            let wave = folder.root.appendingPathComponent("source.wav")
+            let audio = SyntheticAudio(frames: 4_410, seed: 6)
+            try audio.wave().write(to: wave)
+            let flac = folder.root.appendingPathComponent("plain.flac")
+            try encodeFLAC(wave, to: flac, bits: 16)
+            let cover = png + Data(count: 3 << 20)
+            try SyntheticFLACMetadata.replacingTags(
+                in: Data(contentsOf: flac), comments: ["TITLE=Large Cover"], pictures: [(3, "image/png", cover)]
+            ).write(to: folder.downloads.appendingPathComponent("01-Large Cover.flac"))
+            try FileManager.default.removeItem(at: folder.downloads.appendingPathComponent("iTunes"))
+            // Enough for the estimated audio and the margin, but not for the 3 MiB cover written twice.
+            var environment = Environment.testing
+            environment.availableCapacity = { _ in 5 << 20 }
+            let run = Run(["import", folder.downloads.path, "-o", folder.staging.path], environment: environment)
+            #expect(run.status == 1)
+            #expect(run.errorText.contains("bytes are available"))
+            #expect(pathKind(folder.staging) == .missing)
+        }
+
         @Test func moraSelectsFLACAndLeavesOtherSourcesUntouched() throws {
             let folder = try ImportFolder()
             defer { folder.remove() }

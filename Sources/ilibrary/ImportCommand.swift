@@ -138,17 +138,25 @@ enum ImportCommand {
         guard refused.isEmpty else { throw CommandError.failure("some files are refused; nothing was changed") }
         guard !items.isEmpty else { throw CommandError.failure("no file to import was found") }
 
-        // The outputs accumulate on the volume of the output folder (decision 8).
-        let required = items.reduce(Int64(1 << 20)) { total, item in
+        // The outputs accumulate on the volume of the output folder (decision 8). A converted file grows by the
+        // cover it carries, and writing its tags needs room for one further copy of the largest output.
+        let sizes = items.map { item -> Int64 in
             switch item.action {
-            case .convert(let source, _): total + source.estimatedSize
+            case .convert(let source, let tags):
+                let cover = tags?.items.first { $0.key == .artwork }.map { item -> Int64 in
+                    item.values.reduce(0) { total, value in
+                        if case .image(let data, _) = value { return total + Int64(data.count) }
+                        return total
+                    }
+                }
+                return source.estimatedSize + (cover ?? 0)
             case .copy:
-                total
-                    + Int64(
-                        (try? FileManager.default.attributesOfItem(atPath: item.source.path)[.size] as? NSNumber)?
-                            .intValue ?? 0)
+                let size = (try? FileManager.default.attributesOfItem(atPath: item.source.path)[.size] as? NSNumber)?
+                    .intValue
+                return Int64(size ?? 0)
             }
         }
+        let required = sizes.reduce(0, +) + (sizes.max() ?? 0) + (1 << 20)
         let volume = pathKind(output) == .directory ? output : output.deletingLastPathComponent()
         if let available = environment.availableCapacity(volume) {
             guard Int64(available) >= required else {
