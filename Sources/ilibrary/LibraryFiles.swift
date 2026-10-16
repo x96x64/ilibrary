@@ -2,24 +2,20 @@ import CatalogCore
 import Foundation
 import MP4Core
 
-#if canImport(Glibc)
-    import Glibc
-#elseif canImport(Darwin)
-    import Darwin
-#endif
-
 enum PathKind {
     case missing, symbolicLink, directory, file, other
 }
 
 /// The kind of a path, determined without following symbolic links.
 func pathKind(_ url: URL) -> PathKind {
-    var status = stat()
-    guard lstat(url.path, &status) == 0 else { return .missing }
-    switch status.st_mode & S_IFMT {
-    case S_IFLNK: return .symbolicLink
-    case S_IFDIR: return .directory
-    case S_IFREG: return .file
+    // attributesOfItem does not traverse a final symbolic link.
+    guard let type = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.type] as? FileAttributeType else {
+        return .missing
+    }
+    switch type {
+    case .typeSymbolicLink: return .symbolicLink
+    case .typeDirectory: return .directory
+    case .typeRegular: return .file
     default: return .other
     }
 }
