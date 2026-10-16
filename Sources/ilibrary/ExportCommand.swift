@@ -58,6 +58,9 @@ enum ExportCommand {
         console.print(
             "  catalog \(output.path): \(catalog.albums.count) albums and \(trackCount) tracks from \(files.count) files"
         )
+        if let artworkDirectory, !covers.isEmpty, pathKind(artworkDirectory) == .missing {
+            console.print("  directory \(artworkDirectory.path) (created)")
+        }
         for cover in covers {
             console.print(
                 "  cover \(cover.url.path): \(cover.data.starts(with: [0x89]) ? "PNG" : "JPEG"), \(cover.data.count) bytes"
