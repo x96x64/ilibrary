@@ -14,7 +14,7 @@ import Testing
         let unknown = Run(["frobnicate"])
         #expect(unknown.status == 2)
         #expect(unknown.errorText.contains("unknown command frobnicate"))
-        let planned = Run(["add", "x"])
+        let planned = Run(["check", "x"])
         #expect(planned.status == 2)
         #expect(planned.errorText.contains("planned and not implemented"))
         #expect(Run(["schema", "extra"]).status == 2)
