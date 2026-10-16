@@ -27,7 +27,10 @@ struct AddJournal: Codable, Equatable {
     var entries: [Entry] = []
 
     static func load(_ url: URL) throws -> AddJournal {
-        guard pathKind(url) == .file else { return AddJournal() }
+        if pathKind(url) == .missing { return AddJournal() }
+        guard pathKind(url) == .file else {
+            throw CommandError.failure("the add journal is not a regular file; nothing was changed")
+        }
         let journal = try JSONDecoder().decode(AddJournal.self, from: Data(contentsOf: url))
         guard journal.format == formatIdentifier else {
             throw CommandError.failure("\(url.path) is not a journal of this version")
@@ -86,23 +89,46 @@ enum AddCommand {
             )
         }
         let musicFolder = mediaFolder.appendingPathComponent("Music", isDirectory: true)
+        guard [.missing, .directory].contains(pathKind(musicFolder)) else {
+            throw CommandError.failure("the Music folder is not a regular directory; nothing was changed")
+        }
         for root in roots where isWithin(root, mediaFolder) || isWithin(mediaFolder, root) {
             throw CommandError.usage("add: \(root.path) overlaps the media folder; use a staging folder outside it")
         }
         let journalURL = roots[0].appendingPathComponent(AddJournal.fileName)
         var journal = try AddJournal.load(journalURL)
 
+        try validateJournal(journal, roots: roots, musicFolder: musicFolder)
+        let pending = journal.entries.filter { $0.state == .moving }
+        let pendingSources = Set(pending.flatMap(\.sources))
         let scan = try LibraryFiles.scan(roots.map(\.path))
         guard scan.refused.isEmpty else {
             for refusal in scan.refused { console.print("  refused \(refusal.path): \(refusal.reason)") }
             throw CommandError.failure("some files are refused; nothing was changed")
         }
-        let albums = try plan(try scan.files.map(LibraryFiles.read), musicFolder: musicFolder, order: order)
-        let pending = journal.entries.filter { $0.state == .moving }
+        let albums = try plan(
+            try scan.files.filter { !pendingSources.contains($0.path) }.map(LibraryFiles.read),
+            musicFolder: musicFolder, order: order)
+        let remainingMoves =
+            pending.flatMap { entry in
+                zip(entry.sources, entry.destinations).compactMap { source, destination -> (URL, URL)? in
+                    let sourceURL = URL(fileURLWithPath: source)
+                    return pathKind(sourceURL) == .file ? (sourceURL, URL(fileURLWithPath: destination)) : nil
+                }
+            } + albums.flatMap { Array(zip($0.files.map(\.url), $0.destinations)) }
+        try checkMoveCapacity(remainingMoves, mediaFolder: mediaFolder, environment: environment)
 
         console.print("Media folder: \(mediaFolder.path)")
         if !pending.isEmpty {
             console.print("Resuming \(pending.count) album(s) that were moved but not confirmed in Music")
+        }
+        for entry in pending {
+            console.print("  resume: \(entry.albumArtist) - \(entry.album)")
+            for (source, destination) in zip(entry.sources, entry.destinations) {
+                console.print(
+                    "     confirm or move \(source) -> \(relativePath(URL(fileURLWithPath: destination), from: mediaFolder))"
+                )
+            }
         }
         console.print("Albums to add in \(order.rawValue) order: \(albums.count)")
         for (index, album) in albums.enumerated() {
@@ -135,7 +161,7 @@ enum AddCommand {
 
         // Albums interrupted after their move are confirmed or added first.
         for index in journal.entries.indices where journal.entries[index].state == .moving {
-            try resume(&journal.entries[index], music: music, console: console)
+            try resume(&journal.entries[index], music: music, console: console, environment: environment)
             try journal.save(journalURL)
         }
         var added = 0
@@ -151,7 +177,7 @@ enum AddCommand {
                 destinations: album.destinations.map(\.path), state: .moving)
             journal.entries.append(entry)
             try journal.save(journalURL)
-            try move(album)
+            try move(album, environment: environment)
             try confirm(&entry, music: music)
             journal.entries[journal.entries.count - 1] = entry
             try journal.save(journalURL)
@@ -176,6 +202,9 @@ enum AddCommand {
             guard let artist = file.tags.albumArtist ?? LibraryFiles.text(file.file, .artist) else {
                 throw CommandError.failure("\(file.url.path) has no album artist; nothing was changed")
             }
+            guard file.tags.title != nil else {
+                throw CommandError.failure("\(file.url.path) has no title for duplicate detection; nothing was changed")
+            }
             let key = TitleRules.comparisonKey(artist) + "\u{0}" + TitleRules.comparisonKey(album)
             if groups[key] == nil {
                 keys.append(key)
@@ -193,8 +222,7 @@ enum AddCommand {
                 ($0.tags.discNumber ?? 1, $0.tags.trackNumber ?? 0, $0.url.path)
                     < ($1.tags.discNumber ?? 1, $1.tags.trackNumber ?? 0, $1.url.path)
             }
-            let folder = musicFolder.appendingPathComponent(Naming.component(albums[index].albumArtist))
-                .appendingPathComponent(Naming.component(albums[index].album))
+            let folder = try albumFolder(artist: albums[index].albumArtist, album: albums[index].album, in: musicFolder)
             albums[index].destinations = albums[index].files.map {
                 folder.appendingPathComponent($0.url.lastPathComponent)
             }
@@ -233,20 +261,111 @@ enum AddCommand {
         }
     }
 
-    /// Moves an album's files to their destinations. A move across volumes is a copy followed by removal, which
-    /// is verified by size before the source is removed.
-    static func move(_ album: PlannedAlbum) throws {
-        let manager = FileManager.default
+    static func albumFolder(artist: String, album: String, in musicFolder: URL) throws -> URL {
+        let components = [Naming.component(artist), Naming.component(album)]
+        guard components.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." && $0.utf8.count <= 255 }) else {
+            throw CommandError.failure("the album artist or album cannot be used as a folder name; nothing was changed")
+        }
+        let folder = components.reduce(musicFolder) { $0.appendingPathComponent($1) }.standardizedFileURL
+        guard isWithin(folder, musicFolder) else {
+            throw CommandError.failure("the album would leave the Music folder; nothing was changed")
+        }
+        return folder
+    }
+
+    /// A journal is user-editable: validate every path before it can authorize a move or library operation.
+    static func validateJournal(_ journal: AddJournal, roots: [URL], musicFolder: URL) throws {
+        var sources: Set<String> = []
+        var destinations: Set<String> = []
+        for entry in journal.entries {
+            let folder = try albumFolder(artist: entry.albumArtist, album: entry.album, in: musicFolder)
+            guard !entry.sources.isEmpty, entry.sources.count == entry.destinations.count else {
+                throw CommandError.failure("the add journal has inconsistent file lists; nothing was changed")
+            }
+            for (source, destination) in zip(entry.sources, entry.destinations) {
+                let src = URL(fileURLWithPath: source).standardizedFileURL
+                let dst = URL(fileURLWithPath: destination).standardizedFileURL
+                guard source == src.path, destination == dst.path,
+                    roots.contains(where: { isWithin(src, $0) && src != $0 }),
+                    dst == folder.appendingPathComponent(src.lastPathComponent),
+                    sources.insert(source).inserted, destinations.insert(destination.lowercased()).inserted,
+                    ImportCommand.blockedAncestor(of: dst, below: musicFolder) == nil,
+                    roots.allSatisfy({ !isWithin(src, $0) || ImportCommand.blockedAncestor(of: src, below: $0) == nil })
+                else {
+                    throw CommandError.failure(
+                        "the add journal contains an unsafe or repeated path; nothing was changed")
+                }
+            }
+        }
+    }
+
+    static func checkMoveCapacity(_ moves: [(URL, URL)], mediaFolder: URL, environment: Environment) throws {
+        guard let targetVolume = environment.volumeIdentifier(mediaFolder) else {
+            throw CommandError.failure("the media volume cannot be determined; nothing was changed")
+        }
+        var bytes = 0
+        for (source, _) in moves {
+            guard let sourceVolume = environment.volumeIdentifier(source) else {
+                throw CommandError.failure("the source volume cannot be determined; nothing was changed")
+            }
+            if sourceVolume != targetVolume {
+                guard environment.verifyAudioCopy != nil else {
+                    throw CommandError.failure(
+                        "verified cross-volume moves are unavailable; use staging on the media volume")
+                }
+                let size =
+                    (try FileManager.default.attributesOfItem(atPath: source.path)[.size] as? NSNumber)?.intValue ?? 0
+                let sum = bytes.addingReportingOverflow(size)
+                guard !sum.overflow else { throw CommandError.failure("the move size is too large") }
+                bytes = sum.partialValue
+            }
+        }
+        if bytes > 0 {
+            guard let available = environment.availableCapacity(mediaFolder), available > bytes,
+                available - bytes >= 1 << 20
+            else { throw CommandError.failure("insufficient or unknown free space for the moves; nothing was changed") }
+        }
+    }
+
+    static func move(_ album: PlannedAlbum, environment: Environment) throws {
         for (file, destination) in zip(album.files, album.destinations) {
-            try manager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-            guard pathKind(destination) == .missing else {
-                throw CommandError.failure("\(destination.path) appeared before the move; the album was not added")
+            try moveFile(file.url, to: destination, environment: environment)
+        }
+    }
+
+    /// Same-volume moves rename the existing file. A cross-volume move verifies an explicit copy before
+    /// removing the selected source. A failed verification leaves the source in place.
+    static func moveFile(_ source: URL, to destination: URL, environment: Environment) throws {
+        let manager = FileManager.default
+        guard pathKind(source) == .file, pathKind(destination) == .missing else {
+            throw CommandError.failure("the source or destination changed before the move; the album was not added")
+        }
+        try manager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard let sourceVolume = environment.volumeIdentifier(source),
+            let targetVolume = environment.volumeIdentifier(destination.deletingLastPathComponent())
+        else { throw CommandError.failure("the volume cannot be determined before moving the file") }
+        if sourceVolume == targetVolume {
+            try manager.moveItem(at: source, to: destination)
+            guard pathKind(source) == .missing, pathKind(destination) == .file else {
+                throw CommandError.failure("the moved file could not be confirmed")
             }
-            do {
-                try manager.moveItem(at: file.url, to: destination)
-            } catch {
-                throw CommandError.failure("moving \(file.url.path) failed: \(error); the album was not added")
+        } else {
+            guard let verify = environment.verifyAudioCopy else {
+                throw CommandError.failure("verified cross-volume moves are unavailable")
             }
+            let partial = destination.deletingLastPathComponent().appendingPathComponent(
+                ".ilibrary-move-\(UUID().uuidString).m4a")
+            defer { try? manager.removeItem(at: partial) }
+            try manager.copyItem(at: source, to: partial)
+            guard manager.contentsEqual(atPath: source.path, andPath: partial.path) else {
+                throw CommandError.failure("the copied file differs; the original was retained")
+            }
+            try verify(source, partial)
+            try manager.moveItem(at: partial, to: destination)
+            guard manager.contentsEqual(atPath: source.path, andPath: destination.path) else {
+                throw CommandError.failure("the destination differs; the original was retained")
+            }
+            try manager.removeItem(at: source)
         }
     }
 
@@ -275,27 +394,47 @@ enum AddCommand {
     }
 
     /// Completes an album that was being moved when an earlier run stopped.
-    static func resume(_ entry: inout AddJournal.Entry, music: any MusicLibrary, console: Console) throws {
-        let manager = FileManager.default
+    static func resume(
+        _ entry: inout AddJournal.Entry, music: any MusicLibrary, console: Console, environment: Environment
+    ) throws {
+        // Read the still-present source or its destination, and check for a matching track elsewhere before moving.
+        let files = try zip(entry.sources, entry.destinations).map { source, destination in
+            try LibraryFiles.read(
+                URL(fileURLWithPath: pathKind(URL(fileURLWithPath: source)) == .file ? source : destination))
+        }
+        let titles = Set(files.compactMap(\.tags.title).map(TitleRules.comparisonKey))
+        let expected = Set(entry.destinations)
+        let known = try music.tracks(album: entry.album)
+        if known.contains(where: { track in
+            let artist = track.albumArtist.isEmpty ? track.artist : track.albumArtist
+            return TitleRules.comparisonKey(artist) == TitleRules.comparisonKey(entry.albumArtist)
+                && titles.contains(TitleRules.comparisonKey(track.name))
+                && !(track.location.map { expected.contains(URL(fileURLWithPath: $0).standardizedFileURL.path) }
+                    ?? false)
+        }) {
+            throw CommandError.failure(
+                "the library already holds a matching track elsewhere; resumption changed nothing")
+        }
         for (source, destination) in zip(entry.sources, entry.destinations) {
             switch (pathKind(URL(fileURLWithPath: source)), pathKind(URL(fileURLWithPath: destination))) {
             case (.missing, .file): continue
             case (.file, .missing):
-                try manager.createDirectory(
-                    at: URL(fileURLWithPath: destination).deletingLastPathComponent(), withIntermediateDirectories: true
-                )
-                try manager.moveItem(at: URL(fileURLWithPath: source), to: URL(fileURLWithPath: destination))
+                try moveFile(
+                    URL(fileURLWithPath: source), to: URL(fileURLWithPath: destination), environment: environment)
             default:
                 throw CommandError.failure(
                     "\"\(entry.album)\" cannot be resumed: \(source) and \(destination) are not in the expected state")
             }
         }
         // If an earlier run added the album but stopped before recording it, its tracks are already present.
-        let expected = Set(entry.destinations.map { URL(fileURLWithPath: $0).standardizedFileURL.path })
-        let present = try music.tracks(album: entry.album).filter {
+        let present = known.filter {
             $0.location.map { expected.contains(URL(fileURLWithPath: $0).standardizedFileURL.path) } ?? false
         }
-        if present.count == entry.destinations.count {
+        if present.count == entry.destinations.count,
+            Set(present.map(\.persistentID)).count == present.count,
+            Set(present.compactMap { $0.location.map { URL(fileURLWithPath: $0).standardizedFileURL.path } })
+                == expected
+        {
             entry.persistentIDs = present.map(\.persistentID)
             entry.state = .added
         } else if present.isEmpty {

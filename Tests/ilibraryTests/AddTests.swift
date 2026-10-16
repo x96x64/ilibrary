@@ -59,6 +59,8 @@ struct AddFixture {
         music = FakeMusic(media: media)
         environment = Environment.testing
         environment.music = music
+        environment.volumeIdentifier = { _ in "test-volume" }
+        environment.verifyAudioCopy = nil
     }
 
     func remove() {
@@ -235,3 +237,152 @@ struct AddFixture {
         #expect(fixture.music.addCalls.isEmpty)
     }
 }
+
+@Suite struct AddRecoveryTests {
+    func pending(_ fixture: AddFixture) throws -> AddJournal.Entry {
+        let files = try fixture.library.m4aFiles().map(LibraryFiles.read)
+        let album = try AddCommand.plan(
+            files, musicFolder: fixture.media.appendingPathComponent("Music"), order: .release)[0]
+        let entry = AddJournal.Entry(
+            album: album.album, albumArtist: album.albumArtist,
+            sources: album.files.map(\.url.path), destinations: album.destinations.map(\.path), state: .moving)
+        try AddJournal(entries: [entry]).save(fixture.library.root.appendingPathComponent(AddJournal.fileName))
+        return entry
+    }
+
+    @Test(arguments: [".", ".."])
+    func dotAlbumComponentsAreRefused(name: String) throws {
+        let fixture = try AddFixture()
+        defer { fixture.remove() }
+        for url in try fixture.library.m4aFiles() {
+            var file = try MP4File(contentsOf: url)
+            try file.setMetadata(.album, [.text(name)])
+            try file.setMetadata(.albumArtist, [.text(name)])
+            try MP4Writer.write(file, to: url)
+        }
+        let before = try fixture.library.snapshot()
+        #expect(fixture.run([]).status == 1)
+        #expect(try fixture.library.snapshot() == before)
+        #expect(fixture.mediaFiles().isEmpty)
+    }
+
+    @Test func partialMoveResumesAndContinuesOtherAlbums() throws {
+        let fixture = try AddFixture()
+        defer { fixture.remove() }
+        let entry = try pending(fixture)
+        try AddCommand.moveFile(
+            URL(fileURLWithPath: entry.sources[0]), to: URL(fileURLWithPath: entry.destinations[0]),
+            environment: fixture.environment)
+        let run = fixture.run([])
+        #expect(run.status == 0, "\(run.errorText)")
+        #expect(fixture.music.library.count == 9)
+        #expect(fixture.journal.entries.allSatisfy { $0.state == .added })
+    }
+
+    @Test func aMatchingTrackElsewhereStopsResumptionBeforeAnyMove() throws {
+        let fixture = try AddFixture()
+        defer { fixture.remove() }
+        let entry = try pending(fixture)
+        let file = try LibraryFiles.read(URL(fileURLWithPath: entry.sources[0]))
+        fixture.music.library = [
+            LibraryTrack(
+                persistentID: "EXISTING", name: file.tags.title!, album: entry.album,
+                artist: entry.albumArtist, albumArtist: entry.albumArtist,
+                location: fixture.media.appendingPathComponent("elsewhere.m4a").path)
+        ]
+        let before = try fixture.library.snapshot()
+        let run = fixture.run([])
+        #expect(run.status == 1)
+        #expect(run.errorText.contains("matching track elsewhere"))
+        #expect(try fixture.library.snapshot() == before)
+        #expect(fixture.mediaFiles().isEmpty)
+    }
+
+    @Test func duplicateLocationsDoNotConfirmAMissingTrack() throws {
+        let fixture = try AddFixture()
+        defer { fixture.remove() }
+        let entry = try pending(fixture)
+        for (source, destination) in zip(entry.sources, entry.destinations) {
+            try AddCommand.moveFile(
+                URL(fileURLWithPath: source), to: URL(fileURLWithPath: destination), environment: fixture.environment)
+        }
+        fixture.music.library = (0..<entry.destinations.count).map { index in
+            LibraryTrack(
+                persistentID: "ID-\(index)", name: "First Song", album: entry.album,
+                artist: entry.albumArtist, albumArtist: entry.albumArtist, location: entry.destinations[0])
+        }
+        let run = fixture.run([])
+        #expect(run.status == 1)
+        #expect(fixture.journal.entries[0].state == .moving)
+        #expect(fixture.music.addCalls.isEmpty)
+    }
+
+    @Test func editedJournalCannotMoveOutsideTheSelectedFolders() throws {
+        let fixture = try AddFixture()
+        defer { fixture.remove() }
+        var entry = try pending(fixture)
+        entry.destinations[0] = fixture.library.root.appendingPathComponent("unexpected.m4a").path
+        try AddJournal(entries: [entry]).save(fixture.library.root.appendingPathComponent(AddJournal.fileName))
+        let before = try fixture.library.snapshot()
+        #expect(fixture.run([]).status == 1)
+        #expect(try fixture.library.snapshot() == before)
+        #expect(fixture.music.addCalls.isEmpty)
+    }
+
+    @Test func crossVolumeFailureRetainsSourceAndRemovesPartialCopy() throws {
+        var fixture = try AddFixture()
+        defer { fixture.remove() }
+        let root = fixture.library.root
+        fixture.environment.volumeIdentifier = { isWithin($0, root) ? "source" : "target" }
+        fixture.environment.availableCapacity = { _ in Int.max }
+        fixture.environment.verifyAudioCopy = { source, _ in
+            #expect(pathKind(source) == .file)
+            throw CommandError.failure("synthetic verification failure")
+        }
+        let files = try fixture.library.m4aFiles()
+        let run = fixture.run([])
+        #expect(run.status == 1)
+        #expect(run.errorText.contains("synthetic verification failure"))
+        #expect(try fixture.library.m4aFiles() == files)
+        #expect(fixture.mediaFiles().isEmpty)
+        #expect(fixture.music.addCalls.isEmpty)
+    }
+
+    @Test func crossVolumeCapacityIsCheckedBeforeAnyMove() throws {
+        var fixture = try AddFixture()
+        defer { fixture.remove() }
+        let root = fixture.library.root
+        fixture.environment.volumeIdentifier = { isWithin($0, root) ? "source" : "target" }
+        fixture.environment.availableCapacity = { _ in 0 }
+        fixture.environment.verifyAudioCopy = { _, _ in }
+        let before = try fixture.library.snapshot()
+        #expect(fixture.run([]).status == 1)
+        #expect(try fixture.library.snapshot() == before)
+        #expect(fixture.mediaFiles().isEmpty)
+    }
+}
+
+#if os(macOS)
+    import ConversionMac
+    import SyntheticMedia
+
+    @Suite struct VerifiedMoveTests {
+        @Test func crossVolumeCopyIsDecodedBeforeItsSourceIsRemoved() throws {
+            let fixture = try AddFixture()
+            defer { fixture.remove() }
+            let wave = fixture.library.root.appendingPathComponent("move-source.wav")
+            let source = fixture.library.root.appendingPathComponent("move-source.m4a")
+            let destination = fixture.media.appendingPathComponent("moved.m4a")
+            try SyntheticAudio(frames: 2048).wave().write(to: wave)
+            try LosslessConverter.convert(wave, to: source)
+            let before = try LosslessConverter.decode(source).1
+            var environment = fixture.environment
+            let root = fixture.library.root
+            environment.volumeIdentifier = { isWithin($0, root) ? "source" : "target" }
+            environment.verifyAudioCopy = Environment.systemAudioCopyVerification
+            try AddCommand.moveFile(source, to: destination, environment: environment)
+            #expect(pathKind(source) == .missing)
+            #expect(try LosslessConverter.decode(destination).1 == before)
+        }
+    }
+#endif
