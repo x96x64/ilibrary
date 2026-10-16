@@ -13,7 +13,7 @@ ilibrary apply catalog.json ~/Music/Staging
 ```
 
 > [!IMPORTANT]
-> iLibrary is in development. The commands `import`, `export`, `prompt`, `schema`, `validate`, `apply`, and `timestamps` are implemented and tested with synthetic files; `add`, `check`, and `doctor` follow in later milestones of the [roadmap](docs/roadmap-to-stable.md). No release has been published. iLibrary does not touch the Music app or its library yet. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary is in development. The commands `import`, `export`, `prompt`, `schema`, `validate`, `apply`, `timestamps`, and `add` are implemented and tested with synthetic files and a substitute Music library; `check` and `doctor` follow in later milestones of the [roadmap](docs/roadmap-to-stable.md). No release has been published. iLibrary does not touch the Music app or its library yet. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Contents
 
@@ -35,6 +35,7 @@ ilibrary apply catalog.json ~/Music/Staging
 
 Implemented:
 
+- **Ordered addition to Music.** `add` moves each album into the Music media folder, adds it there in place, and confirms one track per file before the next album, in release or artist order. It stops when the library already holds a matching track, never changes a track in Music, and resumes an interrupted run.
 - **Lossless import.** `import` converts FLAC, WAV, and AIFF downloads to Apple Lossless through AudioToolbox, verified by decoded PCM equality, and copies iTunes Store files without re-encoding while removing purchase metadata. Standard FLAC tags and the front cover are carried; with `--delete-originals`, originals are moved to the Trash only after every output has been verified.
 - **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files. Every planned change is listed first; `--dry-run` stops there, and every written file is read back and compared with the plan.
 - **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Title.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
@@ -45,7 +46,6 @@ Implemented:
 
 Planned:
 
-- **Ordered, local-only import.** Albums moved into the Music media folder and added one at a time in release or artist order, stopping when the library already contains a matching track.
 - **Checks.** Comparison of files with the library, cloud status, duplicates, and timestamps, and a `doctor` command for the environment.
 
 ## Requirements
@@ -90,7 +90,7 @@ ilibrary apply catalog.json ~/Music/Staging --rename --timestamps --dry-run
 ilibrary apply catalog.json ~/Music/Staging --rename --timestamps
 ```
 
-Adding the albums to Music afterwards (`ilibrary add`) is planned.
+Afterwards, `ilibrary add ~/Music/Staging --order release` adds the albums to Music one at a time.
 
 ## Usage
 
@@ -110,7 +110,7 @@ ilibrary doctor
 ilibrary help [COMMAND] | --help | --version
 ```
 
-`add`, `check`, and `doctor` are planned. Exit status is 0 on success, 1 on a runtime failure, and 2 on a usage error.
+`check` and `doctor` are planned. Exit status is 0 on success, 1 on a runtime failure, and 2 on a usage error.
 
 ## Catalog Format
 
@@ -161,7 +161,7 @@ Albums imported into a library with iCloud Music Library may be identified with 
 
 ## Limitations
 
-- `add`, `check`, and `doctor` are not implemented. Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
+- `check` and `doctor` are not implemented. `add` has been verified with a substitute library that behaves as Music was measured to behave, not yet with Music itself. Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
 - Conversion and setting creation dates require macOS. On Linux, the catalog commands and copies by `import` run, but `timestamps` offers only `--dry-run` and `--script`.
 - A catalog numbers discs and tracks by position; `export` reports gaps and repetitions in the files' numbers.
 - Conversion supports mono and stereo only, and refuses floating-point PCM. FLAC fields outside the standard set are not carried.
