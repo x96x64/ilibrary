@@ -73,7 +73,9 @@ Adds the albums in the staging folders to Music, one album at a time. Music must
 
 Nothing is moved when any file is refused, a destination already exists, or a folder on the way is a file or a symbolic link. A staging folder may not overlap the media folder. Track properties are never set in Music, because Music then moves and renames files. Files are expected to carry Music's names already, as `apply --rename` gives them; other names are reported, because Music may rename such files later.
 
-Progress is recorded in `.ilibrary-add.json` in the first staging folder, with the persistent ID of every added track. When a run stops after moving an album but before Music confirmed it, the next run completes that album first: it moves any file left behind, recognizes tracks already added, and otherwise adds the files.
+Folder names `.` and `..` are refused. Cross-volume moves check available space and verify the copied bytes, codec, decoded duration, and PCM before removing the selected source. Failed verification retains the source.
+
+Progress is recorded in `.ilibrary-add.json` in the first staging folder, with the persistent ID of every added track. When a run stops after moving an album but before Music confirmed it, the next run completes that album first: it moves any file left behind, recognizes tracks already added, and otherwise adds the files. Resumption repeats duplicate checks, validates journal paths, and requires every destination and persistent ID to be distinct before continuing.
 
 - `--order ORDER` selects the order.
 - `--dry-run` lists the order, every move, and any track that would stop the run, and changes nothing. It reads the library.

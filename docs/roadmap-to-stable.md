@@ -18,7 +18,7 @@ Milestone M4 is complete. [Pull request #2](https://github.com/x96x64/ilibrary/p
 
 Open items:
 
-1. The live S3 measurements are performed when needed, at the latest before M5, in a separate local macOS user without an Apple Account, which the maintainer creates.
+1. The live S3 measurements are complete; the implemented M5 and M6 commands still require validation in a separate test user. The earlier probe does not satisfy that implementation gate.
 2. S5 rests on one purchased file. Further purchased files under `reference-private/` would strengthen it.
 3. The private FLAC file contains nine fields outside the standard set; `import` drops them, and their contents were not examined.
 4. The maintainer reviews the refusal of `enca` sample entries, which extends Decision 12 to ISO Common Encryption.
@@ -28,7 +28,9 @@ Open items:
 
 The live S3 measurements were made by the maintainer on October 17, 2026, in a separate macOS user and recorded in [Music Behavior](reports/music-behavior.md).
 
-Milestone M5 is implemented on the branch `m5-add`: the command `add` and the Music automation in `LibraryMac`; see [Ordered Addition](reports/ordered-addition.md). All 132 tests and the formatting check passed on the maintainer's Mac, with a substitute library for Music (measured). `add` has not yet been run against Music; its gate, a test library, is met by a live validation in a new separate macOS user, which is prepared together with M6. The maintainer approved proceeding through M7 without further approvals on October 17, 2026.
+Milestone M5 is implemented on the branch `m5-add`: the command `add` and the Music automation in `LibraryMac`; see [Ordered Addition](reports/ordered-addition.md). All 132 tests and the formatting check passed on the maintainer's Mac, with a substitute library for Music (measured). `add` has not yet been run against Music; its gate, a test library, remains pending until the live validation prepared with M6 runs in a separate macOS user. The maintainer approved proceeding through M7 without further approvals on October 17, 2026.
+
+The five findings on pull request #4 have been corrected; all 140 synthetic tests and the formatting check passed locally (measured); see [Ordered Addition Corrections](reports/ordered-addition-corrections.md). M6 work already present in the workspace is preserved and will be continued. The maintainer requested uninterrupted progress through M7, while retaining the restriction on personal-library operations.
 
 ## Decisions in Force
 
