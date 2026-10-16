@@ -23,7 +23,7 @@ Conversion and the Trash are injected into the command layer, which remains Foun
 
 ### Synthetic Tests
 
-Measured on the maintainer's Mac (macOS 27.0.1, Swift 6.4 from the Command Line Tools) on October 17, 2026: all 121 tests passed, namely 39 in `ilibraryTests`, 5 in `ConversionMacTests`, 24 in `MP4CoreTests`, 4 in `LibraryMacTests`, 8 in `FLACCoreTests`, and 41 in `CatalogCoreTests`. `swift format lint --strict` reported no problem. FLAC fixtures were encoded with Core Audio, which encodes FLAC on this system (measured), so the public suite needs no external encoder.
+Measured on the maintainer's Mac (macOS 27.0.1, Swift 6.4 from the Command Line Tools) on October 17, 2026: all 123 tests passed, namely 41 in `ilibraryTests`, 5 in `ConversionMacTests`, 24 in `MP4CoreTests`, 4 in `LibraryMacTests`, 8 in `FLACCoreTests`, and 41 in `CatalogCoreTests`. `swift format lint --strict` reported no problem. FLAC fixtures were encoded with Core Audio, which encodes FLAC on this system (measured), so the public suite needs no external encoder.
 
 - **Success.** WAV, AIFF, and FLAC sources at 16 and 24 bits, 44.1 to 192 kHz, mono and stereo converted with equal decoded PCM. A tagged FLAC file kept its allowlisted tags and cover, a purchased-style M4A file lost its purchase metadata with its stream unchanged, and the sources were byte for byte unchanged. `--from mora` imported FLAC only.
 - **Refusals.** Floating-point PCM, six channels, a truncated WAV, AIFF, or FLAC file, an encrypted sample entry, an `.m4p` file, a symbolic link, colliding outputs, an existing output, an output folder inside a source, and insufficient space each changed nothing.
@@ -43,6 +43,16 @@ Measured on the maintainer's Mac (macOS 27.0.1, Swift 6.4 from the Command Line 
 - No temporary file remained, the originals' checksums were unchanged, and the working copies were removed.
 
 The first run of the script reported one failure, which was a defect in the script's own text comparison, not in the import; the corrected script passed.
+
+## Review Corrections
+
+The automated Codex review of commit `ae5c567` on pull request #2 reported five findings, all classified P2 and all corrected before merging:
+
+- **Temporary rewrites in the space estimate.** The estimate omitted carried covers and the further copy that writing tags creates. This had already been corrected in `8478b8a`, as described above.
+- **Unsafe destination folders.** An existing file or symbolic link on the way to an output could make the import fail part-way or write outside the output folder. Every existing folder between the output folder and a destination must now be a directory.
+- **Writer disposed twice.** When verification failed after a conversion, the writer was disposed a second time. It is now disposed exactly once (inferred from the code; no test induces this failure).
+- **Overlapping sources.** Sources within one another imported a file twice, and the second move to the Trash would fail. Such sources are now refused.
+- **Numbers outside the MP4 range.** Track and disc numbers that MP4 cannot store failed only when tags were written. They are now not carried and are reported while planning.
 
 ## Not Verified
 
