@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+artifacts/
+.DS_Store
+*.xcuserstate
+.env
+.env.*
+/reference-private/
+__pycache__/
