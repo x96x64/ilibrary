@@ -93,7 +93,7 @@ Converting downloads before step 1 (`ilibrary import`) and adding the albums to 
 iLibrary is a command-based CLI with verb subcommands. Every mutating command offers `--dry-run`, states what it will change before changing it, and verifies its result afterwards. The [Command-Line Interface](docs/command-line-interface.md) reference describes each command.
 
 ```
-ilibrary export PATH -o CATALOG.json [--artwork DIR]
+ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--dry-run]
 ilibrary prompt CATALOG.json
 ilibrary schema
 ilibrary validate CATALOG.json [PATH...]
@@ -130,7 +130,7 @@ A catalog is a UTF-8 JSON document identified by `"format": "ilibrary-catalog-1"
 ```
 
 - **Validation** reports unknown fields, wrong types, missing titles, invalid dates, and duplicate albums with their JSON paths, and rejects documents of other formats. The schema is published as [docs/schema/ilibrary-catalog-1.schema.json](docs/schema/ilibrary-catalog-1.schema.json).
-- **Matching** selects the album by name or alias, then the track by disc and track number, by numbering that continues across discs, and by title. A title that disagrees at a file's numbers is treated as a correction only when no other track carries it and most of the album's titles agree; every match and refusal is reported.
+- **Matching** selects the album by name or alias, then the track by disc and track number, by numbering that continues across discs, and by title. A title that disagrees at a file's numbers is treated as a correction only when no other track carries it and more of the album's titles agree than differ; every match and refusal is reported.
 - **Naming** follows the Music app: `NN Title.m4a` on single-disc albums, `D-NN Title.m4a` on multi-disc albums, and `_` in place of `:` and `/`.
 - **Orders** are `release`, `artist` (albums by name), `artist-desc` (artists and albums descending), and `artist-release` (albums by release date).
 - **Title rules** remove listed qualifiers such as `(2012 Remaster)`, write nested parentheticals with square brackets, and apply the MLA, APA, or start-case style. Words whose capitalization depends on their grammatical role are left unchanged and reported.

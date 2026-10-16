@@ -5,7 +5,7 @@
 `ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in the current development version; `import`, `add`, `check`, and `doctor` are planned and end with exit status 2 and a message that they are not implemented.
 
 ```
-ilibrary export PATH... -o CATALOG.json [--artwork DIR]
+ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--dry-run]
 ilibrary prompt CATALOG.json
 ilibrary schema
 ilibrary validate CATALOG.json [PATH...]
@@ -41,6 +41,7 @@ ilibrary export ~/Music/Staging -o catalog.json --artwork covers
 Writes a draft catalog from the tags of the `.m4a` files. Files are grouped into albums by album and album artist, and into discs and tracks by their disc and track numbers. A value that every track of an album shares is written at album level; other values are written per track. Release dates are written as `YYYY-MM-DD` when a file carries a complete date, and omitted when it carries only a year.
 
 - `-o`, `--output FILE` names the catalog to write. It is required, and an existing file is never overwritten.
+- `--dry-run` lists the catalog and covers that would be written and writes nothing. Without it, the same list is printed before writing, and every written file is read back.
 - `--artwork DIR` writes each album's cover to `DIR` in its embedded JPEG or PNG format, without re-encoding (decision 14), and references it from the catalog by a path relative to the catalog. Without this option, the catalog names no artwork, and `apply` leaves the files' covers unchanged.
 
 Files without an album tag or a track number are not exported. Gaps or repetitions in disc and track numbers are reported, because a catalog numbers its discs and tracks by position.
@@ -86,7 +87,7 @@ The fields written are the title, artist, album artist, album, genre, composer, 
 - `--rename` moves each file to `PATH/Album Artist/Album/NN Title.m4a`, or `D-NN Title.m4a` on multi-disc albums, with `_` in place of `:` and `/`. Every `PATH` must be a directory. Nothing is changed when a destination exists or two files would share one. Folders left empty are reported and not removed.
 - `--timestamps` sets dates as `timestamps` does, after every write and move. It requires macOS.
 
-Each rewrite needs free space for one copy of the file; the plain available capacity of the volume is checked before anything is written (decision 8).
+Each rewrite needs free space for one copy of the file. Before anything is written, the plain available capacity is checked for the folder of every changed file against the largest changed file in it, so that files on several volumes are each checked (decision 8).
 
 ### timestamps
 

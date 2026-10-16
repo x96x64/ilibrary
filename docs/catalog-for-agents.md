@@ -20,7 +20,7 @@ An agent that can run commands should follow the same steps and observe the foll
 - Edit only the catalog. Never edit, move, or delete music files directly, and never run `apply` without `--dry-run` unless the person has reviewed the dry run and asked for the change.
 - Read the authoring rules printed by `ilibrary prompt`. Leave unknown values empty rather than guessing, record evidence for copyright lines and release dates in `notes` and `sources`, and keep the order of discs and tracks.
 - Run `ilibrary validate` after each edit and resolve every error. Warnings, such as `(P)` instead of `℗`, should also be resolved.
-- Run `ilibrary validate catalog.json PATH` to confirm that every file matches. A file whose title differs from the catalog at its disc and track numbers is matched there only when no other track carries the file's title and the titles of most of the album's files agree; otherwise it is reported as unmatched.
+- Run `ilibrary validate catalog.json PATH` to confirm that every file matches. A file whose title differs from the catalog at its disc and track numbers is matched there only when no other track carries the file's title and more of the album's files have agreeing titles than differing ones; files without a title tag do not count. Otherwise it is reported as unmatched.
 - Present the output of `ilibrary apply --dry-run` to the person and explain each change before it is applied.
 
 ## For AI Chats
