@@ -1,10 +1,12 @@
 # Roadmap to the Stable Release
 
-## Current Status as of October 16, 2026
+## Current Status as of October 17, 2026
 
-Milestones M0 to M2 are complete. M2 implemented the Foundation-only targets `MP4Core`, `FLACCore`, and `CatalogCore` with 72 synthetic tests, the catalog JSON Schema, a private reference validation, continuous integration for macOS and Linux, and an expanded README; see [Core Targets](reports/core-targets.md). All tests, the release build, and the formatting check passed on the maintainer's Mac.
+Milestones M0 to M2 are complete and published in [x96x64/ilibrary](https://github.com/x96x64/ilibrary); the M2 CI gate was satisfied by [CI run 38886543086](https://github.com/x96x64/ilibrary/actions/runs/38886543086) and the later run 38887532717 (measured). No release has been published.
 
-The public repository [x96x64/ilibrary](https://github.com/x96x64/ilibrary) was created on October 16, 2026. The `m2-core` branch was merged into `main` at commit `3412da1`, and `main` was pushed. [CI run 38886543086](https://github.com/x96x64/ilibrary/actions/runs/38886543086), triggered by that push, completed successfully: the macOS job passed the release build, tests, and formatting check, and the Linux job passed the Core tests (measured). The M2 CI gate is satisfied. The Core Targets report preserves the findings recorded before publication; this status records the subsequent publication and CI results. No release has been published.
+Milestone M3 is implemented on the branch `m3-catalog-commands` and has not been pushed. It adds the commands `export`, `prompt`, `schema`, `validate`, `apply` (with `--dry-run`, `--rename`, and `--timestamps`), and `timestamps` (with `--dry-run` and `--script`), and the macOS-only target `LibraryMac` for file dates; see [Catalog Commands](reports/catalog-commands.md), the [Command-Line Interface](command-line-interface.md) reference, and [Completing Catalogs with AI Agents](catalog-for-agents.md). On the maintainer's Mac, all 98 tests, the formatting check, and the 21 checks of `scripts/validation/catalog-commands.sh` passed; export and reapplication of synthetic library copies changed nothing (measured). The Linux CI job, which now also runs the command tests, has not run for this branch.
+
+The next step is the maintainer's approval to push `m3-catalog-commands` and open a pull request to `main` (Decision 13), after a documentation preview, an English summary, and its Japanese translation. The pull request is merged once both CI jobs pass.
 
 Open items:
 
@@ -12,8 +14,9 @@ Open items:
 2. S5 rests on one purchased file. Further purchased files under `reference-private/` would strengthen it before M4.
 3. The private FLAC file contains nine comment fields with uncommon names whose contents are unknown; they are examined before tags are carried into converted files in M4.
 4. The maintainer reviews the refusal of `enca` sample entries, which extends Decision 12 to ISO Common Encryption.
+5. The maintainer reviews the design choices recorded in the Catalog Commands report, in particular the matching of corrected titles and the all-or-nothing behavior of `apply`.
 
-The next milestone is M3: the commands `export`, `schema`, `prompt`, `validate`, `apply`, and `timestamps`, on a branch merged through a pull request (Decision 13).
+After M3 is merged, the next milestone is M4: `import` for mora and the iTunes Store, with `ConversionMac`.
 
 ## Decisions in Force
 
