@@ -27,6 +27,49 @@ class TestWorkspace(unittest.TestCase):
 
 
 class DisplayTests(TestWorkspace):
+    def test_both_media_names_pass_the_real_preference_parser(self):
+        spec = probe.case_spec("small-existing")
+        for name in ("Media", "Media.localized"):
+            media = self.home / "Music" / spec["library"] / name
+            media.mkdir(parents=True)
+            with patch.object(base, "run", return_value=media.as_uri() + "/") as run, \
+                    patch.object(base, "music") as music:
+                self.assertEqual(probe.selected_media(self.home, spec), media)
+                run.assert_called_once_with(["/usr/bin/defaults", "read", "com.apple.Music", "media-folder-url"])
+                music.assert_not_called()
+            if name == "Media.localized":
+                self.assertNotEqual(media, self.home / "Music" / spec["library"] / "Media")
+
+    def test_media_name_support_does_not_expand_the_planned_parent(self):
+        spec = probe.case_spec("small-existing")
+        parent = self.home / "Music" / spec["library"]
+        for media in (parent / "Media.localized.backup", parent / "nested/Media.localized",
+                      self.home / "Music/Other/Media.localized", self.home / "Other/Media.localized"):
+            media.mkdir(parents=True)
+            with patch.object(base, "run", return_value=media.as_uri()), self.assertRaises(base.Refusal):
+                probe.selected_media(self.home, spec)
+
+    def test_media_selection_refuses_missing_paths_and_symbolic_links(self):
+        spec = probe.case_spec("small-existing")
+        media = self.home / "Music" / spec["library"] / "Media.localized"
+        media.parent.mkdir(parents=True)
+        with patch.object(base, "run", return_value=media.as_uri()), self.assertRaises(base.Refusal):
+            probe.selected_media(self.home, spec)
+        other = self.home / "other"
+        other.mkdir()
+        media.symlink_to(other, target_is_directory=True)
+        with patch.object(base, "run", return_value=media.as_uri()), self.assertRaises(base.Refusal):
+            probe.selected_media(self.home, spec)
+
+    def test_media_guard_pins_the_selected_path_even_between_accepted_names(self):
+        spec = probe.case_spec("small-existing")
+        parent = self.home / "Music" / spec["library"]
+        m = SimpleNamespace(home=self.home, media=parent / "Media.localized")
+        with patch.object(base, "require_test_user"), patch.object(base, "check_account"), \
+                patch.object(base, "media_directory", return_value=parent / "Media"), \
+                self.assertRaises(base.Refusal):
+            probe.Measurement.guard(m)
+
     def test_user_guard_precedes_every_live_operation(self):
         with patch.object(probe.sys, "platform", "darwin"), \
                 patch.object(base.pwd, "getpwuid", return_value=SimpleNamespace(pw_name="ordinary-user")), \
@@ -121,10 +164,10 @@ class SimulatedRunTests(TestWorkspace):
 
     It does not measure actual Music, GUI state, or physical backup behavior.
     """
-    def setup_case(self, name="artist"):
+    def setup_case(self, name="artist", media_name="Media"):
         self.name = name
         self.spec = probe.case_spec(name)
-        self.media = self.home / "Music" / self.spec["library"] / "Media"
+        self.media = self.home / "Music" / self.spec["library"] / media_name
         self.media.mkdir(parents=True)
         self.rows, self.mutations, self.running, self.next_id = [], [], True, 1
         self.source = self.bundle / name / "files"
@@ -239,6 +282,19 @@ class SimulatedRunTests(TestWorkspace):
         self.assertEqual(sum(m[0] == "delete" for m in self.mutations), 8)
         self.assertEqual(sum(m[0] == "add" for m in self.mutations), 2)
 
+    def test_localized_media_completes_fresh_cases_using_the_real_preference_parser(self):
+        read_media = base.media_directory
+        for name in probe.CASE_NAMES[1:]:
+            with self.subTest(name=name):
+                self.setup_case(name, "Media.localized")
+                def override(stack):
+                    stack.enter_context(patch.object(base, "media_directory", read_media))
+                    stack.enter_context(patch.object(base, "run", side_effect=lambda args:
+                        self.media.as_uri() + "/" if args[0].endswith("defaults") else "test OS"))
+                self.assertEqual(self.run_case(["TEST", "1", "1", "1"], override=override), 0)
+                self.assertEqual(self.result["state"], "PASS")
+                self.assertIn("name: Media.localized", self.output)
+
     def test_all_fresh_order_modes_use_their_planned_journals(self):
         for name in ("scale-release", "artist-desc", "artist-release"):
             with self.subTest(name=name):
@@ -339,8 +395,8 @@ class SimulatedRunTests(TestWorkspace):
         self.assertEqual(self.run_case(["TEST"]), 1)
         self.assertEqual(self.mutations, [])
 
-    def setup_legacy(self):
-        self.setup_case("small-existing")
+    def setup_legacy(self, media_name="Media"):
+        self.setup_case("small-existing", media_name)
         old = self.home / "ilibrary-m10-v2"
         work = old / "reference-private/small"
         work.mkdir(parents=True)
@@ -395,6 +451,21 @@ class SimulatedRunTests(TestWorkspace):
     def test_legacy_small_completes_without_repeating_addition_removal_or_editing_existing_files(self):
         old, override = self.setup_legacy()
         before = {str(p.relative_to(old)): probe.digest(p) for p in old.rglob("*") if p.is_file()}
+        self.assertEqual(self.run_case(["TEST", "1", "1"], override=override), 0)
+        self.assertEqual(self.result["state"], "PASS")
+        self.assertEqual(self.mutations, [])
+        self.assertEqual(before, {str(p.relative_to(old)): probe.digest(p) for p in old.rglob("*") if p.is_file()})
+
+    def test_localized_legacy_reuse_preserves_records_and_uses_the_real_preference_parser(self):
+        old, legacy_override = self.setup_legacy("Media.localized")
+        before = {str(p.relative_to(old)): probe.digest(p) for p in old.rglob("*") if p.is_file()}
+        read_media = base.media_directory
+        def override(stack):
+            legacy_override(stack)
+            native = base.run
+            stack.enter_context(patch.object(base, "media_directory", read_media))
+            stack.enter_context(patch.object(base, "run", side_effect=lambda args:
+                self.media.as_uri() + "/" if args[0].endswith("defaults") else native(args)))
         self.assertEqual(self.run_case(["TEST", "1", "1"], override=override), 0)
         self.assertEqual(self.result["state"], "PASS")
         self.assertEqual(self.mutations, [])

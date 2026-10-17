@@ -2,6 +2,10 @@
 
 ## Scope and Stop Boundary
 
+**メディアフォルダ名の判定を修正した一式です。** 停止時の記録では、smallの保存先は`Media.localized`でした。旧検証が`Media`だけを認めていたことが停止の直接原因です。新しい一式は別名の`ilibrary-m10-display-v2`に展開します。旧`ilibrary-m10-display`と`ilibrary-m10-v2`、停止記録、ライブラリはそのまま残してください。
+
+対象ライブラリの直下にある`Media`と`Media.localized`の両方を認めます。末尾を合わせるためのフォルダ作成・名前変更・曲の移動は不要です。別ライブラリの場所やシンボリックリンクは従来どおり拒否します。既存smallの現在の登録と保存済み記録は、改めて厳密に照合します。
+
 M10の新しい条件は、**追加日時に差があっても、「最近追加した項目」が意図したアルバム順になること**です。画面上の順序をMusicの再起動前後に確認します。日時の差は報告に残しますが、差だけでは不合格にしません。
 
 今回の一式は、既存のsmallの不足分と、新しい合成ライブラリ4つを確認し、**最後に結果を一つにまとめて報告**するためのものです。成功を約束するものではありません。以前の結果とライブラリは残します。
@@ -22,8 +26,8 @@ smallの照合では、以前の実行記録・元ファイルの保存用コピ
 
 準備完了の報告で、次の2ファイルが共有場所に転送済みか確認してください。
 
-- `/Users/Shared/ilibrary-m10-display.zip`
-- `/Users/Shared/ilibrary-m10-display.zip.sha256`
+- `/Users/Shared/ilibrary-m10-display-v2.zip`
+- `/Users/Shared/ilibrary-m10-display-v2.zip.sha256`
 
 1. 作業中の文書を保存し、普段のユーザーからログアウトします。
 2. 前回使用した **`ilibrarytest`** などの検証用ユーザーでログインします。新しいユーザーは不要です。
@@ -32,11 +36,11 @@ smallの照合では、以前の実行記録・元ファイルの保存用コピ
 
 ```sh
 cd /Users/Shared &&
-shasum -a 256 -c ilibrary-m10-display.zip.sha256 &&
+shasum -a 256 -c ilibrary-m10-display-v2.zip.sha256 &&
 cd ~ &&
-test ! -e ilibrary-m10-display &&
-unzip -q /Users/Shared/ilibrary-m10-display.zip &&
-cd ~/ilibrary-m10-display &&
+test ! -e ilibrary-m10-display-v2 &&
+unzip -q /Users/Shared/ilibrary-m10-display-v2.zip &&
+cd ~/ilibrary-m10-display-v2 &&
 python3 display_probe.py verify .
 ```
 
@@ -45,7 +49,7 @@ ZIPの`OK`と、最後の`PASS: bundle verification; Music not accessed`を確�
 手順は一式の`PROCEDURE.md`にも入っています。確認するには次を実行できます。
 
 ```sh
-open -a TextEdit ~/ilibrary-m10-display/PROCEDURE.md
+open -a TextEdit ~/ilibrary-m10-display-v2/PROCEDURE.md
 ```
 
 ## Step 2: Select the Existing Small Library
@@ -53,7 +57,7 @@ open -a TextEdit ~/ilibrary-m10-display/PROCEDURE.md
 1. 検証用ユーザーでMusicを終了します。
 2. **Optionキーを押したままMusicを開き、「ライブラリを選択」を選びます。** このケースでは新規作成しません。
 3. ホームの「ミュージック」内にある、以前の **`M10-v2-small`** のライブラリを選びます。フォルダの中にあるMusicライブラリのファイルを選択します。
-4. Musicの「設定」→「ファイル」で、メディアの場所が **`~/Music/M10-v2-small/Media`** であることを確認します。違っていたら、設定を変更して合わせず停止してください。別のライブラリの可能性があります。
+4. Musicの「設定」→「ファイル」で、メディアの場所が **`~/Music/M10-v2-small/Media`または同じ場所の`Media.localized`** であることを確認します。今回のログの`Media.localized`を変更する必要はありません。これ以外の場所なら、設定を変更して合わせず停止してください。別のライブラリの可能性があります。
 5. 「曲」に以前の合成曲6曲があることを確認します。登録の削除や追加はしません。Musicは開いたままにします。
 
 Optionキーによる既存ライブラリの選択と新規作成は[Appleの案内](https://support.apple.com/guide/music/use-multiple-libraries-mus7663a920a/mac)、メディアフォルダの確認は[ファイル設定の案内](https://support.apple.com/guide/music/files-settings-mus0f5accea/mac)に基づきます。
@@ -63,7 +67,7 @@ Optionキーによる既存ライブラリの選択と新規作成は[Appleの�
 まず予定を確認します。これはMusicを調べたり変更したりしません。
 
 ```sh
-cd ~/ilibrary-m10-display &&
+cd ~/ilibrary-m10-display-v2 &&
 python3 display_probe.py run --case small-existing --dry-run
 ```
 
@@ -105,15 +109,15 @@ python3 display_probe.py run --case small-existing
 smallが`STOP`なしで終了した場合だけ進みます。
 
 1. Musicを終了します。
-2. Optionキーを押したままMusicを開き、今度は**「ライブラリを作成」**を選びます。
+2. Optionキーを押したままMusicを開き、今度は **「ライブラリを作成」**を選びます。
 3. ホームの「ミュージック」の中に **`M10-display-scale-release`** という名前で新規作成します。同名のライブラリがあれば上書きせず停止します。
-4. Musicの「設定」→「ファイル」で、メディアの場所を **`~/Music/M10-display-scale-release/Media`** にします。選択画面で必要ならこの新しい`Media`フォルダを作ります。
+4. Musicの「設定」→「ファイル」で、メディアの場所を **`~/Music/M10-display-scale-release/Media`** にします。同じライブラリ直下の`Media.localized`も使用できます。既にその場所なら変更しません。選択画面で対象がまだない場合だけ、新しい`Media`フォルダを作ります。
 5. **メディアフォルダの整理**と、**追加時にメディアフォルダへコピー**の設定をオンにします。この専用ライブラリだけの設定です。
 6. 未サインイン・同期なし、「曲」と「最近追加した項目」が空であることを確認し、Musicを開いたままにします。
 7. 次の予定表示を実行し、停止表示がなければ本測定を実行します。
 
 ```sh
-cd ~/ilibrary-m10-display &&
+cd ~/ilibrary-m10-display-v2 &&
 python3 display_probe.py run --case scale-release --dry-run
 ```
 
@@ -137,12 +141,14 @@ python3 display_probe.py run --case scale-release
 | `artist-desc` | `M10-display-artist-desc` | `~/Music/M10-display-artist-desc/Media` | 02 → 04 → 01 → 03 |
 | `artist-release` | `M10-display-artist-release` | `~/Music/M10-display-artist-release/Media` | 01 → 03 → 02 → 04 |
 
+表の各`Media`は、同じライブラリ直下の`Media.localized`でも構いません。
+
 各ライブラリで、整理・コピーの設定、未サインイン・同期なし、空の画面を確認します。どのケースも4アルバム・8曲です。2人の合成アーティストと異なる発売日を使うので、3種類の並び順を区別できます。
 
 まず`artist`のライブラリを開いて実行します。`&&`により、予定表示が失敗した場合は本測定へ進みません。
 
 ```sh
-cd ~/ilibrary-m10-display &&
+cd ~/ilibrary-m10-display-v2 &&
 python3 display_probe.py run --case artist --dry-run &&
 python3 display_probe.py run --case artist
 ```
@@ -168,10 +174,10 @@ python3 display_probe.py run --case artist-release
 成功・不一致・未確認・途中停止のどの場合も、最後に**このブロックを一度実行**します。保存した結果をまとめるだけで、Musicにはアクセスしません。
 
 ```sh
-cd ~/ilibrary-m10-display &&
+cd ~/ilibrary-m10-display-v2 &&
 mkdir -p reference-private &&
-python3 display_probe.py report > reference-private/ilibrary-m10-display-report.txt &&
-cat reference-private/ilibrary-m10-display-report.txt
+python3 display_probe.py report > reference-private/ilibrary-m10-display-v2-report.txt &&
+cat reference-private/ilibrary-m10-display-v2-report.txt
 ```
 
 **表示された全文を一度、この会話へ貼り付ければ報告は完了です。** 実行しなかったケースも`NOT RUN`と記録されます。ケースごとの結果ファイルを探す必要はありません。報告には、段階・件数・日時の差・期待順と観察順・再起動前後の結果・停止理由が含まれ、個人パスや登録IDは含みません。
@@ -179,14 +185,14 @@ cat reference-private/ilibrary-m10-display-report.txt
 ファイルの場所だけを伝えたい場合は、次を続けて実行します。
 
 ```sh
-cp -n reference-private/ilibrary-m10-display-report.txt /Users/Shared/ilibrary-m10-display-report.txt &&
-cmp -s reference-private/ilibrary-m10-display-report.txt /Users/Shared/ilibrary-m10-display-report.txt &&
+cp -n reference-private/ilibrary-m10-display-v2-report.txt /Users/Shared/ilibrary-m10-display-v2-report.txt &&
+cmp -s reference-private/ilibrary-m10-display-v2-report.txt /Users/Shared/ilibrary-m10-display-v2-report.txt &&
 echo '報告用コピー: OK'
 ```
 
 `OK`なら普段のユーザーに戻り、次の一文だけをこの会話へ送れます。
 
-> M10表示順検証の結果を評価してください：`/Users/Shared/ilibrary-m10-display-report.txt`
+> M10表示順検証の結果を評価してください：`/Users/Shared/ilibrary-m10-display-v2-report.txt`
 
 `OK`が出なければ上書きせず、先ほどの全文を貼り付けます。`diagnostics.jsonl`、登録のJSON、音声、ディスクイメージは送らず、検証用ユーザー内の`reference-private/`に保持してください。
 

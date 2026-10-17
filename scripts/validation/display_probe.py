@@ -56,6 +56,17 @@ def case_spec(name):
             "library": "M10-v2-small" if legacy else "M10-display-" + name}
 
 
+def selected_media(home, spec):
+    media = base.media_directory(home)
+    parent = safe_path(home / "Music" / spec["library"])
+    matches = media.parent == parent and media.name in ("Media", "Media.localized")
+    base.record_diagnostic("display-media-check", {
+        "observed": str(media), "expected_parent": str(parent),
+        "allowed_names": ["Media", "Media.localized"], "matched": matches})
+    require(matches, "保存されたメディアフォルダがこのケースの対象と一致しません。設定を変えず結果を報告してください。Musicは操作しません。")
+    return media
+
+
 def catalog(spec, edited=False):
     return {"format": "ilibrary-catalog-1", "albums": [
         {"album": a["album"], "albumArtist": a["artist"], "artist": a["artist"],
@@ -493,9 +504,8 @@ def execute(bundle, name, dry_run=False):
         base.check_account()
         require(input("検証用ユーザー・Apple Account未設定・同期なし・手順のライブラリ選択済みを確認し、TESTと入力: ").strip() == "TEST",
                 "開始を取り消しました。")
-        m.media = base.media_directory(home)
-        require(m.media == safe_path(home / "Music" / spec["library"] / "Media"),
-                "選択中のメディアフォルダがこのケース専用の場所ではありません。Musicは操作しません。")
+        m.media = selected_media(home, spec)
+        m.log("PASS: selected media folder matches the planned library; name: " + m.media.name)
         require(base.music_running(), "手順どおりのライブラリをMusicで開いてから実行してください。")
         require(shutil.disk_usage(m.media).free > 256 * 1024 * 1024 and shutil.disk_usage(bundle).free > 256 * 1024 * 1024,
                 "合成測定用の空き容量が不足しています。")
