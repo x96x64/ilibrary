@@ -51,14 +51,14 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 ## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/display-order-v3-results.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility です。display-v3（ソースf6511d5）のsmallは最後まで実行され、表示順が不一致でした。期待3,2,1に対し、本人の観察は再起動前後とも2,3,1です。準備段階のSTOPではなく、完了した測定のFAILです。M10は未達で、残り4ケースはNOT RUNです。
-元の合成バックアップの復元・照合、編集済みコピーとの一致、完了済み追加の再実行でID・日時・ファイル・記録が変わらないこと、最後のバックアップ確認は成功しました。旧smallの退避・登録削除は繰り返していません。日時は2種類で差は1秒、複数アルバムが同じ秒を共有しています。日時の重なりが表示不一致の原因かは未確認です。
-報告はreference-private/m10-display-v3-results-2026-10-17/report.txtに保存しています。SHA-256は6b859c028563f78efd741344ace1ebf23c67f70b0748ef11f029f68113795cfeです。今回の評価ではMusicを操作していません。
-次の候補は、アルバム間の追加日時が重ならないように待つ方法の独立した合成比較です。実際の日時の境界、待ち時間、時間切れ時の停止、期待順と観察順、再起動後を記録する設計を検討してください。待てば直るとは断定せず、製品コードや新しい検証の実装は今回の評価では行っていません。日時の重なりを対応範囲から除外するなら、条件変更の明示的な判断が必要です。
-旧small、全ライブラリ、全一式、バックアップ、完了記録、停止記録を保持します。現行手順の残り4ケースもいったん保留です。既存登録の削除や再追加、記録削除による再実行、期待順の書き換えをしません。同じ手順を本人に再実行させず、次の検証が必要なら一式を準備・確認してから、別ユーザー操作直前で止め、実行から一度の結果報告までの日本語手順を示してください。
-実ライブラリと私的音源は操作しません。自動GUI空判定と別の物理媒体のバックアップは未検証です。M10完了前にM11以降や製品rebuildへ進めません。新たなpush・公開には承認が必要です。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと各セクションの要約・邦訳を示してください。
-次の作業の推奨は、Claude Code: Claude Opus 5.5／xhigh、Codex: GPT-6-Astra／xhighです。
+~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/addition-timing-preparation.md を読み、git status と git log を確認してください。
+現在は codex/m10-rebuild-feasibility です。display-v3の旧smallは期待3,2,1に対し再起動前後とも2,3,1で不合格でした。保全と再実行は成功し、残り4ケースは未実行です。旧結果は保持しています。
+本人の指示で、新しい空のM10-timing-smallに合成3アルバム・6曲を追加する比較を準備しました。ソース1493bda、ZIPはilibrary-m10-timing.zip、SHA-256は2eaac34237c317ae508572bf1be6af8151e0417b14bb4bcb8af94c4b29ec0380です。共有場所へZIPと照合ファイルを転送済みです。docs/rebuild-timing-validation.mdと同梱PROCEDURE.mdが現在の手順です。
+アルバム間で少なくとも2秒待ち、Musicから読んだ次のアルバムの全曲の日時が前までの全曲より後か照合します。同じ日時・逆転・外部変更では停止し、追加済みの曲も残します。登録削除は一切行わず、旧ライブラリも読みません。画面順3,2,1を再起動前後に本人が確認します。2秒待てば成功するとは未確認です。
+93件の代替試験、releaseビルド、合成6曲と2カタログ、ZIPの照合、実ファイルだけのタグ・日時・バックアップ復元・保全確認が成功しました。Music呼び出しは行っていません。通常の実行ファイルはdisplay-v3と同一です。製品機能は変更していません。
+エージェントは別ユーザー操作直前で止まっています。次に評価するのは/Users/Shared/ilibrary-m10-timing-report.txtです。履歴の不合格と今回の結果を分け、実際の日時範囲・差・待ち時間・GUI観察・再起動・再実行・保全・停止箇所を評価してください。この小さな比較が成功してもM10全体は未完了です。300曲、ほかの順序、製品の待機方式、自動GUI空判定、別媒体バックアップは未検証です。
+旧small、すべてのライブラリ、一式、バックアップ、完了・停止記録を保持します。同じ実行の繰り返し、登録削除、手動再追加、記録削除、期待順の変更をしません。日時の重なりを対応範囲から除くには明示的な判断が必要です。実ライブラリ・私的音源は操作しません。M10完了前のM11以降・製品rebuild、未承認のpush・公開には進みません。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと要約・邦訳を示してください。
+次の結果評価の推奨は、Claude Code: Claude Opus 5.5／xhigh、Codex: GPT-6-Astra／xhighです。
 ```
 
 ## Recommended Models and Effort

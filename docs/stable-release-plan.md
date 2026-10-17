@@ -2,7 +2,7 @@
 
 ## Status and Evidence
 
-Approved by the maintainer on October 17, 2026, and revised on the same date after the M10 timestamp measurements. The maintainer accepts differences in addition timestamps when Recently Added presents the intended album order. The subsequent Decision 34 authorizes guarded probe preparation and a separate-user handoff, with a stop before the maintainer's Music operations; it does not authorize product implementation, personal-library operations, or publication. Version 0.1.0 is published. This plan supersedes the prospective version assignments in the [historical study](planning-study.md#outlook-to-version-100), not its completed measurements.
+Approved by the maintainer on October 17, 2026, and revised on the same date after the M10 timestamp measurements. The maintainer accepts differences in addition timestamps when Recently Added presents the intended album order. Decisions 34 and 35 authorize guarded probe preparation and separate-user handoffs, including the isolated timing comparison, with a stop before the maintainer's Music operations; it does not authorize product implementation, personal-library operations, or publication. Version 0.1.0 is published. This plan supersedes the prospective version assignments in the [historical study](planning-study.md#outlook-to-version-100), not its completed measurements.
 
 | Classification | Evidence | Consequence |
 | --- | --- | --- |
@@ -10,6 +10,7 @@ Approved by the maintainer on October 17, 2026, and revised on the same date aft
 | Measured, supplied numeric evidence | Six saved addition timestamps contain two distinct values separated by one second | The historical equality gate failed; that difference alone does not fail the revised gate |
 | Measured, supplied display-v3 report | The small case completed; expected order `3,2,1` differed from observed `2,3,1` before and after relaunch | M10 has not passed; pause the remaining cases while investigating the display failure |
 | Measured, supplied display-v3 report | Backup restoration, reconstructed-file comparison, completed-addition repeat safety, and final synthetic backup verification passed | Preserve these qualified small-case results without repeating evacuation or removal |
+| Measured locally | The isolated timing probe passed 93 substituted tests, file-only checks, bundle verification, and transfer | Follow the new timing handoff only; live timing and GUI behavior remain unknown |
 | Unknown | Cause of the display mismatch, effect of separating album addition times, scale behavior, and the three artist-order cases | A candidate method requires a new isolated measurement before broader qualification |
 | Unknown | Automatic GUI emptiness detection, independent physical backup qualification, and behavior on other supported system versions | Retain explicit qualification work before production use |
 
@@ -45,7 +46,7 @@ If the intended display cannot be established or does not persist, stop the affe
 
 The [display-v3 assessment](reports/display-order-v3-results.md) records a completed negative small-case result. The media and bundle corrections passed their prerequisites, but both GUI observations differed from the planned order. Backup restoration, repeat safety, and final preservation passed. Retain all evidence and pause the remaining [display-v3 procedure](rebuild-display-validation.md); do not repeat the completed small case or its earlier removal sequence.
 
-1. Investigate the display failure without changing the expected sequence or weakening the gate. Timestamp ties are a plausible explanation, not an established cause. The next recommended experiment is a new isolated synthetic comparison that separates album addition timestamps and records the actual boundaries, waiting time, timeout behavior, and GUI order before and after relaunch. It is not implemented or qualified by this assessment.
+1. Investigate the display failure without changing the expected sequence or weakening the gate. Timestamp ties are a plausible explanation, not an established cause. The next recommended experiment is a new isolated synthetic comparison that separates album addition timestamps and records the actual boundaries, waiting time, timeout behavior, and GUI order before and after relaunch. The comparison is prepared in [the timing probe](reports/addition-timing-preparation.md); its live result and any product policy remain unqualified.
 2. Preserve the existing negative observation and successful preservation checks. A new method must demonstrate the required small-case order and repeat safety; a successful new case would not rewrite the old result. Excluding timestamp ties from supported behavior would require an explicit specification decision rather than silently dropping coverage.
 3. After a candidate method succeeds, qualify the full sequence with 20 albums and 300 synthetic tracks. Compare every album card with the saved expectation, verify files and registrations, record timestamp differences, and check preservation and repeat safety. The scale case remains unrun.
 4. Cover all four order modes, deterministic ties, and empty-library detection. Keep API emptiness and human GUI emptiness distinct. Reliable automatic GUI confirmation remains a prerequisite for the fully automated clearing stage in M12.
@@ -92,7 +93,7 @@ Network metadata candidates, multidisc flattening, cloud-synchronized rebuilding
 
 Use milestone branches, atomic Conventional Commits, supported attribution trailers, and pull requests. Update Current Status at each checkpoint. Preserve historical reports. Before each approved push, present actual-file previews, section summaries, and Japanese translations. Future tags, releases, registry publication, and personal-library changes require explicit authorization; the 0.1.0 approvals do not extend to new releases.
 
-M10 has not passed and product `rebuild` remains unimplemented. Display-v3 has supplied a completed negative small-case observation; its remaining cases are paused. The next task is designing the bounded comparison described above, not repeating the same measurement. Stop before separate-user operations, retain all earlier state, and provide a reproducible Japanese handoff when preparation is complete. Personal-library operations and publication require separate authorization.
+M10 has not passed and product `rebuild` remains unimplemented. Display-v3 has supplied a completed negative small-case observation; its remaining cases are paused. The bounded comparison is prepared and transferred; the next task is assessment of its single result under the [Japanese timing procedure](rebuild-timing-validation.md). Stop before separate-user operations and retain all earlier state. Personal-library operations and publication require separate authorization.
 
 ## Recommended Models and Effort
 
