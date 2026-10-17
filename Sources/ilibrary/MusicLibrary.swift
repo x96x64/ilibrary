@@ -16,6 +16,10 @@ struct LibraryTrack: Equatable, Sendable {
     var year: Int = 0
     var trackNumber: Int = 0
     var discNumber: Int = 0
+    var comment: String = ""
+    var trackCount: Int = 0
+    var discCount: Int = 0
+    var compilation: Bool = false
     /// The POSIX path of the track's file, when Music knows one.
     var location: String?
     var cloudStatus: String = "unknown"
@@ -28,6 +32,8 @@ protocol MusicLibrary: Sendable {
     func mediaFolder() -> URL?
     /// The file tracks whose album has the given name. Reads only.
     func tracks(album: String) throws -> [LibraryTrack]
+    /// All file tracks, for a location-based comparison even when cached album tags differ.
+    func allTracks() throws -> [LibraryTrack]
     /// The track with a persistent ID, or nil. Reads only.
     func track(persistentID: String) throws -> LibraryTrack?
     /// Adds files in one call and returns the tracks that Music reports for them.
@@ -41,12 +47,15 @@ protocol MusicLibrary: Sendable {
             LibraryTrack(
                 persistentID: track.persistentID, name: track.name, album: track.album, artist: track.artist,
                 albumArtist: track.albumArtist, composer: track.composer, genre: track.genre, year: track.year,
-                trackNumber: track.trackNumber, discNumber: track.discNumber, location: track.location,
+                trackNumber: track.trackNumber, discNumber: track.discNumber, comment: track.comment,
+                trackCount: track.trackCount, discCount: track.discCount, compilation: track.compilation,
+                location: track.location,
                 cloudStatus: track.cloudStatus)
         }
 
         func mediaFolder() -> URL? { MusicApp.mediaFolder() }
         func tracks(album: String) throws -> [LibraryTrack] { try MusicApp.tracks(album: album).map(Self.convert) }
+        func allTracks() throws -> [LibraryTrack] { try MusicApp.allTracks().map(Self.convert) }
         func track(persistentID: String) throws -> LibraryTrack? {
             try MusicApp.track(persistentID: persistentID).map(Self.convert)
         }

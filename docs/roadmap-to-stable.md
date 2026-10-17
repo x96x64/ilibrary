@@ -28,9 +28,13 @@ Open items:
 
 The live S3 measurements were made by the maintainer on October 17, 2026, in a separate macOS user and recorded in [Music Behavior](reports/music-behavior.md).
 
-Milestone M5 is implemented on the branch `m5-add`: the command `add` and the Music automation in `LibraryMac`; see [Ordered Addition](reports/ordered-addition.md). All 132 tests and the formatting check passed on the maintainer's Mac, with a substitute library for Music (measured). `add` has not yet been run against Music; its gate, a test library, remains pending until the live validation prepared with M6 runs in a separate macOS user. The maintainer approved proceeding through M7 without further approvals on October 17, 2026.
+Milestone M5 is integrated into `main` through [pull request #4](https://github.com/x96x64/ilibrary/pull/4), merged at `e180b52`. Its five review findings were corrected with regression tests; all review threads are resolved. All 140 tests and strict formatting passed locally, and both jobs of [CI run 38983044830](https://github.com/x96x64/ilibrary/actions/runs/38983044830) passed on `38cd45c` (measured). See [Ordered Addition](reports/ordered-addition.md) and [Ordered Addition Corrections](reports/ordered-addition-corrections.md). The implemented `add` command has not been run against Music; its live test-library gate remains pending.
 
-The five findings on pull request #4 have been corrected; all 140 synthetic tests and the formatting check passed locally (measured); see [Ordered Addition Corrections](reports/ordered-addition-corrections.md). M6 work already present in the workspace is preserved and will be continued. The maintainer requested uninterrupted progress through M7, while retaining the restriction on personal-library operations.
+Milestone M6 is implemented on `m6-check`: `check` diagnoses files and optionally compares them with Music, and `doctor` reports environment problems with recovery steps. The initial 153 synthetic tests, release build, and strict formatting passed locally (measured). A review correction treats other audio formats as unexamined during library-only scans rather than reporting healthy mixed-format libraries as invalid; its regression test brings the local suite to 154 passing tests. Deliberately introduced faults are detected with a substitute library; the actual Music adapter remains unverified. Both jobs of [CI run 38983817938](https://github.com/x96x64/ilibrary/actions/runs/38983817938) passed on the initial `82a46ba`; CI for the subsequent corrections remains pending. [Pull request #5](https://github.com/x96x64/ilibrary/pull/5) is open. See [Library Checks and Diagnostics](reports/library-checks.md).
+
+The [Test Library Validation](test-library-validation.md) procedure and `scripts/validation/library-commands.sh` combine the remaining M5/M6 live checks in a separate macOS user. Preparation-only validation passed without querying Music (measured). No personal library or private files were accessed. The maintainer requested uninterrupted progress through M7, so this manual check does not block M7 documentation work and is not represented as completed.
+
+The next development step is M7 documentation. The approved scope includes milestone commits, pushes, pull requests, and integration through M7 without renewed confirmation. Personal-library operations, M8 qualification, tags, and releases are outside this authorization.
 
 ## Decisions in Force
 
@@ -53,6 +57,8 @@ The five findings on pull request #4 have been corrected; all 140 synthetic test
 17. (October 17, 2026.) `import --delete-originals` moves originals to the Trash, never deleting them permanently, and only after every output of the import has been verified.
 18. (October 17, 2026.) `import` keeps the relative structure of each source: the files under a source directory keep their paths relative to it under the output folder, and a source file is placed directly in it.
 19. (October 17, 2026.) `import` carries FLAC tags by an allowlist of standard fields and the front cover, and drops every other field without examining or reporting its contents. For M4, copies of one mora FLAC file and one purchased iTunes Store file under `reference-private/work/` may be used for an additional validation.
+
+20. (October 17, 2026.) Continue autonomously through M7, including publication of milestone branches and integration after checks. Communicate in Japanese; necessary questions must use plain language, choices, and a recommendation. Preserve the separate-user restriction for live Music validation. This authorization does not extend to M8, releases, tags, or package publication.
 
 ## Recommended Models and Effort
 

@@ -22,6 +22,14 @@ struct LosslessSource: Equatable, Sendable {
     }
 }
 
+/// The Music app as `doctor` reports it.
+struct MusicAppStatus: Sendable {
+    var version: @Sendable () -> String?
+    var isRunning: @Sendable () -> Bool
+    /// One of `permitted`, `denied`, `not determined`, `Music not running`, and `unknown`.
+    var permission: @Sendable () -> String
+}
+
 /// Lossless conversion, available where AudioToolbox is (macOS).
 struct Converter: Sendable {
     /// Checks that a source can be converted losslessly (decision 7).
@@ -71,6 +79,8 @@ struct Environment: Sendable {
     var verifyAudioCopy: (@Sendable (URL, URL) throws -> Void)? = Environment.systemAudioCopyVerification
     /// The Music library; nil where Music cannot be automated.
     var music: (any MusicLibrary)? = Environment.systemMusic
+    /// The state of the Music app, read without launching it or prompting; nil where Music is unavailable.
+    var musicStatus: MusicAppStatus? = Environment.systemMusicStatus
 
     static var system: Environment {
         #if canImport(LibraryMac) && os(macOS)
@@ -113,6 +123,16 @@ struct Environment: Sendable {
             }
         #else
             return nil
+        #endif
+    }
+
+    static var systemMusicStatus: MusicAppStatus? {
+        #if canImport(LibraryMac) && os(macOS)
+            MusicAppStatus(
+                version: { MusicStatus.version }, isRunning: { MusicStatus.isRunning },
+                permission: { MusicStatus.permission().rawValue })
+        #else
+            nil
         #endif
     }
 

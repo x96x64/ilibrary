@@ -19,6 +19,7 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
     init(media: URL?) { self.media = media }
 
     func mediaFolder() -> URL? { media }
+    func allTracks() throws -> [LibraryTrack] { library }
     func tracks(album: String) throws -> [LibraryTrack] { library.filter { $0.album == album } }
     func track(persistentID: String) throws -> LibraryTrack? { library.first { $0.persistentID == persistentID } }
 
@@ -38,7 +39,11 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
                 persistentID: String(format: "%016X", counter), name: tags.tags.title ?? "",
                 album: tags.tags.album ?? "",
                 artist: LibraryFiles.text(tags.file, .artist) ?? "", albumArtist: tags.tags.albumArtist ?? "",
-                trackNumber: tags.tags.trackNumber ?? 0, discNumber: tags.tags.discNumber ?? 0, location: location)
+                trackNumber: tags.tags.trackNumber ?? 0, discNumber: tags.tags.discNumber ?? 0,
+                comment: LibraryFiles.text(tags.file, .comment) ?? "",
+                trackCount: LibraryFiles.pair(tags.file, .trackNumber)?.total ?? 0,
+                discCount: LibraryFiles.pair(tags.file, .discNumber)?.total ?? 0,
+                compilation: tags.file.metadataValues(.compilation).contains(.integer(1)), location: location)
             library.append(track)
             return track
         }
