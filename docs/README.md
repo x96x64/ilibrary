@@ -14,7 +14,7 @@
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
-- [Rebuilding Addition Timing Validation](rebuild-timing-validation.md): current Japanese handoff for the corrected version 2 timing comparison in a new library; no registration removal
+- [Rebuilding Addition Timing Validation](rebuild-timing-validation.md): completed Japanese version 2 timing procedure; its small case passed; retained for the record
 - [Stopped Timing Probe Diagnostics](rebuild-timing-diagnostics.md): completed file-only media inventory of the stopped first timing run; retained for the record
 - [Rebuilding Display-Order Validation](rebuild-display-validation.md): retained Japanese display-v3 procedure; further execution is paused after the small-case display failure
 - [Retained Rebuilding Bundle Diagnostics](rebuild-bundle-diagnostics.md): completed read-only inventory diagnostic; retained for the record
@@ -70,3 +70,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Separated Addition Timing Preparation](reports/addition-timing-preparation.md)
 - 2026-10-17 — [Separated Addition Timing Results](reports/addition-timing-results.md)
 - 2026-10-17 — [Timing Media Scaffolding Correction](reports/timing-media-scaffolding.md)
+- 2026-10-17 — [Separated Addition Timing Version 2 Results](reports/addition-timing-v2-results.md)
