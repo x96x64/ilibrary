@@ -3,6 +3,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -16,6 +17,8 @@ spec.loader.exec_module(probe)
 
 class ProbeTests(unittest.TestCase):
     def setUp(self):
+        probe._diagnostic_work = None
+        self.addCleanup(setattr, probe, "_diagnostic_work", None)
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name).resolve()
         self.addCleanup(self.temp.cleanup)
@@ -156,6 +159,116 @@ class ProbeTests(unittest.TestCase):
                 self.clear()
             self.assertEqual(delete.call_count, 1)
             self.assertEqual(probe.digest(self.image), self.image_hash)
+
+    def test_command_preserves_trailing_field_and_record_separators(self):
+        response = "fields" + chr(31) * 2 + chr(30) + "\n"
+        with patch.object(probe.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout=response, stderr="")):
+            self.assertEqual(probe.run(["synthetic-reader"]), response[:-1])
+
+    def test_snapshot_retains_both_location_forms_and_empty_error_fields(self):
+        fields = ["1" * 16, "M10 Song 01", "M10 Album 01", probe.ARTIST,
+                  str(self.root / "planned.m4a"), "100", "", "-1700", ""]
+        probe._diagnostic_work = self.root
+        raw = chr(31).join(fields) + chr(30)
+        with patch.object(probe, "music", return_value=raw):
+            record = probe.snapshot()[0]
+        self.assertEqual(record["path"], fields[4])
+        self.assertEqual(record["legacy_path"], "")
+        self.assertEqual(record["legacy_error"], "-1700")
+        self.assertEqual(record["path_error"], "")
+        self.assertEqual(json.loads((self.root / "diagnostics.jsonl").read_text())["value"], raw)
+
+    def test_malformed_snapshot_is_saved_before_parser_refusal(self):
+        probe._diagnostic_work = self.root
+        with patch.object(probe, "music", return_value="malformed"):
+            with self.assertRaises(probe.Refusal):
+                probe.snapshot()
+        self.assertEqual(json.loads((self.root / "diagnostics.jsonl").read_text())["value"], "malformed")
+
+    def test_diagnostic_classification_does_not_weaken_the_path_guard(self):
+        relative, path = next(iter(self.paths.items()))
+        changed = dict(self.records[0], path=str(path.parent) + "/./" + path.name,
+                       legacy_path="", legacy_error="-1700")
+        result = probe.location_diagnostics([changed], {relative: path})
+        self.assertIn("get.representation_only=1", result)
+        self.assertIn("legacy.read_error=1", result)
+        with self.assertRaises(probe.Refusal):
+            probe.assert_inventory([changed], {relative: path})
+
+    def test_location_read_error_cannot_pass_inventory_even_with_a_path(self):
+        changed = [dict(self.records[0], path_error="-1700"), self.records[1]]
+        with self.assertRaises(probe.Refusal):
+            probe.assert_inventory(changed, self.paths)
+
+    def test_registration_repetition_ignores_only_auxiliary_diagnostics(self):
+        changed = [dict(r, legacy_error="-1700") for r in self.records]
+        self.assertEqual(probe.stable_registration(changed), probe.stable_registration(self.records))
+        changed[0]["added"] = "100001"
+        self.assertNotEqual(probe.stable_registration(changed), probe.stable_registration(self.records))
+
+    def test_initial_location_stop_saves_evidence_before_backup_or_removal(self):
+        bundle = self.root / "bundle"
+        media = self.root / "Music" / "Media"
+        media.mkdir(parents=True)
+        source = bundle / "small/files"
+        for relative in self.paths:
+            path = source / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"synthetic source")
+        manifest = {"probeVersion": 2, "commit": "a" * 40,
+                    "cases": {"small": {"tracks": 2, "albums": 1, "files": list(self.paths)}}}
+        command_result = SimpleNamespace(returncode=0, stdout="synthetic command complete", stderr="")
+        output = io.StringIO()
+        with patch.object(probe, "require_test_user"), patch.object(probe.sys, "platform", "darwin"), \
+                patch.object(probe.pwd, "getpwuid", return_value=SimpleNamespace(pw_dir=str(self.root))), \
+                patch.object(probe, "verify_bundle", return_value=manifest), \
+                patch.object(probe, "check_account"), patch("builtins.input", return_value="TEST"), \
+                patch.object(probe, "media_directory", return_value=media), \
+                patch.object(probe, "snapshot", side_effect=[[], self.records]), \
+                patch.object(probe, "run", return_value="test OS"), \
+                patch.object(probe.subprocess, "run", return_value=command_result), \
+                patch.object(probe, "make_backup") as backup, patch.object(probe, "music") as music, \
+                contextlib.redirect_stdout(output):
+            self.assertEqual(probe.execute(bundle, "small"), 1)
+        backup.assert_not_called()
+        music.assert_not_called()
+        work = bundle / "reference-private/small"
+        self.assertEqual(json.loads((work / "initial-registration.json").read_text()), self.records)
+        self.assertIn("stopped phase: initial-location-check", output.getvalue())
+        self.assertIn("get.different=2", output.getvalue())
+        self.assertNotIn(str(self.root), output.getvalue())
+        self.assertTrue((work / "diagnostics.jsonl").is_file())
+        self.assertIsNone(probe._diagnostic_work)
+
+    def test_combined_report_includes_a_stop_and_an_unrun_case_without_music(self):
+        work = self.root / "reference-private/small"
+        work.mkdir(parents=True)
+        (work / "ilibrary-m10-results.txt").write_text("STOP: incomplete\n")
+        output = io.StringIO()
+        with patch.object(probe, "verify_bundle", return_value={"probeVersion": 2}), patch.object(probe, "music") as music, \
+                contextlib.redirect_stdout(output):
+            probe.combined_report(self.root)
+        music.assert_not_called()
+        self.assertIn("STOP: incomplete", output.getvalue())
+        self.assertIn("NOT RUN", output.getvalue())
+
+    def test_keyboard_interruption_is_a_reported_stop_without_music(self):
+        bundle = self.root / "bundle"
+        bundle.mkdir()
+        manifest = {"probeVersion": 2, "commit": "a" * 40,
+                    "cases": {"small": {"tracks": 6, "albums": 3, "files": []}}}
+        output = io.StringIO()
+        with patch.object(probe, "require_test_user"), patch.object(probe.sys, "platform", "darwin"), \
+                patch.object(probe.pwd, "getpwuid", return_value=SimpleNamespace(pw_dir=str(self.root))), \
+                patch.object(probe, "verify_bundle", return_value=manifest), \
+                patch.object(probe, "check_account"), patch("builtins.input", side_effect=KeyboardInterrupt), \
+                patch.object(probe, "run", return_value="test OS"), patch.object(probe, "music") as music, \
+                contextlib.redirect_stdout(output):
+            self.assertEqual(probe.execute(bundle, "small"), 1)
+        music.assert_not_called()
+        saved = (bundle / "reference-private/small/ilibrary-m10-results.txt").read_text()
+        self.assertIn("stopped phase: preflight", saved)
+        self.assertIn("reason: KeyboardInterrupt", saved)
 
 
 if __name__ == "__main__":

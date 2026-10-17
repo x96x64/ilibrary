@@ -7,6 +7,7 @@ run by the agent during preparation. Results expose counts, not paths or IDs.
 """
 
 import argparse
+import collections
 import datetime
 import hashlib
 import json
@@ -21,11 +22,15 @@ import subprocess
 import sys
 import time
 import urllib.parse
+import unicodedata
 
 
 FORMAT = "ilibrary-m10-probe-1"
 ARTIST = "iLibrary M10 Synthetic Artist"
 CASES = {"small": (3, 2), "scale": (20, 15)}
+PROBE_VERSION = 2
+_diagnostic_work = None
+_last_inventory_summary = None
 
 
 class Refusal(Exception):
@@ -53,8 +58,18 @@ def digest(path):
 def run(command, *, input_text=None):
     # Never print captured stderr: paths and Music IDs belong only in local records.
     result = subprocess.run(command, input=input_text, text=True, capture_output=True, timeout=600)
-    require(result.returncode == 0, "外部コマンドが完了しませんでした。結果を報告してください。")
-    return result.stdout.strip()
+    record_diagnostic("command", {"argv": command, "returncode": result.returncode,
+                                  "stdout": result.stdout if result.returncode or command[0] != "/usr/bin/osascript" else "",
+                                  "stderr": result.stderr})
+    require(result.returncode == 0,
+            f"外部コマンドが完了しませんでした（終了コード {result.returncode}）。結果を報告してください。")
+    return result.stdout.rstrip("\r\n")
+
+
+def record_diagnostic(kind, value):
+    if _diagnostic_work is not None:
+        with (_diagnostic_work / "diagnostics.jsonl").open("a", encoding="utf-8") as output:
+            output.write(json.dumps({"kind": kind, "value": value}, ensure_ascii=False) + "\n")
 
 
 def write_json(path, value):
@@ -90,7 +105,7 @@ def prepare(output, binary, tagger, audio, commit, dry_run=False):
     shutil.copy2(binary, output / "bin/ilibrary")
     shutil.copy2(__file__, output / "rebuild_probe.py")
     shutil.copy2(Path(__file__).resolve().parents[2] / "docs/rebuild-feasibility-validation.md", output / "PROCEDURE.md")
-    manifest = {"format": FORMAT, "commit": commit, "files": {}, "cases": {}}
+    manifest = {"format": FORMAT, "probeVersion": PROBE_VERSION, "commit": commit, "files": {}, "cases": {}}
     for name, (albums, tracks) in CASES.items():
         case = output / name
         case.mkdir()
@@ -187,11 +202,21 @@ on run argv
             set ts to every track of library playlist 1
             repeat with t in ts
                 if class of t is not file track then error "Non-file track"
-                set p to ""
+                set legacyPath to ""
+                set legacyError to ""
                 try
-                    set p to POSIX path of (location of t)
+                    set legacyPath to POSIX path of (location of t)
+                on error errText number errNumber
+                    set legacyError to errNumber as text
                 end try
-                set output to output & (persistent ID of t) & fs & (name of t) & fs & (album of t) & fs & (artist of t) & fs & p & fs & ((my stamp(date added of t)) as text) & rs
+                set p to ""
+                set pathError to ""
+                try
+                    set p to POSIX path of (get location of t)
+                on error errText number errNumber
+                    set pathError to errNumber as text
+                end try
+                set output to output & (persistent ID of t) & fs & (name of t) & fs & (album of t) & fs & (artist of t) & fs & p & fs & ((my stamp(date added of t)) as text) & fs & legacyPath & fs & legacyError & fs & pathError & rs
             end repeat
         end tell
     end timeout
@@ -222,18 +247,60 @@ def music(script, *args):
 
 def snapshot():
     records = []
-    for row in music(SNAPSHOT).split(chr(30)):
+    # Keep the raw response before parsing or comparing: failed reads and path
+    # differences must remain diagnosable without repeating a destructive run.
+    raw = music(SNAPSHOT)
+    record_diagnostic("snapshot", raw)
+    for row in raw.split(chr(30)):
         if not row.strip():
             continue
         fields = row.split(chr(31))
-        require(len(fields) == 6 and re.fullmatch(r"[0-9A-Fa-f]{16}", fields[0]) is not None,
+        require(len(fields) == 9 and re.fullmatch(r"[0-9A-Fa-f]{16}", fields[0]) is not None,
                 "Music の登録情報を確認できません。")
-        records.append(dict(zip(("id", "title", "album", "artist", "path", "added"), fields)))
+        records.append(dict(zip(("id", "title", "album", "artist", "path", "added",
+                                 "legacy_path", "legacy_error", "path_error"), fields)))
     require(len({r["id"] for r in records}) == len(records), "登録の識別子が重複しています。")
     return records
 
 
+def location_diagnostics(records, expected_paths):
+    """Classify differences without accepting, normalizing, or following them."""
+    counts = collections.Counter()
+    expected = {str(p) for p in expected_paths.values()}
+    normalized = {unicodedata.normalize("NFC", os.path.normpath(p)) for p in expected}
+    for record in records:
+        for label, key, error in (("get", "path", "path_error"), ("legacy", "legacy_path", "legacy_error")):
+            path = record.get(key, "")
+            if record.get(error):
+                state = "read_error"
+            elif not path:
+                state = "empty"
+            elif path in expected:
+                state = "exact"
+            elif unicodedata.normalize("NFC", os.path.normpath(path)) in normalized:
+                state = "representation_only"
+            else:
+                state = "different"
+            counts[label + "." + state] += 1
+    return "; ".join(f"{label}.{state}={counts[label + '.' + state]}"
+                     for label in ("get", "legacy")
+                     for state in ("exact", "representation_only", "empty", "read_error", "different"))
+
+
+def stable_registration(records):
+    # Auxiliary diagnostic fields are not library state.
+    return sorted(({key: r[key] for key in ("id", "title", "album", "artist", "path", "added")}
+                   for r in records), key=lambda r: r["id"])
+
+
 def assert_inventory(records, expected_paths, expected_ids=None, old_paths=None):
+    global _last_inventory_summary
+    _last_inventory_summary = (f"expected tracks={len(expected_paths)}; observed tracks={len(records)}; "
+                               + location_diagnostics(records, expected_paths))
+    record_diagnostic("inventory-check", {"summary": _last_inventory_summary,
+                      "expected": {r: str(p) for r, p in expected_paths.items()},
+                      "expected_ids": expected_ids,
+                      "old_paths": {r: str(p) for r, p in (old_paths or {}).items()}})
     require(len(records) == len(expected_paths), "ライブラリの件数が計画と違います。追加の削除はしません。")
     if expected_ids is not None:
         require({r["id"] for r in records} == set(expected_ids), "ライブラリの登録が変わりました。")
@@ -249,6 +316,7 @@ def assert_inventory(records, expected_paths, expected_ids=None, old_paths=None)
         allowed = {str(expected_paths[relative])}
         if old_paths is not None:
             allowed.add(str(old_paths[relative]))
+        require(not record.get("path_error"), "Music の保存場所を取得できませんでした。")
         require(record["path"] in allowed, "Music が予期しない場所を参照しています。")
 
 
@@ -331,11 +399,15 @@ def make_backup(work, paths):
 
 
 def execute(bundle, case_name, dry_run=False):
+    global _diagnostic_work, _last_inventory_summary
+    _diagnostic_work = None
+    _last_inventory_summary = None
     require(sys.platform == "darwin", "この測定は macOS 専用です。")
     require_test_user()
     bundle = safe_path(bundle)
     manifest = verify_bundle(bundle)
-    home = safe_path(Path.home())
+    require(manifest.get("probeVersion") == PROBE_VERSION, "新しい v2 の検証一式を使ってください。旧版は再実行しません。")
+    home = safe_path(pwd.getpwuid(os.getuid()).pw_dir)
     require(bundle.is_relative_to(home), "検証一式を検証用ユーザーのホームフォルダへコピーしてください。")
     case = manifest["cases"][case_name]
     print(f'予定: 空の検証用ライブラリへ合成音声 {case["tracks"]} 曲を追加し、退避・登録削除・終了・タグ編集・再追加を測定します。')
@@ -343,19 +415,15 @@ def execute(bundle, case_name, dry_run=False):
     if dry_run:
         print("Dry run: ファイルも Music も変更していません。ライブラリの状態はまだ調べていません。")
         return 0
-    check_account()
-    require(input("検証用ユーザーで Apple Account 未設定・同期なし・新しい空の Music ライブラリを選択済みなら TEST と入力: ") == "TEST",
-            "開始を取り消しました。")
-    media = media_directory(home)
-    require(not snapshot(), "Music に登録があります。削除せず停止しました。新しい空のライブラリを使ってください。")
     work = safe_path(bundle / "reference-private" / case_name)
     require(not work.exists(), "この測定の記録が既にあります。再実行せず結果を報告してください。")
-    require(not work.is_relative_to(media) and not media.is_relative_to(bundle), "作業場所とメディアフォルダが重なっています。")
-    require(shutil.disk_usage(media).free > 256 * 1024 * 1024 and shutil.disk_usage(bundle).free > 256 * 1024 * 1024,
-            "合成測定用の空き容量が不足しています。")
-    work.mkdir(parents=True)
+    require(not work.is_relative_to(home / "Music"), "検証一式は Music フォルダの外へ置いてください。")
+    work.mkdir(parents=True, mode=0o700)
+    _diagnostic_work = work
     results = work / "ilibrary-m10-results.txt"
     with results.open("x") as report:
+        phase_name = "preflight"
+
         def log(text):
             print(text)
             report.write(text + "\n")
@@ -364,9 +432,15 @@ def execute(bundle, case_name, dry_run=False):
         def step(name):
             write_json(work / f"{name}.json", {"stage": name, "time": datetime.datetime.now(datetime.timezone.utc).isoformat()})
 
+        def phase(name):
+            nonlocal phase_name
+            phase_name = name
+            log("PHASE: " + name)
+
         log("iLibrary M10 rebuilding feasibility")
         log("date: " + datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"))
         log("commit: " + manifest["commit"])
+        log("probe version: " + str(PROBE_VERSION))
         log("macOS: " + run(["/usr/bin/sw_vers", "-productVersion"]))
         log("case: " + case_name)
         log(f'albums: {case["albums"]}; tracks: {case["tracks"]}')
@@ -376,10 +450,23 @@ def execute(bundle, case_name, dry_run=False):
             result = subprocess.run([str(binary), *map(str, args)], capture_output=True, text=True, timeout=600)
             with (work / "commands.log").open("a") as output:
                 output.write(result.stdout + result.stderr)
+            record_diagnostic("cli", {"argv": list(map(str, args)), "returncode": result.returncode,
+                                      "stdout": result.stdout, "stderr": result.stderr})
             require(result.returncode == 0, "iLibrary の検査または処理が完了しませんでした。")
 
         try:
+            phase("preflight")
+            check_account()
+            require(input("検証用ユーザーで Apple Account 未設定・同期なし・新しい空の Music ライブラリを選択済みなら TEST と入力: ") == "TEST",
+                    "開始を取り消しました。")
+            media = media_directory(home)
+            record_diagnostic("media", str(media))
+            require(not snapshot(), "Music に登録があります。削除せず停止しました。新しい空のライブラリを使ってください。")
+            require(not work.is_relative_to(media) and not media.is_relative_to(bundle), "作業場所とメディアフォルダが重なっています。")
+            require(shutil.disk_usage(media).free > 256 * 1024 * 1024 and shutil.disk_usage(bundle).free > 256 * 1024 * 1024,
+                    "合成測定用の空き容量が不足しています。")
             step("started")
+            phase("initial-addition")
             seed = work / "seed"
             shutil.copytree(bundle / case_name / "files", seed)
             cli("apply", bundle / case_name / "catalog.json", seed, "--timestamps")
@@ -387,13 +474,18 @@ def execute(bundle, case_name, dry_run=False):
             cli("add", seed, "--order", "release")
             originals = {r: media / "Music" / ARTIST / r for r in case["files"]}
             records = snapshot()
-            assert_inventory(records, originals)
             write_json(work / "initial-registration.json", records)
+            record_diagnostic("expected-locations", {r: str(p) for r, p in originals.items()})
+            phase("initial-location-check")
+            log("MEASURED: initial locations: " + location_diagnostics(records, originals))
+            assert_inventory(records, originals)
             log("PASS: initial registrations match only the generated files")
             step("seeded")
+            phase("backup")
             image, image_hash, original_states = make_backup(work, originals)
             write_json(work / "original-files.json", original_states)
             log("PASS: synthetic backup restored, verified, and detached (same physical storage)")
+            phase("evacuation")
             retreat = work / "evacuated"
             paths = {r: retreat / r for r in case["files"]}
             require(retreat.stat().st_dev == media.stat().st_dev if retreat.exists() else work.stat().st_dev == media.stat().st_dev,
@@ -405,21 +497,27 @@ def execute(bundle, case_name, dry_run=False):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 source.rename(destination)
             compare_files(paths, original_states)
-            assert_inventory(snapshot(), paths, [r["id"] for r in records], originals)
+            relocated = snapshot()
+            log("MEASURED: evacuated locations: " + location_diagnostics(relocated, paths))
+            assert_inventory(relocated, paths, [r["id"] for r in records], originals)
             log("PASS: evacuation retained every byte and file date")
             step("evacuated")
+            phase("registration-removal")
             remove_seeded(records, paths, originals, original_states, image, image_hash, work / "backup-mount")
             log("PASS: only inventoried registrations removed; evacuated files unchanged")
             step("cleared")
+            phase("empty-gui-confirmation")
             music('tell application "Music" to activate')
             require(input("Music の「曲」と「最近追加した項目」が空になったことを見て確認し、EMPTY と入力: ") == "EMPTY",
                     "GUI が空であることを確認できませんでした。終了・編集は行いません。")
             require(not snapshot(), "GUI 確認中に登録が変わりました。")
             log("PASS: empty GUI confirmed by maintainer (not automated GUI detection)")
+            phase("quit")
             music('tell application "Music" to quit')
             wait_until_closed()
             step("quit")
             log("PASS: Music terminated after the library and GUI became empty")
+            phase("editing-while-closed")
             require(not music_running(), "Music が再起動しています。編集を止めます。")
             cli("apply", bundle / case_name / "edited-catalog.json", retreat, "--timestamps", "--dry-run")
             cli("apply", bundle / case_name / "edited-catalog.json", retreat, "--timestamps")
@@ -428,46 +526,71 @@ def execute(bundle, case_name, dry_run=False):
             log("PASS: catalog applied while Music remained closed")
             edited_states = file_state(paths)
             step("edited")
+            phase("readdition")
             # The product's add path performs one album per call, with confirmation.
             require(not snapshot(), "再起動したライブラリに登録があります。追加しません。")
             cli("add", retreat, "--order", "release")
             final = snapshot()
+            write_json(work / "final-registration.json", final)
+            log("MEASURED: final locations: " + location_diagnostics(final, originals))
             assert_inventory(final, originals)
             compare_files(originals, edited_states)
             cli("check", media / "Music" / ARTIST, "--library")
             journal = json.loads((retreat / ".ilibrary-add.json").read_text())
             require([e["album"] for e in journal["entries"]] == [synthetic_album(a) for a in range(1, case["albums"] + 1)],
                     "追加の順番が計画と違います。")
-            write_json(work / "final-registration.json", final)
             log("PASS: one registration per file; release order and file/library metadata verified")
             dates = date_result(final)
             log(f'MEASURED: distinct addition timestamps: {dates["unique"]}; span seconds: {dates["span_seconds"]}')
             log(("PASS" if dates["equal"] else "FAIL") + ": every track has exactly the same addition timestamp")
+            phase("recently-added-gui-confirmation")
             music('tell application "Music" to activate')
             print("「最近追加した項目」の先頭（新しい側）から Album の番号を確認してください。期待する順は大きい番号から小さい番号です。")
             answer = input("全アルバムの順序を確認できたら EXPECTED、違う場合 DIFFERENT、判断できない場合 UNKNOWN と入力: ")
             require(answer in ("EXPECTED", "DIFFERENT", "UNKNOWN"), "表示順の回答を記録できませんでした。")
             log(("PASS" if answer == "EXPECTED" else "FAIL") + ": Recently Added order: " + answer)
+            phase("repeat-and-preservation-check")
             require(digest(image) == image_hash, "保存用コピーが変化しました。")
             # Completed add must not create another registration or change its date.
             cli("add", retreat, "--order", "release")
-            require(sorted(snapshot(), key=lambda r: r["id"]) == sorted(final, key=lambda r: r["id"]),
+            require(stable_registration(snapshot()) == stable_registration(final),
                     "再実行で登録が変わりました。")
             log("PASS: completed addition is unchanged on repetition")
             log("PASS: original synthetic backup retained unchanged")
             step("completed")
+            phase("complete")
             passed = dates["equal"] and answer == "EXPECTED"
             log("case gate: " + ("PASS" if passed else "NOT SATISFIED; M11 remains blocked"))
             log("Automatic GUI emptiness detection: NOT IMPLEMENTED")
             log("No personal library or private recordings were used. Synthetic registrations remain for inspection.")
             return 0 if passed else 1
-        except (Refusal, OSError, ValueError, KeyError, subprocess.TimeoutExpired, EOFError) as error:
+        except (Refusal, OSError, ValueError, KeyError, subprocess.TimeoutExpired, EOFError, KeyboardInterrupt) as error:
             # Do not echo raw errors, which may contain personal paths or IDs.
             log("STOP: measurement incomplete; preserve the test user and all files; do not rerun")
+            log("stopped phase: " + phase_name)
+            log("reason: " + (str(error) if isinstance(error, Refusal) else type(error).__name__))
+            if _last_inventory_summary is not None:
+                log("last inventory check: " + _last_inventory_summary)
             log("case gate: NOT SATISFIED")
             with (work / "failure.txt").open("w") as raw:
                 raw.write(type(error).__name__ + ": " + str(error) + "\n")
             return 1
+        finally:
+            _diagnostic_work = None
+
+
+def combined_report(bundle):
+    bundle = safe_path(bundle)
+    manifest = verify_bundle(bundle)
+    require(manifest.get("probeVersion") == PROBE_VERSION, "v2 の結果だけをまとめてください。")
+    print("iLibrary M10 combined report; probe version 2")
+    for name in CASES:
+        print("\n== " + name)
+        result = safe_path(bundle / "reference-private" / name / "ilibrary-m10-results.txt")
+        if result.is_file():
+            print(result.read_text(), end="")
+        else:
+            print("NOT RUN: no saved case result")
 
 
 def main():
@@ -483,6 +606,8 @@ def main():
     live.add_argument("--bundle", type=Path, default=Path(__file__).resolve().parent)
     live.add_argument("--case", choices=CASES, required=True)
     live.add_argument("--dry-run", action="store_true")
+    report = commands.add_parser("report")
+    report.add_argument("--bundle", type=Path, default=Path(__file__).resolve().parent)
     args = parser.parse_args()
     try:
         if args.command == "prepare":
@@ -490,9 +615,11 @@ def main():
         elif args.command == "verify":
             verify_bundle(args.bundle)
             print("PASS: bundle verification; Music not accessed")
+        elif args.command == "report":
+            combined_report(args.bundle)
         else:
             return execute(args.bundle, args.case, args.dry_run)
-    except (Refusal, OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:
+    except (Refusal, OSError, ValueError, KeyError, subprocess.TimeoutExpired, KeyboardInterrupt) as error:
         print("STOP: " + (str(error) if isinstance(error, Refusal) else "準備または入力の条件を確認できません。"))
         return 1
     return 0

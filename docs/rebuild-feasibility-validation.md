@@ -1,141 +1,138 @@
 # Rebuilding Feasibility Validation
 
-## Current Measurement Status
+## Current Status and Scope
 
-2026 年 10 月 17 日の初回測定では、small と scale の両方が最初の登録後の保存場所確認で停止しました。初回の追加は記録されていますが、退避・登録削除・再登録・追加日時・表示順は未確認です。[結果の評価](reports/rebuild-feasibility-results.md)を参照してください。
+初回の small と scale は、最初の追加後の保存場所確認で停止しました。`EMPTY` と表示順の質問は、その先の段階にあるため表示されていません。入力を飛ばしたわけではありません。[初回の評価](reports/rebuild-feasibility-results.md)は保存しています。
 
-**停止した検証一式を再実行しないでください。** 両方の検証ライブラリと結果を残してください。次は別ユーザーでの読み取り専用の原因確認です。下記の初回実行手順を、停止したケースの再開手順として使用しません。
+本人の指示により、今回は **v2 の新しい検証一式と、新しい空のライブラリ**で診断と本測定をまとめて行います。以前の検証一式・ライブラリ・結果は残します。Music から場所を取得する書き方を既存の追加コマンドと揃え、旧方式との違いも記録します。初回停止の原因がこれで解消するかは未確認です。比較条件を緩めたり、違う場所を正しいものとして扱ったりはしません。
 
-## Purpose and Stop Boundary
+測定するのは 6 曲・3 アルバムと 300 曲・20 アルバムです。最後に **結果を一つにまとめて1回報告**します。全曲の追加日時の完全一致と画面上の順序は、実際の結果で判定します。成功を保証するものではありません。
 
-M10 の測定手順です。**普段のユーザーと実ライブラリでは実行しません。** 合成音声を退避し、その実行で追加した登録だけを自動削除します。Music の画面が空になったら終了し、タグを編集してから、1 アルバムずつ登録し直します。
+**普段のユーザーと実ライブラリでは実行しません。** 合成ファイルの保存用コピーは同じ物理ディスク上の読み取り専用イメージです。実ライブラリ用の独立したバックアップの検証にはなりません。
 
-今回の準備では Music を起動・参照・操作していません。エージェントは検証一式の準備までで停止します。次の手順は、本人が別ユーザーで実施します。
+## Step 1: Transfer Version 2
 
-6 曲・3 アルバムの小規模ケースと、300 曲・20 アルバムの規模確認を分けます。**追加日時は日付だけでなく、Music が返す秒単位の値が全曲で完全一致する必要があります。** 最近追加した項目の表示順は別に確認します。両ケースの結果を読むまで M10 は完了しません。
-
-## What the Probe Can Change
-
-- 最初に空であることを確認した Music ライブラリだけを使います。前回の測定の曲が残るライブラリも拒否します。
-- この実行が新しく追加した合成曲だけを、記録した ID で 1 件ずつ削除します。別の登録やファイル変更が現れれば停止します。
-- 退避先は検証一式の `reference-private/` 内です。Downloads は使いません。
-- 合成音声の保存用コピーを読み取り専用ディスクイメージにし、復元を検証して取り外してから削除を測定します。同じ物理ディスク上の模擬保管であり、実ライブラリ用の独立したバックアップを検証したことにはなりません。元の合成ファイルも検証一式に残します。
-- GUI が空であることと表示順は、本人が見て報告します。GUI 判定の自動化を測定したとは扱いません。
-- Music の内部データベース、Mac の時計、同期設定、既存のライブラリを変更する処理はありません。途中停止後の自動復旧や自動後片付けも行いません。
-
-## Step 1: Transfer the Prepared Bundle
-
-まだ普段のユーザーのままで、ターミナルに次を 1 行ずつ貼り付けます。準備済みの合成データとプログラムだけを、ユーザー間で受け渡す場所へコピーします。
+普段のユーザーのターミナルで、次のブロックを実行します。新しい ZIP と照合用ファイルだけを共有場所へコピーします。
 
 ```sh
 cd ~/ilibrary
-test ! -e /Users/Shared/ilibrary-m10.zip && cp -n artifacts/m10-preparation/ilibrary-m10.zip /Users/Shared/ilibrary-m10.zip
+cp -n artifacts/m10-preparation-v2/ilibrary-m10-v2.zip /Users/Shared/ilibrary-m10-v2.zip
+cp -n artifacts/m10-preparation-v2/ilibrary-m10-v2.zip.sha256 /Users/Shared/ilibrary-m10-v2.zip.sha256
+cd /Users/Shared
+shasum -a 256 -c ilibrary-m10-v2.zip.sha256
 ```
 
-同名の ZIP が既にある場合は上書きしません。そのときは既存ファイルを削除せず報告してください。GitHub から取得する手順ではありません。今回のブランチはまだ push していません。
+`ilibrary-m10-v2.zip: OK` が出れば次へ進みます。エラーなら止めて、その表示を報告してください。既存の ZIP や旧版を削除しません。
 
-## Step 2: Select a Separate User
+## Step 2: Open the Separate Test User
 
-**Apple Account にサインインしていない既存の `ilibrarytest` ユーザーがあれば再利用できます。** 今回はその中で新しい Music ライブラリを作り、前回のライブラリを保存します。
-
-新しいユーザーが必要なら、普段のユーザーの「システム設定」→「ユーザとグループ」→「ユーザを追加」で「通常」のユーザーを作り、アカウント名を `ilibrarytest3` などにします。測定用の名前は `ilibrarytest` または `ilibrary-test` で始まる必要があります。
-
-普段のユーザーからログアウトし、検証用ユーザーでログインします。Apple Account の設定はスキップします。音楽ファイルや普段のライブラリは持ち込みません。
+普段のユーザーからログアウトし、前回使用した `ilibrarytest` などの検証用ユーザーでログインします。Apple Account にはサインインしません。以前の検証ユーザーを作り直す必要はありません。
 
 検証用ユーザーのターミナルで実行します。
 
 ```sh
+cd /Users/Shared
+shasum -a 256 -c ilibrary-m10-v2.zip.sha256
 cd ~
-test ! -e ilibrary-m10 && unzip -q /Users/Shared/ilibrary-m10.zip
-cd ~/ilibrary-m10
+test ! -e ilibrary-m10-v2 && unzip -q /Users/Shared/ilibrary-m10-v2.zip
+cd ~/ilibrary-m10-v2
 python3 rebuild_probe.py verify .
 ```
 
-最後に `PASS: bundle verification; Music not accessed` と出れば、ファイルが揃っています。Python の利用に開発用ツールの案内が出た場合は、案内に従ってから同じ確認を行います。エラーが出た場合は実行を続けません。
+最後に `PASS: bundle verification; Music not accessed` が出ることを確認します。`ilibrary-m10-v2` が既にあった場合やエラーの場合は、上書きや削除をせず止めてください。旧版の `ilibrary-m10` フォルダはそのまま残します。
 
-## Step 3: Create an Empty Library for the Small Case
+## Step 3: Create the Small Library
 
-1. 検証用ユーザーで Music が動いていれば終了します。
-2. Option キーを押したまま Music を開き、ライブラリ選択画面で新しいライブラリを作ります。
-3. 検証用ユーザーの「ミュージック」フォルダ内へ `M10-small` という専用フォルダを作り、その中に保存します。以前のライブラリは削除しません。
-4. Music の設定で、メディアフォルダがこの検証用ユーザーの「ミュージック」フォルダ内にあることを確認します。今回専用の場所にします。ほかのユーザーの場所や共有フォルダは選びません。
-5. Apple Account に未サインインで、ライブラリ同期を使用していないことを確認します。「曲」と「最近追加した項目」が空であることを確認します。
+1. 検証用ユーザーで Music を終了します。
+2. **Option キーを押しながら Music を開き、「ライブラリを作成」を選びます。** 今回は旧ライブラリを選び直す手順ではありません。
+3. このユーザーの「ミュージック」フォルダ内に、**`M10-v2-small`** という新しい名前で保存します。同名のものが既にある場合は上書きせず止めます。
+4. Music の「設定」→「ファイル」でメディアの場所を確認します。このケース専用の **`~/Music/M10-v2-small/Media`** を選びます。必要なら選択画面で `Media` フォルダを作成します。旧ケースや scale と同じ場所にはしません。
+5. この新しいライブラリで「メディアフォルダを整理」と「ライブラリへの追加時にファイルをメディアフォルダへコピー」の項目をオンにします。設定画面を閉じます。
+6. Apple Account に未サインイン、同期なしであることと、「曲」「最近追加した項目」が空であることを確認します。Music は開いたままにします。
 
-最初の画面でサインインやサブスクリプションを求められても進めません。既存の曲が見える場合はその場で止めます。
+新規ライブラリとファイル設定の操作は、Apple の[複数ライブラリの案内](https://support.apple.com/guide/music/use-multiple-libraries-mus7663a920a/mac)と[ファイル設定の案内](https://support.apple.com/guide/music/files-settings-mus0f5accea/1.7/mac/27)に沿っています。画面上の日本語表記が多少異なる場合は、メディアの場所・整理・コピーの各項目で確認してください。
 
-ライブラリを作成・切り替える方法は [Apple の案内](https://support.apple.com/guide/music/use-multiple-libraries-mus7663a920a/mac)に沿っています。ライブラリごとに固有の名前とメディアフォルダを使います。
+## Step 4: Measure the Small Case
 
-## Step 4: Run the Small Case
-
-まず、予定の表示だけを行います。Music の登録はまだ読みません。
+まず予定だけを表示します。
 
 ```sh
-cd ~/ilibrary-m10
+cd ~/ilibrary-m10-v2
 python3 rebuild_probe.py run --case small --dry-run
 ```
 
-次に実際の合成測定を開始します。
+エラーがなければ、本測定を実行します。
 
 ```sh
 python3 rebuild_probe.py run --case small
 ```
 
-1. 検証用ユーザー・未サインイン・同期なし・空の新ライブラリを確認し、`TEST` と入力して Return を押します。
-2. ターミナルによる Music 操作の許可が表示されたら許可します。拒否した場合は停止結果を報告してください。
-3. 合成音声 6 曲が追加されます。保存用コピーの検証後にファイルを退避し、登録が 1 件ずつ削除されます。
-4. `EMPTY` を求められたら Music を見ます。「曲」と「最近追加した項目」の両方が空になってから、ターミナルに `EMPTY` と入力します。空にならない場合は入力せず、状況を報告してください。
-5. スクリプトが Music を終了し、合成曲の作曲者を変更してから、発売日順に再登録します。途中で自分で Music を起動したり、ファイルを移したりしません。
-6. 「最近追加した項目」で、先頭（新しく追加された側）から **M10 Album 03 → 02 → 01** になっているか確認します。合っていれば `EXPECTED`、違えば `DIFFERENT`、表示されず判断できなければ `UNKNOWN` と入力します。
-7. 結果は `~/ilibrary-m10/reference-private/small/ilibrary-m10-results.txt` に保存されます。追加日時の不一致も測定結果です。`FAIL` を成功として読み替えません。
+自分で入力するのは、**質問が表示されたときだけ**です。
 
-`STOP` が出た場合は再実行せず、ファイルとユーザーを残して報告します。ライブラリを自分で空にしてやり直す必要はありません。
+| 表示された質問 | 行うこと |
+| --- | --- |
+| 最初の `TEST` | 検証用ユーザー・未サインイン・同期なし・新しい空のライブラリを確認して入力します。Music 操作の許可が出たら許可します |
+| `EMPTY` | 合成曲の登録削除後、Music の「曲」と「最近追加した項目」が両方空になったことを見てから入力します |
+| `EXPECTED` / `DIFFERENT` / `UNKNOWN` | 再登録後、最近追加した項目を新しい側から確認します。**M10 Album 03 → 02 → 01** なら `EXPECTED`、違えば `DIFFERENT`、全体を確認できなければ `UNKNOWN` と入力します |
 
-## Step 5: Run the Scale Case
+処理中に Music を自分で終了・起動したり、曲を移動・削除したりしません。`EMPTY` に答えた後の終了・タグ編集・再起動はスクリプトが行います。GUI が空にならず答えられない場合はターミナルで Control-C を押し、その状態を報告します。
 
-小規模ケースが最後まで進み、`STOP` がなかった場合だけ行います。日時や表示順の `FAIL` はそのまま残し、規模による違いを測定します。
+`PHASE:` は現在の段階です。`case gate:` まで出てシェルの入力待ちに戻れば、そのケースの実行は終わっています。
 
-Music を終了し、Step 3 と同じ方法で、別の空のライブラリを「ミュージック」内の `M10-scale` フォルダに作成します。メディアフォルダもこのケース専用にします。小規模ケースのライブラリやファイルは削除しません。
+- **`STOP` が出た場合**：質問がまだ出なくても入力する必要はありません。同じコマンドを再実行せず、scale へも進まず、Step 6 で結果をまとめてください。
+- **日時や順序の `FAIL` はあるが `STOP` がない場合**：測定は完了しています。結果を残して scale に進みます。
+- **`PASS` の場合**：scale に進みます。
+
+## Step 5: Measure the Scale Case
+
+small が `STOP` なしで最後まで進んだ場合だけ行います。
+
+Music を終了し、Step 3 と同じ方法で新しいライブラリ **`M10-v2-scale`** を作ります。メディアの場所は **`~/Music/M10-v2-scale/Media`** にし、整理・コピーの項目をオンにします。small のライブラリとファイルは残します。
+
+空の状態を確認したら、次を実行します。
 
 ```sh
-cd ~/ilibrary-m10
+cd ~/ilibrary-m10-v2
 python3 rebuild_probe.py run --case scale --dry-run
 python3 rebuild_probe.py run --case scale
 ```
 
-操作は小規模ケースと同じです。今回は 300 曲、20 アルバムなので時間がかかります。表示順は、先頭から **M10 Album 20 → 19 → … → 01** を確認します。見えている範囲だけで成功と判断せず、全体を確認できなければ `UNKNOWN` にします。
+質問への答え方は small と同じです。表示順の期待値は、新しい側から **M10 Album 20 → 19 → … → 01** です。見えている範囲だけで成功とせず、全体を確認できなければ `UNKNOWN` と答えます。300 曲なので small より時間がかかります。
 
-結果は `~/ilibrary-m10/reference-private/scale/ilibrary-m10-results.txt` に保存されます。
+`STOP` が出た場合はそのまま Step 6 に進みます。登録やファイルを自分で元に戻しません。
 
-## Step 6: Report the Results
+## Step 6: Return One Combined Report
 
-検証用ユーザーで次を実行し、表示された結果をこの会話へ貼り付けてください。ユーザー名・個人パス・曲の ID は含まれません。
+成功・失敗・途中停止のどの場合でも、検証用ユーザーで以下を実行します。これは保存済みの結果をまとめるだけで、Music にアクセスしません。
 
 ```sh
-cat ~/ilibrary-m10/reference-private/small/ilibrary-m10-results.txt
-cat ~/ilibrary-m10/reference-private/scale/ilibrary-m10-results.txt
+cd ~/ilibrary-m10-v2
+mkdir -p reference-private
+python3 rebuild_probe.py report > reference-private/ilibrary-m10-v2-report.txt
+cat reference-private/ilibrary-m10-v2-report.txt
 ```
 
-片方しか実行できなかった場合は、その結果だけで構いません。結果ファイルがない場合は次の形式で報告してください。
+**表示された全文を1回、この会話へ貼り付けてください。** scale を実行しなかった場合も `NOT RUN` と記録されるため、結果ファイルを個別に探す必要はありません。内容は段階・件数・停止理由・場所の比較分類・追加日時の差・目視の回答で、個人パスや曲の ID は含みません。
 
-```text
-M10 の測定が止まりました。
-ケース：small / scale / 開始前
-止まった手順：Step の番号
-最後の STOP 表示：ここに貼り付け
-Music 操作の許可：許可した / 拒否した / 表示されなかった
-GUI が空になったか：はい / いいえ / 未実施
+ファイルの場所を渡す方法を使う場合は、続けて以下を実行します。
+
+```sh
+cp -n reference-private/ilibrary-m10-v2-report.txt /Users/Shared/ilibrary-m10-v2-report.txt
+cmp -s reference-private/ilibrary-m10-v2-report.txt /Users/Shared/ilibrary-m10-v2-report.txt && echo '報告用ファイルのコピー: OK'
 ```
 
-`commands.log`、`failure.txt`、JSON、ディスクイメージ、合成ファイルは貼り付けません。報告が済んだら検証用ユーザーからログアウトして普段のユーザーへ戻れます。結果確認が終わるまで、検証一式とライブラリを残します。
+`OK` が出たら、普段のユーザーに戻って、この会話へ `/Users/Shared/ilibrary-m10-v2-report.txt` と送れば十分です。`OK` が出ない場合は上書きせず、先ほどの `cat` の表示を貼り付けます。
 
-## Preparation and Evidence Limits
+`diagnostics.jsonl`、`initial-registration.json`、`commands.log`、音声、ディスクイメージは貼り付けません。詳細な比較情報は検証用ユーザーの `reference-private/` に残ります。確認が終わるまで、新旧両方の一式とライブラリを保持します。
 
-開発側の準備コマンドは `sh scripts/validation/prepare-rebuild-probe.sh --prepare` です。`--dry-run` は予定だけを表示します。準備は通常のユーザーで実行できますが、Music の操作は行いません。
+Step 1〜3 や `--dry-run` で止まり、まだ結果がない場合は、その Step 番号と最後のエラー表示だけを報告してください。推測で操作を続けません。
 
-ガード試験は `python3 -m unittest discover -s scripts/validation -p 'test_rebuild_probe.py'` で行います。登録削除の代わりに模擬処理を使用します。準備・ガード試験の成功を、実際の Music の削除、GUI、ディスクイメージの復元、同一追加日時の成功として報告しません。
+## Evidence Limits and Preparation
 
-GUI の目視確認と、スクリプトから取得した件数・日時の測定を区別します。この合成測定は実ライブラリへの許可を意味せず、読み取り専用イメージも独立した物理媒体のバックアップの代用にはなりません。
+v2 は停止箇所・取得方式の違い・失敗した比較を残し、1回の報告に必要な情報を増やすものです。Mac や Music の未知の挙動によって追加確認が必要になる可能性まではなくせません。追加日時の不一致を成功扱いにしたり、安全条件を省略して最後まで進めたりはしません。
+
+開発側の準備は `sh scripts/validation/prepare-rebuild-probe.sh --prepare`、予定表示は `--dry-run` です。ガード試験は `python3 -m unittest discover -s scripts/validation -p 'test_rebuild_probe.py'` で実行します。エージェントは別ユーザーの Music を操作する直前で停止し、本人の結果を待ちます。
 
 ## Recommended Models and Effort
 
-結果の評価と必要な修正は、Claude Code：Claude Opus 5.5／xhigh、Codex：GPT-6-Astra／xhigh を推奨します。登録削除とファイル保全を検証するため、M5 と同じエフォートです。
+結果の評価と必要な修正は、Claude Code：Claude Opus 5.5／xhigh、Codex：GPT-6-Astra／xhigh を推奨します。
