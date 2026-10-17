@@ -55,3 +55,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Initial Rebuilding Feasibility Results](reports/rebuild-feasibility-results.md)
 - 2026-10-17 — [Rebuilding Probe Revision](reports/rebuild-probe-revision.md)
 - 2026-10-17 — [Version 2 Rebuilding Feasibility Results](reports/rebuild-feasibility-v2-results.md)
+- 2026-10-17 — [Rebuilding Timestamp Gate Assessment](reports/rebuild-timestamp-gate.md)
