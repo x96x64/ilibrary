@@ -20,7 +20,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 TAG = "py3-none-macosx_14_0_arm64"
-PYPI_NAME = "x96x64-ilibrary"
+PYPI_NAME = "x96_64-ilibrary"
 
 
 def run(*args, cwd=ROOT):
@@ -32,7 +32,7 @@ def sha256(path):
 
 
 def make_wheel(stage, version, out):
-    name = f"x96x64_ilibrary-{version}"
+    name = f"x96_64_ilibrary-{version}"
     info = f"{name}.dist-info"
     metadata = "\n".join([
         "Metadata-Version: 2.1", f"Name: {PYPI_NAME}", f"Version: {version}",
@@ -128,7 +128,7 @@ def main():
     formula = (ROOT / "packaging/homebrew/ilibrary.rb.in").read_text()
     (out / "ilibrary.rb").write_text(formula.replace("__VERSION__", version).replace("__SHA256__", sha256(source)))
     context = {
-        "version": version, "source_commit": commit, "binary_sha256": binary_hash,
+        "version": version, "source_commit": commit, "packaging_commit": commit, "binary_sha256": binary_hash,
         "platform": "macos-arm64", "deployment_target": "14.0",
         "build_macos": platform.mac_ver()[0], "swift": run("swift", "--version").splitlines()[0],
         "signing": "ad-hoc", "notarized": False,

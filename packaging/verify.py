@@ -54,7 +54,7 @@ def verify(args):
     require(re.fullmatch(r"[0-9a-f]{40}", commit), "Invalid source commit.")
     names = {
         f"ilibrary-{version}-macos-arm64.tar.gz", f"ilibrary-{version}-source.tar.gz",
-        f"x96x64-ilibrary-{version}.tgz", f"x96x64_ilibrary-{version}-py3-none-macosx_14_0_arm64.whl",
+        f"x96_64-ilibrary-{version}.tgz", f"x96_64_ilibrary-{version}-py3-none-macosx_14_0_arm64.whl",
         "ilibrary.rb", "build-info.json",
     }
     require({p.name for p in directory.iterdir()} == names | {"SHA256SUMS"}, "Unexpected or missing release files.")
@@ -75,17 +75,17 @@ def verify(args):
     require(digest(binary) == info["binary_sha256"], "The recorded binary digest differs.")
     require(binary[:4] == b"\xcf\xfa\xed\xfe", "The executable is not a 64-bit Mach-O file.")
     require(b"/Users/" not in binary and b"/home/" not in binary, "The executable contains a personal build path.")
-    npm = tar_files(directory / f"x96x64-ilibrary-{version}.tgz")
+    npm = tar_files(directory / f"x96_64-ilibrary-{version}.tgz")
     require(set(npm) == {"package/bin/ilibrary", "package/LICENSE", "package/README.md", "package/package.json"},
             "Unexpected npm contents.")
     package = json.loads(npm["package/package.json"])
-    require(package["name"] == "@x96x64/ilibrary" and package["version"] == version, "npm identity differs.")
+    require(package["name"] == "@x96_64/ilibrary" and package["version"] == version, "npm identity differs.")
     require(package["os"] == ["darwin"] and package["cpu"] == ["arm64"], "npm platform differs.")
     require(package["bin"] == {"ilibrary": "bin/ilibrary"}, "npm executable mapping differs.")
     require(not package.get("scripts") and not package.get("dependencies"), "Unexpected npm runtime dependency.")
     require(npm["package/bin/ilibrary"] == binary, "npm executable differs.")
     require(npm["package/README.md"] == archive["README.md"], "npm README differs.")
-    wheel_name = f"x96x64_ilibrary-{version}"
+    wheel_name = f"x96_64_ilibrary-{version}"
     dist = f"{wheel_name}.dist-info"
     with zipfile.ZipFile(directory / f"{wheel_name}-py3-none-macosx_14_0_arm64.whl") as wheel:
         expected_entries = {f"{wheel_name}.data/scripts/ilibrary", *(f"{dist}/{n}" for n in ("METADATA", "WHEEL", "LICENSE", "RECORD"))}
@@ -93,7 +93,7 @@ def verify(args):
                 "Unexpected wheel contents.")
         require(wheel.read(f"{wheel_name}.data/scripts/ilibrary") == binary, "PyPI executable differs.")
         metadata = BytesParser().parsebytes(wheel.read(f"{dist}/METADATA"))
-        require(metadata["Name"] == "x96x64-ilibrary" and metadata["Version"] == version, "PyPI identity differs.")
+        require(metadata["Name"] == "x96_64-ilibrary" and metadata["Version"] == version, "PyPI identity differs.")
         require(metadata["Requires-Python"] == ">=3.9" and not metadata.get_all("Requires-Dist"), "Unexpected Python dependency.")
         require(metadata.get_payload().strip() == archive["README.md"].decode().strip(), "PyPI README differs.")
         require(b"Tag: py3-none-macosx_14_0_arm64" in wheel.read(f"{dist}/WHEEL"), "Wheel platform differs.")
@@ -113,7 +113,14 @@ def verify(args):
         require(name.startswith(prefix) and not forbidden.intersection(PurePosixPath(name).parts), "Unexpected source archive path.")
     require(f'let version = "{version}"'.encode() in source[prefix + "Sources/ilibrary/CommandLineInterface.swift"],
             "Source version differs.")
-    require(source[prefix + "packaging/README.md"] == archive["README.md"], "Source README differs.")
+    packaging_commit = info.get("packaging_commit", commit)
+    require(re.fullmatch(r"[0-9a-f]{40}", packaging_commit), "Invalid packaging commit.")
+    if packaging_commit == commit:
+        require(source[prefix + "packaging/README.md"] == archive["README.md"], "Source README differs.")
+    else:
+        # Metadata-only corrections preserve the tagged executable and source archive.
+        require((Path(__file__).resolve().parent / "README.md").read_bytes() == archive["README.md"],
+                "The corrected package README differs from the packaging checkout.")
     for content in (npm["package/LICENSE"], source[prefix + "LICENSE"]):
         require(content == archive["LICENSE"], "License differs.")
     formula = (directory / "ilibrary.rb").read_text()
@@ -136,7 +143,7 @@ def verify(args):
             smoke(executable, version, schema)
             environment = dict(os.environ, npm_config_cache=str(root / "npm-cache"))
             subprocess.run(["npm", "install", "-g", "--prefix", str(root / "npm"), "--offline", "--ignore-scripts",
-                            "--no-audit", "--no-fund", str(directory / f"x96x64-ilibrary-{version}.tgz")],
+                            "--no-audit", "--no-fund", str(directory / f"x96_64-ilibrary-{version}.tgz")],
                            env=environment, check=True)
             smoke(root / "npm/bin/ilibrary", version, schema)
             subprocess.run([sys.executable, "-m", "venv", str(root / "venv")], check=True)

@@ -2,15 +2,15 @@
 
 ## Status and Names
 
-Version 0.1.0 is an experimental release prepared for review. Nothing in the preparation process publishes a package. Current publication and CI results belong in [Current Status](roadmap-to-stable.md).
+Version 0.1.0 is an experimental release. The GitHub prerelease is published; registry publication and installation verification are recorded separately. Current publication and CI results belong in [Current Status](roadmap-to-stable.md).
 
 | Channel | Package or Formula | Installed Command |
 | --- | --- | --- |
-| npm | `@x96x64/ilibrary` | `ilibrary` |
-| PyPI | `x96x64-ilibrary` | `ilibrary` |
+| npm | `@x96_64/ilibrary` | `ilibrary` |
+| PyPI | `x96_64-ilibrary` | `ilibrary` |
 | Homebrew | `x96x64/tap/ilibrary` | `ilibrary` |
 
-The npm and PyPI names `ilibrary` were already occupied. The proposed names above returned no existing package from the public registry APIs on October 17, 2026 (measured); this is not a reservation or proof of publishing permission. PyPI accepts letters, digits, periods, underscores, and hyphens, but not npm's scope syntax. See the [Python package naming specification](https://packaging.python.org/en/latest/specifications/name-normalization/).
+The npm and PyPI names `ilibrary` were already occupied. The npm login was subsequently confirmed as `x96_64`; the maintainer selected that personal scope instead of creating an organization. The maintainer also selected `x96_64-ilibrary` on PyPI. Registry availability is checked before publication; a pending publisher neither reserves the name nor establishes successful publication. PyPI normalizes underscores and hyphens for lookup, so its project URL may show `x96-64-ilibrary` while the declared name is `x96_64-ilibrary`. PyPI accepts letters, digits, periods, underscores, and hyphens, but not npm's scope syntax. See the [Python package naming specification](https://packaging.python.org/en/latest/specifications/name-normalization/).
 
 ## Package Contents
 
@@ -40,8 +40,8 @@ python3 -m unittest discover -s packaging -p 'test_*.py'
 The output directory must not already exist. The builder compiles the current source, checks its version and architecture, strips local symbols, signs the staged executable ad hoc, and creates:
 
 - `ilibrary-0.1.0-macos-arm64.tar.gz`
-- `x96x64-ilibrary-0.1.0.tgz`, containing npm package `@x96x64/ilibrary`
-- `x96x64_ilibrary-0.1.0-py3-none-macosx_14_0_arm64.whl`
+- `x96_64-ilibrary-0.1.0.tgz`, containing npm package `@x96_64/ilibrary`
+- `x96_64_ilibrary-0.1.0-py3-none-macosx_14_0_arm64.whl`
 - `ilibrary-0.1.0-source.tar.gz`
 - `ilibrary.rb`, for the existing `x96x64/homebrew-tap` repository
 - `build-info.json`, with the source commit and sanitized build context
@@ -68,12 +68,18 @@ Publication requires the maintainer's final confirmation after document previews
 
 1. Integrate the reviewed branch through a pull request and confirm CI. Finalize the changelog date and publication wording only when their state is known.
 2. Build and verify the final clean commit. Retain its full commit ID and the SHA-256 of `SHA256SUMS`; if any source changes, rebuild and verify the packages. Present material documentation changes before pushing.
-3. After approval, create `v0.1.0` at that exact commit and a GitHub prerelease using [the release notes](releases/0.1.0.md). Upload exactly the seven files above, without replacing existing assets or versions.
+3. After approval, create `v0.1.0` at that exact commit and a GitHub prerelease using [the release notes](releases/0.1.0.md). Upload exactly the seven files above, without replacing existing registry versions. Any later release-description correction must follow the metadata procedure below.
 4. Configure the registry publisher identities described below. Run `Publish Reviewed Packages` on `main` with the tag, exact commit, and reviewed manifest digest. Its default `verify` choice only validates the release. Select a registry only for an approved publication.
 5. Publish the generated formula as `Formula/ilibrary.rb` in the existing Homebrew tap through a reviewed change. Keep existing formulas and tap documentation intact; add the iLibrary installation entry.
 6. Verify installation through each public channel, record the actual results and any unavailable channel, and update Current Status. A prepared package is not a published or publicly installable package.
 
 The workflow rechecks the tag's commit, integration into `main`, GitHub prerelease state, and reviewed manifest immediately before each registry publication. It does not create tags, releases, assets, or Homebrew commits. It has no push or tag trigger. A changed tag, unintegrated commit, draft release, or mismatched package is refused.
+
+## Metadata Corrections
+
+A metadata-only correction may use a later packaging commit while retaining the tagged executable and source archive. `build-info.json` records both `source_commit` and `packaging_commit`; no tag or source history is rewritten. The binary bytes and source-archive checksum must remain unchanged. The package descriptions, npm identity, wheel metadata, and checksums are regenerated together. Verification uses the corrected packaging checkout when the two commits differ. Run `python3 packaging/repackage.py ORIGINAL_DIRECTORY NEW_DIRECTORY --manifest-sha256 ORIGINAL_REVIEWED_DIGEST` from that clean checkout, then run the verifier against the original source commit with `--install`. The original files and checksum manifest are validated before any output is written. Existing registry versions are never replaced.
+
+The npm and PyPI name corrections for 0.1.0 is recorded in [Distribution Metadata Correction](reports/distribution-metadata-correction.md). The immutable source archive records the original packaging names; use the current installation instructions for the corrected distribution names.
 
 ## Registry Setup
 
@@ -81,7 +87,7 @@ The Japanese [Package Publication Setup](package-publishing.md) procedure provid
 
 GitHub environments `npm` and `pypi` should require maintainer approval. No such environments existed in this repository when checked on October 17, 2026 (measured). Their creation and the registries' account settings remain part of the approved publication step; no credentials belong in the repository.
 
-For PyPI, configure a [pending trusted publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) for project `x96x64-ilibrary`, owner `x96x64`, repository `ilibrary`, workflow `release.yml`, and environment `pypi`. This allows first publication without storing a PyPI token in GitHub.
+For PyPI, configure a [pending trusted publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) for project `x96_64-ilibrary`, owner `x96x64`, repository `ilibrary`, workflow `release.yml`, and environment `pypi`. This allows first publication without storing a PyPI token in GitHub.
 
 For npm, [trusted publishing](https://docs.npmjs.com/trusted-publishers/) is configured in an existing package's settings, with owner `x96x64`, repository `ilibrary`, workflow `release.yml`, and environment `npm`. First publication may require the maintainer's npm sign-in and two-factor authentication. If needed, publish only the reviewed local archive with `npm publish PATH_TO_REVIEWED_TGZ --access public --tag latest`, then configure trusted publishing for subsequent versions. Do not copy credentials into a document, command argument, or chat. Registry account access and actual permission to publish remain unverified until exercised.
 
