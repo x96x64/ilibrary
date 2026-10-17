@@ -4,10 +4,11 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
-Version 0.1.0 is prepared for review; its release date and publication remain pending.
+## [0.1.0] - 2026-10-17
 
 ### Added
 
+- README badges and daily observed Star History charts with system fonts and light and dark themes.
 - npm and PyPI packages containing the same native Apple silicon executable, a source-building Homebrew formula, installation checks, and explicit publication guards.
 - M5/M6 live command validation and M8 private-copy qualification reports.
 

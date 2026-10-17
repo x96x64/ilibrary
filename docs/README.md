@@ -3,6 +3,7 @@
 ## Current Documents
 
 - [Distribution](distribution.md): packages, installation verification, and publication
+- [Package Publication Setup](package-publishing.md): Japanese Web setup and result reporting for npm and PyPI
 - [Version 0.1.0 Release Notes](releases/0.1.0.md): experimental release description
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run

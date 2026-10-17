@@ -77,6 +77,8 @@ The workflow rechecks the tag's commit, integration into `main`, GitHub prerelea
 
 ## Registry Setup
 
+The Japanese [Package Publication Setup](package-publishing.md) procedure provides screen-by-screen instructions and the exact values for the maintainer.
+
 GitHub environments `npm` and `pypi` should require maintainer approval. No such environments existed in this repository when checked on October 17, 2026 (measured). Their creation and the registries' account settings remain part of the approved publication step; no credentials belong in the repository.
 
 For PyPI, configure a [pending trusted publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) for project `x96x64-ilibrary`, owner `x96x64`, repository `ilibrary`, workflow `release.yml`, and environment `pypi`. This allows first publication without storing a PyPI token in GitHub.
