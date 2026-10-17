@@ -51,14 +51,14 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 ## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/finder-metadata-verification.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility です。旧一式の差分診断を受領しました。必要な314ファイルとmanifestはすべて一致し、欠損・内容変更・読み取り不能・通常ファイル以外は0件、追加は.DS_Store一つだけでした。旧検証がこれを入力として扱ったことが停止原因です。本人の設定ミスや音声の破損とは扱いません。
-受領記録はreference-private/m10-display-inventory-2026-10-17/inventory.jsonに保存し、SHA-256はe529747b427b903448e59f3394e8ad0ba7c0d04be5ea96a920d725a4aaefab12です。Musicの現在の登録やバックアップの状態を確認した結果ではありません。以前の報告とZIPは保持しています。
-修正f6511d5は通常ファイルの.DS_Storeだけを一式の入力から除外し、削除も内容読み取りもしません。必要な入力の一覧とハッシュ、別名の追加・欠損・変更・リンク等の拒否は維持します。73件の合成試験が通り、旧一式を照合する実際の関数を通したsmallの代替試験を含みます。旧準備一式のコピーで旧版の停止を再現し、修正版の成功と全ファイルの保持を確認しました。Musicの実測ではありません。
-新しい一式はilibrary-m10-display-v3、ソースはf6511d5です。releaseビルド、324曲と8カタログ、ZIPと共有コピーの照合が通っています。実行ファイルはdisplay-v2と同一です。ZIPのSHA-256は39e80493dc54f093428f1bdf3f62edfbe91b86abc0f1a15ea15fd913bf1b5adcです。共有場所へ転送済みで、docs/rebuild-display-validation.mdと同梱PROCEDURE.mdが現在の日本語手順です。
-エージェントは別ユーザー操作の直前で止まっています。次に評価するのは/Users/Shared/ilibrary-m10-display-v3-report.txtです。成功・不一致・未確認・停止・未実行を区別します。表示順、再起動後の維持、再実行の安全性、最終保全、残り4ケースは未確認です。M10は未完了です。
-旧smallの6曲、全一式、.DS_Store、停止記録、バックアップを保持します。旧コマンド・診断を繰り返さず、ファイル削除や修復、メディアフォルダの変更はしません。新しい一式でsmallを再照合し、退避・登録削除は繰り返しません。新たな停止を記録削除などで回避しません。
-Music・実ライブラリ・私的音源は操作しません。M10完了前にM11以降や製品rebuildへ進めません。新たなpush・公開は別途承認が必要です。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと各セクションの要約・邦訳を示してください。
+~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/display-order-v3-results.md を読み、git status と git log を確認してください。
+現在は codex/m10-rebuild-feasibility です。display-v3（ソースf6511d5）のsmallは最後まで実行され、表示順が不一致でした。期待3,2,1に対し、本人の観察は再起動前後とも2,3,1です。準備段階のSTOPではなく、完了した測定のFAILです。M10は未達で、残り4ケースはNOT RUNです。
+元の合成バックアップの復元・照合、編集済みコピーとの一致、完了済み追加の再実行でID・日時・ファイル・記録が変わらないこと、最後のバックアップ確認は成功しました。旧smallの退避・登録削除は繰り返していません。日時は2種類で差は1秒、複数アルバムが同じ秒を共有しています。日時の重なりが表示不一致の原因かは未確認です。
+報告はreference-private/m10-display-v3-results-2026-10-17/report.txtに保存しています。SHA-256は6b859c028563f78efd741344ace1ebf23c67f70b0748ef11f029f68113795cfeです。今回の評価ではMusicを操作していません。
+次の候補は、アルバム間の追加日時が重ならないように待つ方法の独立した合成比較です。実際の日時の境界、待ち時間、時間切れ時の停止、期待順と観察順、再起動後を記録する設計を検討してください。待てば直るとは断定せず、製品コードや新しい検証の実装は今回の評価では行っていません。日時の重なりを対応範囲から除外するなら、条件変更の明示的な判断が必要です。
+旧small、全ライブラリ、全一式、バックアップ、完了記録、停止記録を保持します。現行手順の残り4ケースもいったん保留です。既存登録の削除や再追加、記録削除による再実行、期待順の書き換えをしません。同じ手順を本人に再実行させず、次の検証が必要なら一式を準備・確認してから、別ユーザー操作直前で止め、実行から一度の結果報告までの日本語手順を示してください。
+実ライブラリと私的音源は操作しません。自動GUI空判定と別の物理媒体のバックアップは未検証です。M10完了前にM11以降や製品rebuildへ進めません。新たなpush・公開には承認が必要です。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと各セクションの要約・邦訳を示してください。
+次の作業の推奨は、Claude Code: Claude Opus 5.5／xhigh、Codex: GPT-6-Astra／xhighです。
 ```
 
 ## Recommended Models and Effort

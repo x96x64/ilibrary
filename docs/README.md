@@ -14,7 +14,7 @@
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
-- [Rebuilding Display-Order Validation](rebuild-display-validation.md): current Japanese display-v3 procedure; preserves Finder metadata and prior stopped runs
+- [Rebuilding Display-Order Validation](rebuild-display-validation.md): retained Japanese display-v3 procedure; further execution is paused after the small-case display failure
 - [Retained Rebuilding Bundle Diagnostics](rebuild-bundle-diagnostics.md): completed read-only inventory diagnostic; retained for the record
 - [Rebuilding Feasibility Validation](rebuild-feasibility-validation.md): retained version 2 instructions; do not resume this superseded experiment
 - [Saved Addition-Date Verification](rebuild-feasibility-date-check.md): completed read-only extraction of the stopped M10 run's saved timestamps
@@ -64,3 +64,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Display-Probe Media-Path Correction](reports/display-media-path-correction.md)
 - 2026-10-17 — [Display-Order Version 2 Results](reports/display-order-v2-results.md)
 - 2026-10-17 — [Finder Metadata and Bundle Verification](reports/finder-metadata-verification.md)
+- 2026-10-17 — [Display-Order Version 3 Results](reports/display-order-v3-results.md)
