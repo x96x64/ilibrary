@@ -4,6 +4,8 @@ import contextlib
 import io
 import hashlib
 import json
+import os
+import subprocess
 import tempfile
 from pathlib import Path
 import tarfile
@@ -12,11 +14,36 @@ from unittest.mock import patch
 
 import check_release
 import repackage
-from verify import tar_files
+from verify import historical_package_readme, tar_files
 
 
 class ReleaseGuardTests(unittest.TestCase):
     commit = "a" * 40
+
+    def test_corrected_readme_uses_the_recorded_commit(self):
+        with tempfile.TemporaryDirectory(prefix='ilibrary-readme-history-') as temporary:
+            root = Path(temporary)
+            environment = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
+
+            def git(*args):
+                return subprocess.check_output(['git', *args], cwd=root, env=environment)
+
+            git('init', '-q')
+            (root / 'packaging').mkdir()
+            readme = root / 'packaging/README.md'
+            readme.write_bytes(b'recorded description')
+            git('add', 'packaging/README.md')
+            git('-c', 'user.name=Synthetic Fixture', '-c', 'user.email=fixture@example.invalid',
+                '-c', 'commit.gpgsign=false', 'commit', '-qm', 'record synthetic description')
+            commit = git('rev-parse', 'HEAD').decode().strip()
+            readme.write_bytes(b'later documentation')
+            self.assertEqual(historical_package_readme(commit, root), b'recorded description')
+
+    def test_invalid_packaging_commit_runs_no_git_command(self):
+        with patch('verify.subprocess.check_output') as read:
+            with self.assertRaises(ValueError):
+                historical_package_readme('main:README.md')
+            read.assert_not_called()
 
     def response(self, path):
         return {

@@ -38,6 +38,16 @@ def tar_files(path):
         return {m.name: archive.extractfile(m).read() for m in members if m.isfile()}
 
 
+def historical_package_readme(commit, root=None):
+    require(re.fullmatch(r"[0-9a-f]{40}", commit), "Invalid packaging commit.")
+    try:
+        return subprocess.check_output(
+            ["git", "show", f"{commit}:packaging/README.md"],
+            cwd=root or Path(__file__).resolve().parents[1], stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as error:
+        raise ValueError("Fetch the recorded packaging commit before verifying corrected metadata.") from error
+
+
 def smoke(binary, version, schema):
     def output(*args):
         return subprocess.check_output([str(binary), *args], text=True)
@@ -119,8 +129,8 @@ def verify(args):
         require(source[prefix + "packaging/README.md"] == archive["README.md"], "Source README differs.")
     else:
         # Metadata-only corrections preserve the tagged executable and source archive.
-        require((Path(__file__).resolve().parent / "README.md").read_bytes() == archive["README.md"],
-                "The corrected package README differs from the packaging checkout.")
+        require(historical_package_readme(packaging_commit) == archive["README.md"],
+                "The corrected package README differs from its recorded packaging commit.")
     for content in (npm["package/LICENSE"], source[prefix + "LICENSE"]):
         require(content == archive["LICENSE"], "License differs.")
     formula = (directory / "ilibrary.rb").read_text()
