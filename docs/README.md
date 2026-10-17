@@ -1,23 +1,29 @@
 # Documentation
 
-## Current Documents
+## User Documentation
 
-- [Distribution](distribution.md): packages, installation verification, and publication
-- [Package Publication Setup](package-publishing.md): Japanese Web setup and result reporting for npm and PyPI
 - [Version 0.1.0 Release Notes](releases/0.1.0.md): experimental release description
-
-- [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
-- [Agent Handoff](agent-handoff.md): a prompt for resuming work in Codex or Claude Code at any milestone
-- [Library Operations and Recovery](library-operations.md): previews, resumption, diagnostics, and private reports
-- [Contributing](../CONTRIBUTING.md): development and verification requirements
-- [Support](../SUPPORT.md): reporting a problem without private data
 - [Command-Line Interface](command-line-interface.md): commands, options, and exit status
 - [Completing Catalogs with AI Agents](catalog-for-agents.md): the authoring workflow for agents and chats
-- [Test Library Validation](test-library-validation.md): step-by-step Japanese instructions for validating the implemented M5/M6 commands in a separate user
-- [Live Music Measurements](live-music-measurements.md): the procedure for measuring Music in a separate macOS user
-- [Catalog JSON Schema](schema/ilibrary-catalog-1.schema.json): the schema of the `ilibrary-catalog-1` format
+- [Library Operations and Recovery](library-operations.md): previews, resumption, diagnostics, and private reports
+- [Test Library Validation](test-library-validation.md): Japanese instructions for validating Music operations in a separate macOS user
+- [Catalog JSON Schema](schema/ilibrary-catalog-1.schema.json): the catalog format
+- [Support](../SUPPORT.md): reporting a problem without private data
+
+## Maintainer Documentation
+
+- [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
+- [Contributing](../CONTRIBUTING.md): development and verification requirements
+- [Distribution](distribution.md): package construction, installation verification, and publication
+- [Package Publication Setup](package-publishing.md): Japanese Web setup and result reporting for npm and PyPI
+- [Agent Handoff](agent-handoff.md): resuming work from repository records
+- [Live Music Measurements](live-music-measurements.md): measuring Music in a separate macOS user
+
+These procedures remain useful for maintenance and later releases. Temporary build products, previews, and machine-specific logs are excluded from Git.
 
 ## Historical Baseline
+
+The approved study records the original design and evidence. Later decisions may supersede its implementation details; use the current guides above for supported behavior.
 
 - [Technical Planning Study](planning-study.md): the approved plan, preserved as a historical record
 

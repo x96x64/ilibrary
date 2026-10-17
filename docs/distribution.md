@@ -79,13 +79,13 @@ The workflow rechecks the tag's commit, integration into `main`, GitHub prerelea
 
 A metadata-only correction may use a later packaging commit while retaining the tagged executable and source archive. `build-info.json` records both `source_commit` and `packaging_commit`; no tag or source history is rewritten. The binary bytes and source-archive checksum must remain unchanged. The package descriptions, npm identity, wheel metadata, and checksums are regenerated together. Verification uses the corrected packaging checkout when the two commits differ. Run `python3 packaging/repackage.py ORIGINAL_DIRECTORY NEW_DIRECTORY --manifest-sha256 ORIGINAL_REVIEWED_DIGEST` from that clean checkout, then run the verifier against the original source commit with `--install`. The original files and checksum manifest are validated before any output is written. Existing registry versions are never replaced.
 
-The npm and PyPI name corrections for 0.1.0 is recorded in [Distribution Metadata Correction](reports/distribution-metadata-correction.md). The immutable source archive records the original packaging names; use the current installation instructions for the corrected distribution names.
+The npm and PyPI name corrections for 0.1.0 are recorded in [Distribution Metadata Correction](reports/distribution-metadata-correction.md). The immutable source archive records the original packaging names; use the current installation instructions for the corrected distribution names.
 
 ## Registry Setup
 
 The Japanese [Package Publication Setup](package-publishing.md) procedure provides screen-by-screen instructions and the exact values for the maintainer.
 
-GitHub environments `npm` and `pypi` should require maintainer approval. No such environments existed in this repository when checked on October 17, 2026 (measured). Their creation and the registries' account settings remain part of the approved publication step; no credentials belong in the repository.
+GitHub environments `npm` and `pypi` should require maintainer approval. On October 17, 2026, both environments were created after explicit maintainer approval, each with `x96x64` as required reviewer and `main` as the sole allowed branch (measured). No credentials belong in the repository.
 
 For PyPI, configure a [pending trusted publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) for project `x96_64-ilibrary`, owner `x96x64`, repository `ilibrary`, workflow `release.yml`, and environment `pypi`. This allows first publication without storing a PyPI token in GitHub.
 
