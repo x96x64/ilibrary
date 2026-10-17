@@ -51,10 +51,11 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 
 ```text
 ~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility で M10 の v2 を準備しています。初回の small と scale は、最初の登録後の保存場所確認で STOP となり、M10 は未完了です。本人は新しい空の検証ライブラリでの測り直しと1回の結果報告を希望しています。0.1.0 の公開は完了しています。
+現在は codex/m10-rebuild-feasibility で M10 の v2 の準備を完了し、別ユーザーでの測定結果を待っています。初回の small と scale は、最初の登録後の保存場所確認で STOP となり、M10 は未完了です。本人は新しい空の検証ライブラリでの測り直しと1回の結果報告を希望しています。0.1.0 の公開は完了しています。
 M10 の順序は、バックアップ確認→退避→登録の自動削除→ライブラリと GUI が空になった確認→Music 終了→タグ編集→1 アルバムずつ再登録です。
 全曲の「追加した日時」の完全一致と、「最近追加した項目」の表示順を別々に確認します。成立しない場合は条件を変えずに停止し、結果を説明してください。
 docs/rebuild-feasibility-validation.md、docs/reports/rebuild-feasibility-preparation.md、docs/reports/rebuild-feasibility-results.md を読み、記録された測定と未確認事項を区別してください。
+docs/reports/rebuild-probe-revision.md に v2 の変更と検証を記録しています。ソースと同梱手順は 9fe4a53、合成テスト28件と306ファイルの準備・Musicを使わないバックアップ復元は成功しています。実際の削除や追加日時の成功を意味しません。
 既存ログと記録では、6 曲・3 アルバムと 300 曲・20 アルバムの初回追加は成功しています。その後、プローブの保存場所の比較で停止しました。失敗した比較の実際の値は保存されておらず、原因は未確定です。退避・登録削除・再登録・追加日時・GUI 順序の測定には達していません。
 初回結果のコピーは reference-private/m10-results-2026-10-17/ にあります。個人パスや ID を含むため公開しないでください。Decision 32 により、読み取り専用診断だけを先に行う案から、診断と本測定をまとめた v2 に変更しました。新しい ilibrary-m10-v2、M10-v2-small、M10-v2-scale を使います。本人が別ユーザーで実行する直前で止めて手順を示してください。普段のユーザーで Music を開いたり、ライブラリを読み書きしたりしないでください。
 旧版の停止した検証一式を再実行したり、既存登録を削除したりしないでください。比較条件を緩めず、旧ライブラリとファイルを保持します。v2 の report コマンドで両ケースを一つの結果にまとめます。STOP 時は後続測定をせず、未実行ケースも含めて報告します。測定未完了を、要求された動作が不可能だという証拠として扱わないでください。
