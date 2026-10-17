@@ -20,7 +20,7 @@ iLibrary modifies user-owned music files and an Apple Music library. Every mutat
 
 - Never delete an original file unless the user requests deletion and the replacement has been verified: decoded duration, codec, and, for lossless conversion, decoded PCM equality.
 - Check free space before conversions. Treat truncated or partially written outputs as failures, and never count them as complete.
-- Move files into the Music media folder instead of copying them, and add them album by album. Stop when the library already contains a matching track; do not remove library entries automatically.
+- Move files into the Music media folder instead of copying them, and add them album by album. Ordinary `add` must stop when the library already contains a matching track and must never remove library entries. The maintainer-approved rebuilding plan permits automatic removal only within a separately qualified `rebuild clear`, after independent backup verification, evacuation, and exact registration checks. Until M10 passes, this exception permits only the guarded M10 probe to remove its own newly generated tracks in an initially empty library in a separate test user. It does not authorize personal-library access or deletion.
 - Address Music tracks by persistent ID, one operation per call. Do not rename tracks while iterating over a track collection; property changes during iteration have applied to unrelated tracks.
 - Changing an album name in Music triggers automatic folder organization that can split an album across folders and break file references. Write tags to files, arrange folders, and then add or relink tracks explicitly.
 - Music caches metadata independently of files. After editing files, compare the file and the library and report every difference.

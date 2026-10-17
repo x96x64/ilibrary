@@ -47,23 +47,22 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
 
 The same prompt applies in Claude Code. Replace the Codex attribution in item 3 with `Co-Authored-By: Claude <noreply@anthropic.com>`, optionally preceded by the model name, as defined in AGENTS.md.
 
-## Next Session after Version 0.1.0
+## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md を読み、Git の現状を確認してください。
-M5/M6 は別ユーザーで 12 項目成功、M8 は 301 ファイルのコピーで成功しています。詳細は新しい報告書を読んでください。
-0.1.0 は GitHub・npm・PyPI・Homebrew で公開済みです。npm は @x96_64/ilibrary、PyPI は x96_64-ilibrary、Homebrew は x96x64/tap/ilibrary です。公開先からの導入確認も成功しています。完了した公開や検証を理由なく繰り返さないでください。
-普段の Music と元ファイルは変更せず、私的なデータは reference-private/ 内だけで扱ってください。
-文書修正と手元確認は完了しています。npm の導入・起動・カタログ検査に加え、実曲 10 ファイルのコピーでカタログ出力と移動が成功しました。原本の内容・名前・作成日時・更新日時は不変で、Music は操作していません。
-GitHub の既存 0.1.0 は、修正済みの iLyrics 形式の本文と、通常リリースの Latest 表示へ変更しました。実験版という位置付けは保っています。GitHub Packages への追加配布や、公開済み npm 0.1.0 の再公開は不要です。
-既存のタグ、公開済みバージョン、履歴は変更しないでください。npm の次回 GitHub 公開を使う場合だけ、Trusted Publisher の設定を案内してください。
-docs/planning-study.md の Outlook to Version 1.0.0 にある当初の見通しは提示済みです。これは確定した新計画ではありません。
-追加で検討したい用途は、音楽ファイルを Music のメディアフォルダ外にある任意の作業フォルダ（文書例は ./staging）へ退避して保管し、Music の全曲登録を私が GUI から削除して空にし、その後 Music を終了してから、追加したいアルバムも含めた全体を希望の順番で登録し直すことです。既存登録を残したまま途中へ差し込む意図ではありません。0.1.0 の add は登録削除後の順序付き追加を担えますが、全曲の退避から再登録までの通しの検証は未実施です。4 種類の並び順、またはアルバムごとの呼び出しが現行の選択肢です。GUI での全登録削除は私が行う手順で、自動削除や実ライブラリ操作をエージェントに許可したわけではありません。原本の保全、空にした後の Music 終了、希望する登録順を計画に含め、まだ実装や実ライブラリ操作は始めないでください。
-新しい 1.0.0 までの計画は GPT-6-Astra で作りたいので、別モデルなら計画を作り始める直前で止まってください。GPT-6-Astra へ切り替えた後は、現状と残課題を踏まえて計画を作成してください。新実装はまだ始めないでください。
-今後の push 前も、実ファイルのプレビュー、各セクションの要約と邦訳を示してください。計画書と過去の報告書は保存してください。
-Current Status を更新してコミットし、結果・残課題・次の作業・引き継ぎプロンプトを日本語で報告してください。
+~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md を読み、git status と git log を確認してください。
+現在は codex/m10-rebuild-feasibility で M10 の別ユーザー検証を準備しています。0.1.0 の公開は完了しています。公開や過去の検証を繰り返さないでください。
+M10 の順序は、バックアップ確認→退避→登録の自動削除→ライブラリと GUI が空になった確認→Music 終了→タグ編集→1 アルバムずつ再登録です。
+全曲の「追加した日時」の完全一致と、「最近追加した項目」の表示順を別々に確認します。成立しない場合は条件を変えずに停止し、結果を説明してください。
+docs/rebuild-feasibility-validation.md と docs/reports/rebuild-feasibility-preparation.md を読み、準備済みの測定と未実施の測定を区別してください。
+本人が別 macOS ユーザーで測定する直前で停止する指示です。普段のユーザーで Music を開いたり、ライブラリを読み書きしたりしないでください。
+本人から small / scale の ilibrary-m10-results.txt が届いたら、測定値・本人の GUI 確認・未確認事項を分けて評価してください。片方だけ、STOP、日時不一致、表示順不明の場合は M10 未完了です。
+プローブは合成音声だけを扱います。読み取り専用ディスクイメージは同じ物理媒体上の模擬バックアップであり、本番用の独立したバックアップの証拠ではありません。
+M10 合格前に M11 以降や製品の rebuild を実装しないでください。実ライブラリの操作、新たな push・公開は別途承認が必要です。
+README の Bad の例は本人が選び、端末内の当該ファイルから公開用のタグだけを読み取りました。原本は変更していません。測定記録は reference-private/ 内だけです。
+区切りで Current Status を更新してコミットし、結果・残課題・次の作業・引き継ぎプロンプトを日本語で報告してください。
 ```
 
 ## Recommended Models and Effort
 
-For the remaining M9 documentation and release closeout, use Claude Opus 5.5 with high in Claude Code, or GPT-6.1-Sol with high in Codex, following the roadmap. For the subsequent version 1.0.0 planning, the maintainer explicitly selected GPT-6-Astra; use high and stop before planning until that model is selected. Claude Opus 5.5 with high is the corresponding Claude Code recommendation. These models are recorded as available to the maintainer; do not select `ultra`.
+For M10 feasibility and the subsequent registration-removal and recovery work, use Claude Opus 5.5 with xhigh in Claude Code or GPT-6-Astra with xhigh in Codex. The maintainer selected this effort before starting M10; it follows the M5 safety rationale. Use the milestone table for later work. Do not use ultra.
