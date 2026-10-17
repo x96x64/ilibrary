@@ -28,9 +28,9 @@ The verifier checks the corrected names, metadata, descriptions, wheel records, 
 
 ## Publication State and Limits
 
-Corrected package generation, installation checks, replacement of GitHub metadata assets, and registry publication remain pending. Existing npm or PyPI versions are never overwritten. The corrected assets will identify their packaging commit in the public manifest; the release notes will explain the correction. Final availability and installation results belong in Current Status.
+Corrected packages were generated from packaging commit `55ffea5c50b7a98f45af11c544e1a32350169d9f`. Their manifest SHA-256 is `70181ee11f14f0174fa236fb12613bfde9a16fa5de50acfcde048c09b70ccc17`. Archive, npm, and pip installation checks passed, including signature, architecture, deployment target, version, schema, and help (measured). The preserved executable, source archive, and formula matched the hashes above (measured). Replacement of GitHub metadata assets and registry publication remain pending. Existing npm or PyPI versions are never overwritten. The corrected assets identify their packaging commit in the public manifest; the release notes will explain the correction. Final availability and installation results belong in Current Status.
 
-Homebrew tap pull request #1 was merged at `ce35762` (measured). Its formula uses the unchanged source archive. Public Homebrew installation verification is in progress. A pending publisher does not reserve a PyPI name, and registry publication is not established by local installation checks.
+Homebrew tap pull request #1 was merged at `ce35762` (measured). Its formula uses the unchanged source archive. Installation from the public Homebrew tap succeeded, and `brew test` passed version, schema, and help checks (measured). A pending publisher does not reserve a PyPI name, and registry publication is not established by local installation checks.
 
 ## References
 
