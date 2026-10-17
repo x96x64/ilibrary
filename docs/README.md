@@ -71,3 +71,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Separated Addition Timing Results](reports/addition-timing-results.md)
 - 2026-10-17 — [Timing Media Scaffolding Correction](reports/timing-media-scaffolding.md)
 - 2026-10-17 — [Separated Addition Timing Version 2 Results](reports/addition-timing-v2-results.md)
+- 2026-10-17 — [README Example and Badge Corrections](reports/readme-example-corrections.md)
