@@ -1,0 +1,18 @@
+{
+  "name": "@x96x64/ilibrary",
+  "version": "__VERSION__",
+  "description": "Catalog-driven music tagging and ordered import into Apple Music on macOS",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/x96x64/ilibrary",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/x96x64/ilibrary.git"
+  },
+  "bugs": "https://github.com/x96x64/ilibrary/issues",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "bin": {"ilibrary": "bin/ilibrary"},
+  "files": ["bin", "LICENSE", "README.md"],
+  "publishConfig": {"access": "public", "tag": "latest"},
+  "keywords": ["apple-music", "music-library", "metadata", "alac", "flac", "macos"]
+}

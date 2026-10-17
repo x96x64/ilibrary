@@ -40,7 +40,7 @@ The M7 automated review of `5b9bdac` reported three findings. The heading capita
 
 Milestone M8 copy qualification completed on `codex/m8-qualification`. All 301 M4A files in 20 folders passed export, identity application, arrangement, repeated application, and file checks on copies (measured). All original bytes and dates remained unchanged, and Music was not accessed. See [Library Copy Qualification](reports/library-qualification.md) for scope, results, and limits. The evidence is ready for the maintainer's M8 judgment.
 
-The next milestone is M9: prepare version 0.1.0 and npm, PyPI, and Homebrew distribution, following iLyrics. The maintainer authorized preparation and requested a final review before publication. Present actual document previews, section summaries and Japanese translations, package checks, and cleanup results before requesting that final approval. No tag, release, registry package, or M8 branch push has been published.
+Milestone M9 is in progress on `codex/m9-release-0.1.0`: version 0.1.0 and npm, PyPI, and Homebrew distribution are being prepared following iLyrics. Local verification passed all 154 Swift tests, strict formatting, and six publication-guard tests (measured). Package installation and formula verification are in progress. The maintainer authorized preparation and requested a final review before publication. Present actual document previews, section summaries and Japanese translations, package checks, and cleanup results before requesting that final approval. No tag, release, registry package, or M8 branch push has been published.
 
 ## Decisions in Force
 
@@ -68,6 +68,8 @@ The next milestone is M9: prepare version 0.1.0 and npm, PyPI, and Homebrew dist
 
 21. (October 17, 2026.) The maintainer authorized M8 validation using copies under `reference-private/`, including read-only access to the personal media folder. The normal Music library and original files must remain unchanged.
 22. (October 17, 2026.) Prepare version 0.1.0 with npm, PyPI, and Homebrew installation, following iLyrics; this supersedes the source-only timing in Decision 3. Clean unnecessary generated files and merged branches. Publication requires the maintainer's final confirmation after actual file previews and section summaries with Japanese translations.
+
+23. (October 17, 2026.) Prepare author-qualified package names: `@x96x64/ilibrary` on npm and `x96x64-ilibrary` on PyPI, with `x96x64/tap/ilibrary` on Homebrew. The executable remains `ilibrary`. These names and the experimental release are included in final publication review.
 
 ## Recommended Models and Effort
 

@@ -30,6 +30,12 @@ jobs:
         run: swift format lint --strict --recursive Sources Tests Package.swift scripts
       - name: Run tests
         run: scripts/test.sh
+      - name: Test publication guards
+        run: python3 -m unittest discover -s packaging -p 'test_*.py'
+      - name: Build and install packages without publishing
+        run: |
+          python3 packaging/build.py artifacts/ci-packages
+          python3 packaging/verify.py artifacts/ci-packages --version 0.1.0 --commit "$(git rev-parse HEAD)" --install
 
   linux:
     name: Linux Core and Command Tests
@@ -39,9 +45,11 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       # Date tests use historical rules of several time zones.
-      - name: Install time zone data
-        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+      - name: Install time zone data and packaging test tools
+        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata python3
       - name: Report toolchain
         run: swift --version
       - name: Run Core and command tests
         run: swift test --disable-xctest --filter 'MP4CoreTests|FLACCoreTests|CatalogCoreTests|ilibraryTests'
+      - name: Test publication guards
+        run: python3 -m unittest discover -s packaging -p 'test_*.py'

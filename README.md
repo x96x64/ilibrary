@@ -48,11 +48,38 @@ ilibrary apply catalog.json ./staging --dry-run
 ## Requirements
 
 - macOS 14 or later on Apple silicon
-- A Swift 6 toolchain supplied by Xcode or the Command Line Tools
+- A Swift 6 toolchain supplied by Xcode or the Command Line Tools for source or Homebrew builds
+- npm or Python 3.9 or later for the corresponding package installer; neither is needed by the native executable
 
 The package declares macOS 14 as its deployment target; the current local verification used macOS 27.0.1 and Apple Swift 6.4 on Apple silicon. The minimum OS is not a claim of testing every intervening release. The Core and portable command tests also run on Linux with Swift 6.4. Music commands require the installed Music app and Automation permission. An Apple Music subscription and Apple Account are not required for the public tests or separate-user procedure.
 
 ## Installation
+
+The following package commands are prepared for version 0.1.0; publication awaits final approval. Check [Current Status](docs/roadmap-to-stable.md) for actual availability. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+
+### Homebrew
+
+```bash
+brew install x96x64/tap/ilibrary
+```
+
+Homebrew builds from source and requires Swift 6.
+
+### npm
+
+```bash
+npm install -g @x96x64/ilibrary@0.1.0
+```
+
+### PyPI
+
+```bash
+python3 -m venv .venv-ilibrary
+.venv-ilibrary/bin/python -m pip install x96x64-ilibrary==0.1.0
+source .venv-ilibrary/bin/activate
+```
+
+npm and PyPI install the same native executable. Packages target macOS 14 or later on Apple silicon and are ad hoc-signed; Developer ID signing and notarization are not provided. Run `ilibrary --version` after installation. See [Distribution](docs/distribution.md) and the shared [package README](packaging/README.md).
 
 ### From Source
 
@@ -64,15 +91,17 @@ export PATH="$PWD/.build/release:$PATH"
 ilibrary --version
 ```
 
-The executable is `.build/release/ilibrary`. The `PATH` line makes it available in the current terminal session; alternatively, invoke it by its full path. No administrator installation is needed. Homebrew, npm, and pip packages are not published; their names remain undecided.
+The executable is `.build/release/ilibrary`. The `PATH` line makes it available in the current terminal session; alternatively, invoke it by its full path. No administrator installation is needed. Package installation does not require this source checkout.
 
 ### Updating
+
+Use `brew upgrade ilibrary`, `npm update -g @x96x64/ilibrary`, or `python -m pip install --upgrade x96x64-ilibrary` in the selected virtual environment.
 
 In a clean source checkout, run `git pull --ff-only` and rebuild with `swift build -c release`. Review [Current Status](docs/roadmap-to-stable.md) and [CHANGELOG.md](CHANGELOG.md) before adopting a new development commit. If Git reports local changes or divergent history, preserve those changes and resolve them before updating.
 
 ### Uninstalling
 
-Close the terminal session to discard the temporary `PATH` change. If the executable was copied elsewhere, remove only that copy. iLibrary has no background service. Keep catalogs, artwork, staging files, and `.ilibrary-add.json` journals until their recovery purpose is complete; removing the executable does not undo file or Music changes.
+Use `brew uninstall ilibrary`, `npm uninstall -g @x96x64/ilibrary`, or `python -m pip uninstall x96x64-ilibrary` in the selected environment. For a source build, close the terminal session to discard the temporary `PATH` change. If the executable was copied elsewhere, remove only that copy. iLibrary has no background service. Keep catalogs, artwork, staging files, and `.ilibrary-add.json` journals until their recovery purpose is complete; removing the executable does not undo file or Music changes.
 
 ## Quick Start
 
@@ -200,6 +229,7 @@ Use audio and artwork that you are entitled to process. The repository contains 
 
 ## Documentation
 
+- [Distribution](docs/distribution.md): package names, contents, installation, and publication
 - [Library Operations and Recovery](docs/library-operations.md): dry runs, interrupted runs, and privacy
 - [Test Library Validation](docs/test-library-validation.md): Japanese instructions and result reporting
 - [Technical Planning Study](docs/planning-study.md): the approved plan, preserved as a historical record
