@@ -1,0 +1,102 @@
+name: Publish Reviewed Packages
+
+# No tag or push event publishes packages. The maintainer selects reviewed bytes explicitly.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published experimental release tag (v0.x.y)
+        required: true
+      commit:
+        description: Full reviewed source commit
+        required: true
+      manifest_sha256:
+        description: SHA-256 of the reviewed SHA256SUMS file
+        required: true
+      publish:
+        description: Registry to publish after approval
+        type: choice
+        options: [verify, npm, pypi, both]
+        default: verify
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'x96x64/ilibrary' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Verify the approved release and files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+          MANIFEST: ${{ inputs.manifest_sha256 }}
+        run: |
+          python3 packaging/check_release.py "$TAG" "$COMMIT"
+          gh release download "$TAG" --dir dist
+          python3 packaging/verify.py dist --version "${TAG#v}" --commit "$COMMIT" --manifest-sha256 "$MANIFEST"
+
+  npm:
+    if: inputs.publish == 'npm' || inputs.publish == 'both'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - name: Recheck and publish the reviewed npm package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+          MANIFEST: ${{ inputs.manifest_sha256 }}
+        run: |
+          python3 packaging/check_release.py "$TAG" "$COMMIT"
+          gh release download "$TAG" --dir dist
+          python3 packaging/verify.py dist --version "${TAG#v}" --commit "$COMMIT" --manifest-sha256 "$MANIFEST"
+          npm publish "dist/x96x64-ilibrary-${TAG#v}.tgz" --access public --provenance --tag latest
+
+  pypi:
+    if: inputs.publish == 'pypi' || inputs.publish == 'both'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Recheck and select the reviewed wheel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+          MANIFEST: ${{ inputs.manifest_sha256 }}
+        run: |
+          python3 packaging/check_release.py "$TAG" "$COMMIT"
+          gh release download "$TAG" --dir dist
+          python3 packaging/verify.py dist --version "${TAG#v}" --commit "$COMMIT" --manifest-sha256 "$MANIFEST"
+          mkdir wheelhouse
+          cp "dist/x96x64_ilibrary-${TAG#v}-py3-none-macosx_14_0_arm64.whl" wheelhouse/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: wheelhouse/

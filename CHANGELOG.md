@@ -4,7 +4,13 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-17
+
 ### Added
+
+- README badges and daily observed Star History charts with system fonts and light and dark themes.
+- npm and PyPI packages containing the same native Apple silicon executable, a source-building Homebrew formula, installation checks, and explicit publication guards.
+- M5/M6 live command validation and M8 private-copy qualification reports.
 
 - Source installation and recovery guidance, contributor and support documents, and a Japanese separate-user handoff.
 - `check`: file diagnostics and optional Music comparisons by location, including duplicates, stale metadata, cloud status, and missing files.

@@ -2,6 +2,10 @@
 
 ## Current Documents
 
+- [Distribution](distribution.md): packages, installation verification, and publication
+- [Package Publication Setup](package-publishing.md): Japanese Web setup and result reporting for npm and PyPI
+- [Version 0.1.0 Release Notes](releases/0.1.0.md): experimental release description
+
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Agent Handoff](agent-handoff.md): a prompt for resuming work in Codex or Claude Code at any milestone
 - [Library Operations and Recovery](library-operations.md): previews, resumption, diagnostics, and private reports
@@ -31,3 +35,6 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Ordered Addition Corrections](reports/ordered-addition-corrections.md)
 - 2026-10-17 — [Library Checks and Diagnostics](reports/library-checks.md)
 - 2026-10-17 — [Documentation Review](reports/documentation-review.md)
+- 2026-10-17 — [Live Library Command Validation](reports/library-command-validation.md)
+- 2026-10-17 — [Library Copy Qualification](reports/library-qualification.md)
+- 2026-10-17 — [Version 0.1.0 Release Preparation](reports/release-preparation.md)

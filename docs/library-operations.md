@@ -2,7 +2,7 @@
 
 ## Before a Write
 
-Keep a recoverable copy of selected source files and an independent backup of the Music library. Start with synthetic files or copies in staging, outside the Music media folder. The implemented Music commands still need the [separate-user validation](test-library-validation.md); personal-library qualification is M8 and requires a separate decision.
+Keep a recoverable copy of selected source files and an independent backup of the Music library. Start with synthetic files or copies in staging, outside the Music media folder. The implemented Music commands passed [separate-user validation](reports/library-command-validation.md), and the approved [personal-file copy qualification](reports/library-qualification.md) completed without findings. Those measurements do not authorize access to another library. Use the [separate-user procedure](test-library-validation.md) before adopting the workflow.
 
 1. Use `import --dry-run` to inspect conversions, copies, destinations, refusals, and capacity requirements. Omit `--delete-originals` while qualifying a workflow.
 2. Export a catalog and keep its referenced covers alongside it. Review AI-generated values against evidence; unknown information should remain empty.

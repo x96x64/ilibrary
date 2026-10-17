@@ -2,7 +2,7 @@
 
 ## Overview
 
-`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in the current development version. Live qualification of `add` and `check --library` remains pending; use the separate-user procedure before operating a personal library.
+`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in the current development version. The implemented `add` and `check --library` passed [separate-user validation](reports/library-command-validation.md); use the separate-user procedure before operating a personal library.
 
 ```
 ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]

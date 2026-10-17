@@ -28,6 +28,8 @@ The first two scripts use independent reference tools, including FFmpeg/ffprobe,
 
 ## Changes and Evidence
 
+Distribution changes also require the offline package checks and isolated installation procedure in [Distribution](docs/distribution.md). Do not publish from a development test. Registry publication uses only explicitly reviewed release files; ordinary pushes and tag events do not publish packages.
+
 Every mutating command must offer a dry run, print a plan before changes, and verify results. Retain verified originals until the selected operation permits removal; do not introduce automatic library cleanup. Keep tests proportional to the changed behavior and include regression cases for safety fixes.
 
 Classify evidence as **measured**, **inferred**, or **unknown**. A test double does not measure Music, and an older application probe does not qualify a new command. Preserve completed engineering reports; add a new report for subsequent findings. Use MLA title case for English documentation headings while retaining command and API capitalization.

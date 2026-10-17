@@ -1,9 +1,14 @@
 # iLibrary
 
+[![Release](https://img.shields.io/github/v/release/x96x64/ilibrary?include_prereleases)](https://github.com/x96x64/ilibrary/releases)
+[![npm](https://img.shields.io/npm/v/%40x96x64%2Filibrary)](https://www.npmjs.com/package/@x96x64/ilibrary)
+[![PyPI](https://img.shields.io/pypi/v/x96x64-ilibrary)](https://pypi.org/project/x96x64-ilibrary/)
+[![Homebrew](https://img.shields.io/badge/Homebrew-x96x64%2Ftap-FBB040?logo=homebrew&logoColor=white)](https://github.com/x96x64/homebrew-tap)
 [![CI](https://github.com/x96x64/ilibrary/actions/workflows/ci.yml/badge.svg)](https://github.com/x96x64/ilibrary/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
+[![AudioToolbox](https://img.shields.io/badge/AudioToolbox-lossless%20conversion-007AFF?logo=apple&logoColor=white)](https://developer.apple.com/documentation/audiotoolbox)
 [![Linux: Core targets](https://img.shields.io/badge/Linux-Core%20targets-FCC624?logo=linux&logoColor=black)](#how-it-works)
 
 iLibrary prepares downloaded music for a local Apple Music library and adds it in a controlled order. It converts lossless downloads to Apple Lossless, copies iTunes Store purchases without their purchase metadata, applies metadata from a catalog file without re-encoding, names files as the Music app does, and sets file dates to release dates. It adds albums to Music one at a time and diagnoses differences between files and library records.
@@ -13,7 +18,7 @@ ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary is experimental and available from source; no release has been published. All ten commands are implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. Live qualification of `add` and `check --library` is still pending; follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary 0.1.0 is experimental. See [Current Status](docs/roadmap-to-stable.md) for publication and verification results. All ten commands are implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Contents
 
@@ -30,6 +35,7 @@ ilibrary apply catalog.json ./staging --dry-run
 - [Limitations](#limitations)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
+- [Star History](#star-history)
 - [Acknowledgments](#acknowledgments)
 - [License](#license)
 
@@ -48,11 +54,38 @@ ilibrary apply catalog.json ./staging --dry-run
 ## Requirements
 
 - macOS 14 or later on Apple silicon
-- A Swift 6 toolchain supplied by Xcode or the Command Line Tools
+- A Swift 6 toolchain supplied by Xcode or the Command Line Tools for source or Homebrew builds
+- npm or Python 3.9 or later for the corresponding package installer; neither is needed by the native executable
 
 The package declares macOS 14 as its deployment target; the current local verification used macOS 27.0.1 and Apple Swift 6.4 on Apple silicon. The minimum OS is not a claim of testing every intervening release. The Core and portable command tests also run on Linux with Swift 6.4. Music commands require the installed Music app and Automation permission. An Apple Music subscription and Apple Account are not required for the public tests or separate-user procedure.
 
 ## Installation
+
+The following commands install version 0.1.0. Check [Current Status](docs/roadmap-to-stable.md) for actual availability. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+
+### Homebrew
+
+```bash
+brew install x96x64/tap/ilibrary
+```
+
+Homebrew builds from source and requires Swift 6.
+
+### npm
+
+```bash
+npm install -g @x96x64/ilibrary@0.1.0
+```
+
+### PyPI
+
+```bash
+python3 -m venv .venv-ilibrary
+.venv-ilibrary/bin/python -m pip install x96x64-ilibrary==0.1.0
+source .venv-ilibrary/bin/activate
+```
+
+npm and PyPI install the same native executable. Packages target macOS 14 or later on Apple silicon and are ad hoc-signed; Developer ID signing and notarization are not provided. Run `ilibrary --version` after installation. See [Distribution](docs/distribution.md) and the shared [package README](packaging/README.md).
 
 ### From Source
 
@@ -64,15 +97,17 @@ export PATH="$PWD/.build/release:$PATH"
 ilibrary --version
 ```
 
-The executable is `.build/release/ilibrary`. The `PATH` line makes it available in the current terminal session; alternatively, invoke it by its full path. No administrator installation is needed. Homebrew, npm, and pip packages are not published; their names remain undecided.
+The executable is `.build/release/ilibrary`. The `PATH` line makes it available in the current terminal session; alternatively, invoke it by its full path. No administrator installation is needed. Package installation does not require this source checkout.
 
 ### Updating
+
+Use `brew upgrade ilibrary`, `npm update -g @x96x64/ilibrary`, or `python -m pip install --upgrade x96x64-ilibrary` in the selected virtual environment.
 
 In a clean source checkout, run `git pull --ff-only` and rebuild with `swift build -c release`. Review [Current Status](docs/roadmap-to-stable.md) and [CHANGELOG.md](CHANGELOG.md) before adopting a new development commit. If Git reports local changes or divergent history, preserve those changes and resolve them before updating.
 
 ### Uninstalling
 
-Close the terminal session to discard the temporary `PATH` change. If the executable was copied elsewhere, remove only that copy. iLibrary has no background service. Keep catalogs, artwork, staging files, and `.ilibrary-add.json` journals until their recovery purpose is complete; removing the executable does not undo file or Music changes.
+Use `brew uninstall ilibrary`, `npm uninstall -g @x96x64/ilibrary`, or `python -m pip uninstall x96x64-ilibrary` in the selected environment. For a source build, close the terminal session to discard the temporary `PATH` change. If the executable was copied elsewhere, remove only that copy. iLibrary has no background service. Keep catalogs, artwork, staging files, and `.ilibrary-add.json` journals until their recovery purpose is complete; removing the executable does not undo file or Music changes.
 
 ## Quick Start
 
@@ -125,18 +160,26 @@ Exit status is 0 on success, 1 on a failure or a finding from `check` or `doctor
 
 A catalog is a UTF-8 JSON document identified by `"format": "ilibrary-catalog-1"`. Album-level values apply to every track and may be overridden per track; an empty string means that a value is unknown. `ilibrary schema` prints the JSON Schema, and [Completing Catalogs with AI Agents](docs/catalog-for-agents.md) describes the authoring workflow.
 
+This excerpt illustrates the structure with "Billie Jean" from Michael Jackson's *Thriller*. It is not a complete album catalog; include every selected track before applying it.
+
 ```json
 {
   "format": "ilibrary-catalog-1",
   "titleRules": { "case": "keep", "removeQualifiers": ["Remaster"], "bracketNested": true },
   "albums": [
     {
-      "album": "Example Album",
-      "aliases": ["Example Album (Remastered)"],
-      "albumArtist": "Example Artist",
-      "copyright": "℗ 1980 Example Records, Inc.",
-      "releaseDate": "1980-06-01",
-      "discs": [ { "tracks": [ { "title": "First Song", "composer": "Example Writer" } ] } ]
+      "album": "Thriller",
+      "aliases": ["Thriller (Remastered)"],
+      "albumArtist": "Michael Jackson",
+      "copyright": "℗ 1982 MJJ Productions, Inc.",
+      "releaseDate": "1982-11-30",
+      "discs": [
+        {
+          "tracks": [
+            { "title": "Billie Jean", "composer": "Michael Jackson" }
+          ]
+        }
+      ]
     }
   ]
 }
@@ -159,7 +202,7 @@ The package separates domain logic from platform integration, as iLyrics does. N
 | `FLACCore` | FLAC metadata blocks | Implemented; Foundation only |
 | `CatalogCore` | Catalog format, validation, matching, naming, ordering, title rules, dates | Implemented; Foundation only |
 | `ConversionMac` | Conversion to Apple Lossless through AudioToolbox and PCM verification | Implemented; macOS only |
-| `LibraryMac` | File dates, Music automation, media folder, permission state | Implemented; macOS only; live command qualification pending |
+| `LibraryMac` | File dates, Music automation, media folder, permission state | Implemented; macOS only; separate-user commands verified |
 | `ilibrary` | Command parsing, plans, and reports | Implemented; Foundation logic with conditional Mac adapters |
 
 The design rests on technical spikes recorded in the [Architecture Spike](docs/reports/architecture-spike.md) report, including measurements on synthetic files and on private copies of purchased and downloaded files.
@@ -187,7 +230,7 @@ Use audio and artwork that you are entitled to process. The repository contains 
 
 ## Limitations
 
-- Live qualification of the implemented Music commands is pending. Earlier application probes are recorded separately in [Music Behavior](docs/reports/music-behavior.md). Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
+- Live Music validation covers a separate test user on one macOS version; cloud matching remains unmeasured. See [Live Library Command Validation](docs/reports/library-command-validation.md). Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
 - Conversion and setting creation dates require macOS. On Linux, the catalog commands and copies by `import` run, but `timestamps` requires `--dry-run`, optionally with `--script`.
 - A catalog numbers discs and tracks by position; `export` reports gaps and repetitions in the files' numbers.
 - Conversion supports mono and stereo only, and refuses floating-point PCM. FLAC fields outside the standard set are not carried.
@@ -200,6 +243,7 @@ Use audio and artwork that you are entitled to process. The repository contains 
 
 ## Documentation
 
+- [Distribution](docs/distribution.md): package names, contents, installation, and publication
 - [Library Operations and Recovery](docs/library-operations.md): dry runs, interrupted runs, and privacy
 - [Test Library Validation](docs/test-library-validation.md): Japanese instructions and result reporting
 - [Technical Planning Study](docs/planning-study.md): the approved plan, preserved as a historical record
@@ -212,6 +256,15 @@ Use audio and artwork that you are entitled to process. The repository contains 
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for build commands, verification, evidence classification, and publication checks, and [AGENTS.md](AGENTS.md) for the engineering constraints. The public test suite uses original synthetic data and needs neither network access, private files, nor a Music library. Commits follow Conventional Commits and preserve human authorship with contribution trailers.
+
+## Star History
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/stars/dark.svg">
+  <img src="docs/media/stars/light.svg" alt="iLibrary star counts recorded daily, beginning on October 17, 2026 (UTC)" width="720">
+</picture>
+
+Star counts are recorded daily in UTC, beginning on October 17, 2026. Lines connect recorded observations; dates before the first observation and missed observations are not reconstructed. The [recorded counts](docs/media/stars/history.json) include decreases when stars are removed.
 
 ## Acknowledgments
 

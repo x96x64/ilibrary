@@ -2,7 +2,7 @@
 
 ## Before Reporting a Problem
 
-iLibrary is an experimental source build with no published release. Read [Current Status](docs/roadmap-to-stable.md), the [Command-Line Interface](docs/command-line-interface.md), and [Library Operations and Recovery](docs/library-operations.md). Live qualification of the Music commands remains pending.
+iLibrary 0.1.0 is experimental. Read [Current Status](docs/roadmap-to-stable.md), the [Command-Line Interface](docs/command-line-interface.md), and [Library Operations and Recovery](docs/library-operations.md). The Music commands passed [separate-user validation](docs/reports/library-command-validation.md); other system versions and cloud behavior remain unverified.
 
 Use `ilibrary --version` and, in the intended test environment, `ilibrary doctor`. The latter does not launch Music or inspect tracks, but its output can include the media-folder path. Do not post the complete output without reviewing it.
 
