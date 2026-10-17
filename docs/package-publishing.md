@@ -66,9 +66,24 @@ npm whoami --registry=https://registry.npmjs.org
 
 別のユーザー名が表示された場合は、そのユーザー名だけを教えてください。名前変更や新規アカウント作成はまだ不要です。
 
-初回公開で npm が追加の Web 認証を求める場合は、その時点でエージェントが案内します。トークンを作成して貼り付ける手順は使いません。
+直接公開を使う場合は、npm が追加の Web 認証を求めることがあります。Web で公開を確定する手順は次の節を使います。トークンを作成して会話へ貼り付ける必要はありません。
 
 根拠：[npm login](https://docs.npmjs.com/cli/v11/commands/npm-login/)、[スコープ付き公開パッケージ](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/)。
+
+## npm Web Publication
+
+この方法では、ご本人は Web で公開を確定します。ログイン済みの Mac から公開待ちのファイルを登録する作業は、エージェントが担当します。ご本人のターミナル操作は不要です。
+
+1. エージェントが検証済みの配布物を `npm stage publish` で登録し、対象の名前・版番号・照合値を確認するまで待ちます。
+2. [npm](https://www.npmjs.com/) に `x96_64` でログインします。
+3. アカウントメニューの **Packages** を開き、**Staged Packages** を選びます。
+4. エージェントが案内した名前と版番号を確認します。0.1.0 の対象は **`@x96_64/ilibrary` の `0.1.0`** です。`validating` と表示され、承認できない場合は検査が終わるまで待って再読み込みします。
+5. **Approve** を押し、求められた本人認証を完了します。
+6. **「npm を Web で承認しました」** と報告してください。エージェントが公開先の照合値と実際のインストールを確認します。
+
+初回は公開の仮登録 `0.0.0-stage` が作られます。0.1.0 の中身は、承認が完了するまで公開されません。公開待ちへの登録には npm 11.15.0 以降と Node.js 22.14.0 以降が必要です。登録時には二段階認証を求めませんが、Web の承認時には本人認証が必要です。
+
+根拠：[npm の公開待ち登録と Web 承認](https://docs.npmjs.com/staged-publishing/)。
 
 ## npm Trusted Publisher Setup
 
