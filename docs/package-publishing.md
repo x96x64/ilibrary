@@ -4,6 +4,8 @@
 
 この手順は、iLibrary の npm・PyPI 公開に必要な、ご本人の Web 操作を説明します。GitHub 側の準備、配布物の作成、確認、公開処理はエージェントが担当します。通常の Music や音楽ファイルを操作する必要はありません。
 
+これは今後の公開や接続の再設定にも使う保守用手順です。実際の完了状況は [Current Status](roadmap-to-stable.md) を確認し、未完了の操作だけを行ってください。登録済みの接続や有効なログインを、毎回作り直す必要はありません。
+
 今回の配布名は次のとおりです。npm のログイン名は `x96_64`、GitHub の所有者名は `x96x64` です。npm ではご本人の名前を使い、グループ作成やアカウント名の変更は行いません。
 
 | 公開先 | 名前 |
@@ -16,7 +18,7 @@
 
 ## PyPI Setup
 
-以前の `x96x64-ilibrary` の登録とは別に、新しい配布名 `x96_64-ilibrary` で登録します。以前の登録だけでは、新しい名前で公開できません。新しい登録を確認してから、不要になった古い pending publisher を削除できます。iLyrics の登録はそのままにしてください。
+初回公開時だけ、新しいプロジェクト向けの pending publisher を登録します。公開後は通常の Trusted Publisher に切り替わるため、同じ接続を使う次の版では再登録しません。iLyrics の登録はそのままにしてください。
 
 これは初回公開の前に進められます。PyPI に「この GitHub リポジトリの公開処理を信頼する」と登録します。登録だけではパッケージは公開されません。
 
@@ -64,9 +66,24 @@ npm whoami --registry=https://registry.npmjs.org
 
 別のユーザー名が表示された場合は、そのユーザー名だけを教えてください。名前変更や新規アカウント作成はまだ不要です。
 
-初回公開で npm が追加の Web 認証を求める場合は、その時点でエージェントが案内します。トークンを作成して貼り付ける手順は使いません。
+直接公開を使う場合は、npm が追加の Web 認証を求めることがあります。Web で公開を確定する手順は次の節を使います。トークンを作成して会話へ貼り付ける必要はありません。
 
 根拠：[npm login](https://docs.npmjs.com/cli/v11/commands/npm-login/)、[スコープ付き公開パッケージ](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/)。
+
+## npm Web Publication
+
+この方法では、ご本人は Web で公開を確定します。ログイン済みの Mac から公開待ちのファイルを登録する作業は、エージェントが担当します。ご本人のターミナル操作は不要です。
+
+1. エージェントが検証済みの配布物を `npm stage publish` で登録し、対象の名前・版番号・照合値を確認するまで待ちます。
+2. [npm](https://www.npmjs.com/) に `x96_64` でログインします。
+3. アカウントメニューの **Packages** を開き、**Staged Packages** を選びます。
+4. エージェントが案内した名前と版番号を確認します。0.1.0 の対象は **`@x96_64/ilibrary` の `0.1.0`** です。`validating` と表示され、承認できない場合は検査が終わるまで待って再読み込みします。
+5. **Approve** を押し、求められた本人認証を完了します。
+6. **「npm を Web で承認しました」** と報告してください。エージェントが公開先の照合値と実際のインストールを確認します。
+
+初回は公開の仮登録 `0.0.0-stage` が作られます。0.1.0 の中身は、承認が完了するまで公開されません。公開待ちへの登録には npm 11.15.0 以降と Node.js 22.14.0 以降が必要です。登録時には二段階認証を求めませんが、Web の承認時には本人認証が必要です。
+
+根拠：[npm の公開待ち登録と Web 承認](https://docs.npmjs.com/staged-publishing/)。
 
 ## npm Trusted Publisher Setup
 
@@ -91,6 +108,17 @@ npm whoami --registry=https://registry.npmjs.org
 この設定によって、次回以降は GitHub の確認済み公開処理から公開できます。iLyrics の接続先やアカウント全体の認証設定は変更しません。
 
 根拠：[npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)。
+
+## GitHub Publication Approval
+
+公開時の確認を必要とする設定では、公開処理を開始したあとに、ご本人の GitHub 操作が必要です。
+
+1. エージェントが案内した GitHub Actions の実行ページを開きます。履歴から探す場合は [Publish Reviewed Packages](https://github.com/x96x64/ilibrary/actions/workflows/release.yml) を開き、対象の実行を選びます。
+2. 公開する版と対象が今回の案内と一致することを確認し、**Review deployments** を押します。
+3. 今回公開する **pypi** または **npm** にチェックを入れ、**Approve and deploy** を押します。初回の npm 公開をこの Mac から行う場合は、この操作を使いません。
+4. **「GitHub の公開確認を完了しました」** と報告してください。公開とインストールの最終結果はエージェントが確認します。
+
+ボタンがまだ表示されない場合は、公開前の検査が終わるまで待ちます。公開用の設定を削除したり、確認の条件を緩めたりする必要はありません。
 
 ## Result Report
 

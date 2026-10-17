@@ -15,7 +15,7 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
    - 今回やる作業の範囲
    - 完了条件（ゲート）
    - 私の Mac が必要かどうか
-   既に承認した範囲は再確認せず続けてください。0.1.0 の公開まで承認済みです。
+   既に承認した範囲は再確認せず続けてください。0.1.0 は公開・導入確認まで完了しています。
    M5/M6 の別ユーザー検証と M8 のコピー検証は報告書に記録済みです。
    公開の最終承認は取得済みです。push 前の実ファイルプレビュー・要約と邦訳は続けてください。
    途中の作業が残っている場合は、その続きから再開してください。
@@ -27,8 +27,9 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
 4. 私の実ライブラリ（~/Music/Music/Media.localized/Music）と Apple Music のライブラリには、
    私の明示的な指示なしに触れないでください。検証はコピーまたは合成ファイルで行ってください。
    実際の音楽ファイル、Apple ID、個人パスは reference-private/ 以外に置かず、公開物に含めないでください。
-5. 0.1.0 を npm・PyPI・Homebrew で配布する準備を、iLyrics を参考に進めてください。
-   0.1.0 の push・タグ・リリース・レジストリ公開は承認済みの範囲で続けてください。
+5. 0.1.0 は公開済みです。現在の文書修正と整理を終えてから、私が確認するためのコマンドを順番に説明してください。
+   私の確認が済むまで、GitHub のリリース本文・表示区分や npm の公開経路は変更しないでください。
+   公開済みの版を再公開したり、既存タグを動かしたりしないでください。
    push の前には、変更した文書のプレビュー、主要な変更の要約、その日本語訳を示してください。
 6. 区切りごとに docs/roadmap-to-stable.md の Current Status を更新してコミットし、
    Claude Code に戻っても続けられる状態にしてください。
@@ -46,18 +47,22 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
 
 The same prompt applies in Claude Code. Replace the Codex attribution in item 3 with `Co-Authored-By: Claude <noreply@anthropic.com>`, optionally preceded by the model name, as defined in AGENTS.md.
 
-## Next Session for Version 0.1.0
+## Next Session after Version 0.1.0
 
 ```text
 ~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md を読み、Git の現状を確認してください。
 M5/M6 は別ユーザーで 12 項目成功、M8 は 301 ファイルのコピーで成功しています。詳細は新しい報告書を読んでください。
-0.1.0 の公開作業を引き継いでください。GitHub リリースは公開済みです。npm は @x96_64/ilibrary、PyPI は x96_64-ilibrary、Homebrew は x96x64/tap/ilibrary です。既に終えた検証を理由なく繰り返さないでください。
+0.1.0 は GitHub・npm・PyPI・Homebrew で公開済みです。npm は @x96_64/ilibrary、PyPI は x96_64-ilibrary、Homebrew は x96x64/tap/ilibrary です。公開先からの導入確認も成功しています。完了した公開や検証を理由なく繰り返さないでください。
 普段の Music と元ファイルは変更せず、私的なデータは reference-private/ 内だけで扱ってください。
-公開前に不要な生成物と統合済みブランチを整理し、実ファイルのプレビュー、各セクションの要約と邦訳を示してください。
-公開の最終承認は取得済みです。Current Status で各公開先と必要なアカウント操作の状態を確認し、タグと原本のソースは変更せず再開してください。
+まず文書修正と既存の整理作業を完了し、その後で私が手元で確認するためのコマンドを、順番に説明付きで示してください。確認用コマンドを先に出さないでください。
+私が確認するまでは、GitHub のリリース本文・表示区分や npm の公開経路の変更は待ってください。希望はリポジトリ右側の Releases にリリース名を表示することです。GitHub Packages への追加配布や、公開済み npm 0.1.0 の再公開は不要です。
+既存のタグ、公開済みバージョン、履歴は変更しないでください。npm の次回 GitHub 公開を使う場合だけ、Trusted Publisher の設定を案内してください。
+docs/planning-study.md の Outlook to Version 1.0.0 にある既存の見通しを取り出してください。これは当初の構想で、確定した新計画ではありません。
+新しい 1.0.0 までの計画は GPT-6-Astra で作りたいので、計画を作り始める直前で止まってください。モデル切り替え前に計画や新実装を始めないでください。
+今後の push 前も、実ファイルのプレビュー、各セクションの要約と邦訳を示してください。計画書と過去の報告書は保存してください。
 Current Status を更新してコミットし、結果・残課題・次の作業・引き継ぎプロンプトを日本語で報告してください。
 ```
 
 ## Recommended Models and Effort
 
-For M9 distribution and release preparation, use Claude Opus 5.5 with high in Claude Code, or GPT-6.1-Sol with high in Codex, following the roadmap. These are the models recorded as available to the maintainer; do not select `ultra`.
+For the remaining M9 documentation and release closeout, use Claude Opus 5.5 with high in Claude Code, or GPT-6.1-Sol with high in Codex, following the roadmap. For the subsequent version 1.0.0 planning, the maintainer explicitly selected GPT-6-Astra; use high and stop before planning until that model is selected. Claude Opus 5.5 with high is the corresponding Claude Code recommendation. These models are recorded as available to the maintainer; do not select `ultra`.

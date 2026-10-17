@@ -9,7 +9,14 @@
 
 iLibrary prepares downloaded music for a local Apple Music library. It converts lossless downloads to Apple Lossless, applies a JSON catalog without re-encoding, arranges filenames and dates, and adds albums in a controlled order.
 
-Version 0.1.0 is experimental. Start with copies and a separate test library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> **Note:** Version 0.1.0 is experimental. Start with copies and a separate test library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+
+## Features
+
+- Catalog export, authoring instructions, validation, and metadata application without audio re-encoding.
+- Verified lossless conversion and M4A purchase-metadata removal.
+- Consistent names and dates, ordered album addition, and file and library diagnostics.
+- Dry runs, write plans, and verification for mutating commands.
 
 ## Requirements
 
@@ -31,7 +38,7 @@ npm install -g @x96_64/ilibrary@0.1.0
 ilibrary --version
 ```
 
-### PyPI
+### pip
 
 Install in an isolated environment to avoid changing system Python:
 
@@ -55,7 +62,9 @@ Read the [changelog](https://github.com/x96x64/ilibrary/blob/main/CHANGELOG.md) 
 
 Remove the corresponding installation with `npm uninstall -g @x96_64/ilibrary`, `python -m pip uninstall x96_64-ilibrary`, or `brew uninstall ilibrary`. Removing the executable does not undo file or library changes. Retain catalogs and addition journals needed for recovery.
 
-## Quick Start
+## Usage
+
+### Quick Start
 
 Use selected copies in `./downloads` and a new `./staging` directory. Each write has a preview:
 
@@ -74,7 +83,7 @@ ilibrary check ./staging
 
 For addition to Music, first follow [Test Library Validation](https://github.com/x96x64/ilibrary/blob/main/docs/test-library-validation.md) in a separate macOS user. `add` moves selected sources, stops at an existing matching track, confirms each album, and retains a resumption journal.
 
-## Commands
+### Commands
 
 | Commands | Purpose |
 | --- | --- |
@@ -87,13 +96,17 @@ For addition to Music, first follow [Test Library Validation](https://github.com
 
 Use `ilibrary help COMMAND` for options. Every mutating command offers `--dry-run`, lists its plan, and verifies its writes. A batch is not a transaction; earlier completed files can remain after a later failure.
 
-## Verification and Limits
+### Verification and Limits
 
 The public suite uses synthetic audio and substitute library adapters. The maintainer separately reported twelve successful live command checks in a test user. Qualification of 301 personal-file copies found no file diagnostic and left originals unchanged. Those results do not establish behavior on every OS version or in a cloud library.
 
 Conversion supports integer mono and stereo PCM. Protected audio is refused. Real Trash operations remain untested. iLibrary reports cloud status but does not claim to prevent Apple Music matching. It does not download recordings or include commercial audio or artwork. Catalogs, prompts, output, and journals can contain private data; review them before sharing.
 
-## Documentation and Support
+## Rights
+
+Process only recordings and artwork that you have the right to use. iLibrary does not distribute commercial recordings or store artwork. Catalogs, prompts, output, and journals can contain private metadata; review them before sharing.
+
+## Links
 
 - [README](https://github.com/x96x64/ilibrary#readme)
 - [Command-Line Interface](https://github.com/x96x64/ilibrary/blob/main/docs/command-line-interface.md)
