@@ -77,7 +77,7 @@ Homebrew builds from source and requires Swift 6.
 npm install -g @x96_64/ilibrary@0.1.0
 ```
 
-### PyPI
+### pip
 
 ```bash
 python3 -m venv .venv-ilibrary

@@ -2,7 +2,9 @@
 
 ## Purpose
 
-Milestone M5 adds albums to a Music library, and milestone M6 compares files with a library. The behavior of Music on which they depend has not been measured by iLibrary (see S3 in the [Architecture Spike](reports/architecture-spike.md)): whether files inside the media folder are added in place, which tracks `add` returns, whether persistent IDs survive a relaunch, the cloud status of local files, how duplicates and files outside the media folder are treated, whether `refresh` rereads changed tags, whether a moved file can be relinked, and how renaming an album reorganizes folders.
+This procedure was prepared to resolve the Music behavior questions left open by S3 in the [Architecture Spike](reports/architecture-spike.md). The completed measurements are recorded in [Music Behavior](reports/music-behavior.md); validation of the implemented M5/M6 commands is recorded separately in [Live Library Command Validation](reports/library-command-validation.md). Do not repeat either run merely because this procedure remains available.
+
+The probe examines whether files inside the media folder are added in place, which tracks `add` returns, whether persistent IDs survive a relaunch, the cloud status of local files, how duplicates and files outside the media folder are treated, whether `refresh` rereads changed tags, whether a moved file can be relinked, and how renaming an album reorganizes folders.
 
 These measurements are made in a separate local macOS user that is not signed in to an Apple Account, so that neither the maintainer's library nor the maintainer's iCloud Music Library is touched. `scripts/validation/music-live-probe.sh` performs them and writes a result file without personal paths.
 

@@ -1,18 +1,10 @@
 # Distribution
 
-## Status and Names
+## Status
 
 Version 0.1.0 is an experimental release. The GitHub prerelease is published; registry publication and installation verification are recorded separately. Current publication and CI results belong in [Current Status](roadmap-to-stable.md).
 
-| Channel | Package or Formula | Installed Command |
-| --- | --- | --- |
-| npm | `@x96_64/ilibrary` | `ilibrary` |
-| PyPI | `x96_64-ilibrary` | `ilibrary` |
-| Homebrew | `x96x64/tap/ilibrary` | `ilibrary` |
-
-The npm and PyPI names `ilibrary` were already occupied. The npm login was subsequently confirmed as `x96_64`; the maintainer selected that personal scope instead of creating an organization. The maintainer also selected `x96_64-ilibrary` on PyPI. Registry availability is checked before publication; a pending publisher neither reserves the name nor establishes successful publication. PyPI normalizes underscores and hyphens for lookup, so its project URL may show `x96-64-ilibrary` while the declared name is `x96_64-ilibrary`. PyPI accepts letters, digits, periods, underscores, and hyphens, but not npm's scope syntax. See the [Python package naming specification](https://packaging.python.org/en/latest/specifications/name-normalization/).
-
-## Package Contents
+## Release Archive
 
 The packaging approach follows [iLyrics](https://github.com/x96x64/ilyrics): a native executable in the npm archive and platform wheel, a package README with absolute links, and a source-building Homebrew formula. No JavaScript or Python component runs when invoking the installed executable. No additional Swift package dependency is introduced.
 
@@ -20,13 +12,7 @@ The binary archive, npm archive, and wheel contain identical executable bytes, t
 
 All distributed binaries target macOS 14 or later on Apple silicon. The wheel is `py3-none-macosx_14_0_arm64`, with Python 3.9 or later required for installation. npm declares `darwin` and `arm64`. Homebrew requires macOS Sonoma or later, Apple silicon, and a Swift 6 toolchain. Linux support remains limited to portable development and tests; no Linux package is distributed.
 
-## Installation, Updates, and Removal
-
-The [package README](../packaging/README.md) contains the complete installation, update, and removal instructions shared by npm and PyPI. The repository [README](../README.md#installation) also includes Homebrew and source installation. Use only one channel for a given shell to avoid running an older executable earlier in `PATH`.
-
-The packages do not install a background service, download audio, or change a Music library during installation. Removing a package removes the executable; it does not undo earlier operations on music files. Catalogs and addition journals remain user-owned recovery records.
-
-## Building and Verifying Packages
+### Building and Verifying Packages
 
 From a clean, committed checkout on Apple silicon with Swift 6, Python 3.9 or later, and npm available:
 
@@ -58,11 +44,25 @@ brew ruby packaging/verify_homebrew.rb artifacts/release-0.1.0/ilibrary.rb \
 
 The last directory must not exist. This harness uses Homebrew's Ruby libraries with an isolated prefix. It verifies the source build and formula tests, but does not establish download or installation through the public tap. The release preparation report records those distinctions.
 
-## Signing and Compatibility
+### Signing and Compatibility
 
 The packaged executable is ad hoc-signed. Developer ID signing, notarization, and Gatekeeper behavior for browser downloads are unverified. Do not describe these packages as notarized or instruct users to disable Gatekeeper. Source installation remains available. Local testing on macOS 27.0.1 does not establish runtime compatibility with every release since macOS 14.
 
-## Publication Procedure
+## Channels
+
+| Channel | Package or Formula | Installed Command |
+| --- | --- | --- |
+| npm | `@x96_64/ilibrary` | `ilibrary` |
+| PyPI | `x96_64-ilibrary` | `ilibrary` |
+| Homebrew | `x96x64/tap/ilibrary` | `ilibrary` |
+
+The npm and PyPI names `ilibrary` were already occupied. The npm login was subsequently confirmed as `x96_64`; the maintainer selected that personal scope instead of creating an organization. The maintainer also selected `x96_64-ilibrary` on PyPI. Registry availability is checked before publication; a pending publisher neither reserves the name nor establishes successful publication. PyPI normalizes underscores and hyphens for lookup, so its project URL may show `x96-64-ilibrary` while the declared name is `x96_64-ilibrary`. PyPI accepts letters, digits, periods, underscores, and hyphens, but not npm's scope syntax. See the [Python package naming specification](https://packaging.python.org/en/latest/specifications/name-normalization/).
+
+The [package README](../packaging/README.md) contains the complete installation, update, and removal instructions shared by npm and PyPI. The repository [README](../README.md#installation) also includes Homebrew and source installation. Use only one channel for a given shell to avoid running an older executable earlier in `PATH`.
+
+The packages do not install a background service, download audio, or change a Music library during installation. Removing a package removes the executable; it does not undo earlier operations on music files. Catalogs and addition journals remain user-owned recovery records.
+
+## Publication
 
 Publication requires the maintainer's final confirmation after document previews, section summaries and Japanese translations, verification, and cleanup. The release title is `iLibrary: v0.1.0, Catalog-Driven Music Libraries for Apple Music on macOS`; GitHub marks it as a prerelease. npm uses the `latest` distribution tag and PyPI uses numeric version `0.1.0`, so both package descriptions prominently identify it as experimental.
 
@@ -75,13 +75,13 @@ Publication requires the maintainer's final confirmation after document previews
 
 The workflow rechecks the tag's commit, integration into `main`, GitHub prerelease state, and reviewed manifest immediately before each registry publication. It does not create tags, releases, assets, or Homebrew commits. It has no push or tag trigger. A changed tag, unintegrated commit, draft release, or mismatched package is refused.
 
-## Metadata Corrections
+### Metadata Corrections
 
-A metadata-only correction may use a later packaging commit while retaining the tagged executable and source archive. `build-info.json` records both `source_commit` and `packaging_commit`; no tag or source history is rewritten. The binary bytes and source-archive checksum must remain unchanged. The package descriptions, npm identity, wheel metadata, and checksums are regenerated together. Verification uses the corrected packaging checkout when the two commits differ. Run `python3 packaging/repackage.py ORIGINAL_DIRECTORY NEW_DIRECTORY --manifest-sha256 ORIGINAL_REVIEWED_DIGEST` from that clean checkout, then run the verifier against the original source commit with `--install`. The original files and checksum manifest are validated before any output is written. Existing registry versions are never replaced.
+A metadata-only correction may use a later packaging commit while retaining the tagged executable and source archive. `build-info.json` records both `source_commit` and `packaging_commit`; no tag or source history is rewritten. The binary bytes and source-archive checksum must remain unchanged. The package descriptions, npm identity, wheel metadata, and checksums are regenerated together. Verification reads the package README from the exact recorded packaging commit when the two commits differ; later documentation edits do not replace that evidence. Fetch that commit before verification; the publication workflow retrieves the full history. Run `python3 packaging/repackage.py ORIGINAL_DIRECTORY NEW_DIRECTORY --manifest-sha256 ORIGINAL_REVIEWED_DIGEST` from that clean checkout, then run the verifier against the original source commit with `--install`. The original files and checksum manifest are validated before any output is written. Existing registry versions are never replaced.
 
 The npm and PyPI name corrections for 0.1.0 are recorded in [Distribution Metadata Correction](reports/distribution-metadata-correction.md). The immutable source archive records the original packaging names; use the current installation instructions for the corrected distribution names.
 
-## Registry Setup
+## Maintainer Actions
 
 The Japanese [Package Publication Setup](package-publishing.md) procedure provides screen-by-screen instructions and the exact values for the maintainer.
 
@@ -89,11 +89,13 @@ GitHub environments `npm` and `pypi` should require maintainer approval. On Octo
 
 For PyPI, configure a [pending trusted publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) for project `x96_64-ilibrary`, owner `x96x64`, repository `ilibrary`, workflow `release.yml`, and environment `pypi`. This allows first publication without storing a PyPI token in GitHub.
 
-For npm, [trusted publishing](https://docs.npmjs.com/trusted-publishers/) is configured in an existing package's settings, with owner `x96x64`, repository `ilibrary`, workflow `release.yml`, and environment `npm`. First publication may require the maintainer's npm sign-in and two-factor authentication. If needed, publish only the reviewed local archive with `npm publish PATH_TO_REVIEWED_TGZ --access public --tag latest`, then configure trusted publishing for subsequent versions. Do not copy credentials into a document, command argument, or chat. Registry account access and actual permission to publish remain unverified until exercised.
+For npm, [trusted publishing](https://docs.npmjs.com/trusted-publishers/) is configured in an existing package's settings, with owner `x96x64`, repository `ilibrary`, workflow `release.yml`, and environment `npm`. Version 0.1.0 was published from the reviewed archive through staged publication and maintainer Web approval; registry access and public installation were verified. Trusted publishing remains optional setup before a future GitHub-driven version. The initial Web publication did not run the GitHub `npm` job, so no corresponding GitHub deployment was created. Do not republish the existing version to create a deployment record, or copy credentials into a document, command argument, or chat. See [Version 0.1.0 Publication](reports/release-publication.md) for the completed evidence.
 
-## References
+### References
 
 - [iLyrics Distribution](https://github.com/x96x64/ilyrics/blob/main/docs/distribution.md)
 - [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)
 - [PyPI Trusted Publishers](https://docs.pypi.org/trusted-publishers/)
 - [Homebrew Formula Cookbook](https://docs.brew.sh/Formula-Cookbook)
+
+Release notes follow the iLyrics structure: an introductory paragraph, an important notice, Highlights, Installing and Upgrading, and a closing changelog link. The release title is set separately; omit the archival file's first heading from the published body. Template edits after publication apply to the next package build; existing npm and PyPI versions retain their reviewed descriptions and bytes.

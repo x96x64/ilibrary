@@ -1,8 +1,10 @@
 # Command-Line Interface
 
-## Overview
+## Status
 
-`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in the current development version. The implemented `add` and `check --library` passed [separate-user validation](reports/library-command-validation.md); use the separate-user procedure before operating a personal library.
+`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in version 0.1.0. The implemented `add` and `check --library` passed [separate-user validation](reports/library-command-validation.md); use the separate-user procedure before operating a personal library.
+
+## Synopsis
 
 ```
 ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]
@@ -183,3 +185,7 @@ The command reads installed application information, preferences, and existing p
 ## Environment
 
 Dates use the time zone of the process, which the `TZ` environment variable selects.
+
+## Rights
+
+Process only recordings and artwork that you have the right to use. iLibrary does not download audio and refuses protected files. Catalogs, prompts, journals, and diagnostics can contain private metadata; review them before sharing. See [Rights and Privacy](../README.md#rights-and-privacy) and [Support](../SUPPORT.md) for reporting requirements.
