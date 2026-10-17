@@ -49,7 +49,14 @@ The output directory must not already exist. The builder compiles the current so
 
 Verification checks hashes, package identities, archive contents, licenses, descriptions, wheel records, and equality of executable bytes. `--install` additionally checks the signature, architecture, deployment target, version, schema, and help after installing the archive, npm package, and wheel into temporary directories. Installation uses local files without consulting a registry and never queries Music. The temporary installations are removed afterwards.
 
-The macOS CI job builds and installs packages; both CI jobs test the publication guards. CI packaging does not publish. Homebrew formula validation and its source build are recorded separately in the release preparation report.
+The macOS CI job builds and installs packages; both CI jobs test the publication guards. CI packaging does not publish. To exercise Homebrew's actual formula and test block without registering an installation or changing the existing tap, extract the verified source archive into a temporary directory, then run:
+
+```bash
+brew ruby packaging/verify_homebrew.rb artifacts/release-0.1.0/ilibrary.rb \
+  EXTRACTED_SOURCE_DIRECTORY artifacts/homebrew-verification
+```
+
+The last directory must not exist. This harness uses Homebrew's Ruby libraries with an isolated prefix. It verifies the source build and formula tests, but does not establish download or installation through the public tap. The release preparation report records those distinctions.
 
 ## Signing and Compatibility
 
