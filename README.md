@@ -44,7 +44,7 @@ ilibrary apply catalog.json ./staging --dry-run
 - **Ordered addition to Music.** `add` moves each album into the Music media folder, adds it there in place, and confirms one track per file before the next album, in release or artist order. It stops when the library already holds a matching track, never changes a track in Music, and resumes an interrupted run.
 - **Lossless import.** `import` converts FLAC, WAV, and AIFF downloads to Apple Lossless through AudioToolbox, verified by decoded PCM equality, and copies iTunes Store files without re-encoding while removing purchase metadata. Standard FLAC tags and the front cover are carried; with `--delete-originals`, originals are moved to the Trash only after every output has been verified.
 - **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files. Every planned change is listed first; `--dry-run` stops there, and every written file is read back and compared with the plan.
-- **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Title.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
+- **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Song.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
 - **MP4 metadata without re-encoding.** `MP4Core` reads and writes the item list of M4A files, rebuilds only the movie box, copies the audio data unchanged, relocates chunk offsets, and replaces items in place, so that repeated application yields identical bytes. Every rewrite goes through a hidden partial file that is parsed again and compared with the source before it replaces the destination.
 - **Removal of iTunes Store purchase metadata.** The purchaser's account, name, purchase date, store identifiers, and purchase information are removed, padding is zeroed, and the gapless information is kept. Encrypted files (`.m4p` and `drms` sample entries) are refused.
 - **FLAC metadata.** `FLACCore` reads stream information, Vorbis comments, and pictures without decoding audio, and rejects truncated metadata.
@@ -160,7 +160,7 @@ Exit status is 0 on success, 1 on a failure or a finding from `check` or `doctor
 
 A catalog is a UTF-8 JSON document identified by `"format": "ilibrary-catalog-1"`. Album-level values apply to every track and may be overridden per track; an empty string means that a value is unknown. `ilibrary schema` prints the JSON Schema, and [Completing Catalogs with AI Agents](docs/catalog-for-agents.md) describes the authoring workflow.
 
-This excerpt illustrates the structure with "Billie Jean" from Michael Jackson's *Thriller*. It is not a complete album catalog; include every selected track before applying it.
+This excerpt illustrates the structure with "Bad" from Michael Jackson's *Bad*. The alias illustrates matching a remastered edition. It is not a complete album catalog; include every selected track before applying it.
 
 ```json
 {
@@ -168,15 +168,15 @@ This excerpt illustrates the structure with "Billie Jean" from Michael Jackson's
   "titleRules": { "case": "keep", "removeQualifiers": ["Remaster"], "bracketNested": true },
   "albums": [
     {
-      "album": "Thriller",
-      "aliases": ["Thriller (Remastered)"],
+      "album": "Bad",
+      "aliases": ["Bad (Remastered)"],
       "albumArtist": "Michael Jackson",
-      "copyright": "℗ 1982 MJJ Productions, Inc.",
-      "releaseDate": "1982-11-30",
+      "copyright": "℗ 1987 MJJ Productions, Inc.",
+      "releaseDate": "1987-08-31",
       "discs": [
         {
           "tracks": [
-            { "title": "Billie Jean", "composer": "Michael Jackson" }
+            { "title": "Bad", "composer": "Michael Jackson" }
           ]
         }
       ]
@@ -187,7 +187,7 @@ This excerpt illustrates the structure with "Billie Jean" from Michael Jackson's
 
 - **Validation** reports unknown fields, wrong types, missing titles, invalid dates, and duplicate albums with their JSON paths, and rejects documents of other formats. The schema is published as [docs/schema/ilibrary-catalog-1.schema.json](docs/schema/ilibrary-catalog-1.schema.json).
 - **Matching** selects the album by name or alias, then the track by disc and track number, by numbering that continues across discs, and by title. A title that disagrees at a file's numbers is treated as a correction only when no other track carries it and more of the album's titles agree than differ; every match and refusal is reported.
-- **Naming** follows the Music app: `NN Title.m4a` on single-disc albums, `D-NN Title.m4a` on multi-disc albums, and `_` in place of `:` and `/`.
+- **Naming** follows the Music app: `NN Song.m4a` on single-disc albums, `D-NN Song.m4a` on multi-disc albums, and `_` in place of `:` and `/`.
 - **Orders** are `release`, `artist` (albums by name), `artist-desc` (artists and albums descending), and `artist-release` (albums by release date).
 - **Title rules** remove listed qualifiers such as `(2012 Remaster)`, write nested parentheticals with square brackets, and apply the MLA, APA, or start-case style. Words whose capitalization depends on their grammatical role are left unchanged and reported.
 - **Dates** are written to files as `YYYY-MM-DDT00:00:00Z`; file timestamps use local midnight, or the first instant of the day where a time zone skips midnight.
