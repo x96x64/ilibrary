@@ -51,14 +51,14 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 ## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/display-media-path-correction.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility です。停止時ログを受領し、保存先は予定のM10-v2-smallの直下のMedia.localized、旧検証の期待値はMediaと確認しました。検証側がこの末尾名に対応していなかったことが直接原因です。設定を合わせた本人の操作ミスとは扱いません。旧結果と当時の評価は保持しています。
-修正97d4c0bは、予定したライブラリ直下のMediaとMedia.localizedだけを認め、実行中は選択したパスに固定します。別ライブラリ・余分な階層・似た別名・存在しない場所・シンボリックリンク・途中のパス変更は拒否します。旧smallのID、登録場所、内容、バックアップの照合は維持しています。
-67件の合成試験が通り、設定値を解析する実際の関数に合成のコマンド出力を通す試験と、Media.localizedでのsmall再利用・4種類の全工程の代替試験を含みます。Musicの実測ではありません。releaseビルド、324曲と8カタログ、新しい一式とZIPの照合も通っています。
-新しい一式はilibrary-m10-display-v2、ソースは97d4c0bです。ZIPと照合ファイルは共有場所へ別名で転送し一致を確認済みです。SHA-256は9676a7cea84544ebe37ce2b0c071ece781c8cbffffdd95a54c5a9116a3c49290です。docs/rebuild-display-validation.mdと同梱PROCEDURE.mdが現在の日本語手順です。エージェントは別ユーザー操作の直前で止まっています。
-旧ilibrary-m10-displayと停止記録、さらに古いilibrary-m10-v2とsmallの6曲を保持します。Media.localizedを変更せず、新しい一式でsmallの事前検査から再開します。旧runを再実行したり、停止記録を削除して再開したりしません。smallは退避・登録削除を繰り返しません。ほかの4ケースは未実行のため別々の新しい空の合成ライブラリを使います。
-次は本人からの/Users/Shared/ilibrary-m10-display-v2-report.txtの評価です。成功、不一致、確認不能、停止、未実行を区別します。準備完了だけでM10を合格にしません。追加日時の1秒差だけでは不合格にせず、表示順と再起動後の維持、再実行時の安全性、最後の保全確認を実測結果から判定します。
-今回の受領ログはreference-private/m10-display-results-2026-10-17/preflight-diagnostics.jsonlに保存済みで、SHA-256は92d93d2e7f05be274bd427c960358038ace2d2422fbf701558c79c70245fe46dです。個人パスを公開しません。診断ログの再転送や準備のやり直しを求めないでください。
+~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/display-order-v2-results.md を読み、git status と git log を確認してください。
+現在は codex/m10-rebuild-feasibility です。display-v2（97d4c0b）の結果を受領しました。Media.localizedの確認はPASS、Music 1.7を取得し、legacy-evidenceで「検証一式のファイル一覧が一致しません」とSTOPしました。残り4ケースはNOT RUNです。表示順は未測定で、M10は未完了です。
+旧一式のmanifest識別情報は停止箇所より前に照合済みです（コードからの推定）。旧一式のファイル名集合で停止し、内容のハッシュ照合や現在の登録の確認には達していません。追加・欠損のどちらか、具体的なファイル名、原因はまだ不明です。音声破損やユーザーの操作ミスを断定しないでください。
+受領報告はreference-private/m10-display-v2-results-2026-10-17/report.txtに保存済みで、SHA-256は486f1ae64cbb9b1b7b41433dff48eeeb0695e3a4005444d93b3291b9f7c41cf6です。旧報告、ライブ検証コード、全ZIPは変更していません。
+c56190dで読み取り専用診断inspect_rebuild_bundle.pyを追加し、9件の合成試験が通っています。開発側の旧準備一式は314ファイルと内容が一致しましたが、検証ユーザー側の実態は未確認です。診断は検証用ユーザーに限定し、manifestを固定、リンクをたどらず、private記録を走査せず、追加ファイルの内容も読みません。差分の名前はreference-privateの新しい報告だけへ保存します。
+診断スクリプトと照合ファイルは/Users/Shared/ilibrary-m10-inspect-bundle.pyと同名の.py.sha256へ転送済みです。スクリプトのSHA-256は865e7820931af3341feb72269f1a9eba5dfcd801df2788fd89d978a5def262aeです。docs/rebuild-bundle-diagnostics.mdが現在の手順です。本人の別ユーザー操作の直前で止まっています。
+次に評価するのは/Users/Shared/reference-private/m10-display-inventory/inventory.jsonです。受領したらignoreを確認してreference-privateに保存し、追加・欠損・内容の差・リンク等を区別してください。未知の相対ファイル名も公開文書や会話にそのまま出さないでください。診断ログの再転送やMusicの再測定を先に求めないでください。
+差分の原因が分かるまで全ライブ手順を再実行しません。ファイル削除、旧一式の修復、設定変更、smallの作り直しは行いません。以前の6曲・ライブラリ・バックアップ・停止記録をすべて保持します。必要な修正は対象保護を維持して準備・検証し、別ユーザーでの操作前に止まってください。
 Music・実ライブラリ・私的音源は操作しません。M10完了前にM11以降や製品rebuildへ進めません。新たなpush・公開は別途承認が必要です。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと各セクションの要約・邦訳を示してください。
 ```
 

@@ -14,7 +14,8 @@
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
-- [Rebuilding Display-Order Validation](rebuild-display-validation.md): corrected Japanese M10 procedure; use the separately named display-v2 bundle and preserve the stopped run
+- [Retained Rebuilding Bundle Diagnostics](rebuild-bundle-diagnostics.md): current Japanese read-only handoff after the display-v2 inventory stop
+- [Rebuilding Display-Order Validation](rebuild-display-validation.md): retained M10 procedure; do not rerun while the inventory difference is unresolved
 - [Rebuilding Feasibility Validation](rebuild-feasibility-validation.md): retained version 2 instructions; do not resume this superseded experiment
 - [Saved Addition-Date Verification](rebuild-feasibility-date-check.md): completed read-only extraction of the stopped M10 run's saved timestamps
 - [Contributing](../CONTRIBUTING.md): development and verification requirements
@@ -61,3 +62,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Display-Order Validation Preparation](reports/display-order-preparation.md)
 - 2026-10-17 — [Display-Order Validation Results](reports/display-order-results.md)
 - 2026-10-17 — [Display-Probe Media-Path Correction](reports/display-media-path-correction.md)
+- 2026-10-17 — [Display-Order Version 2 Results](reports/display-order-v2-results.md)
