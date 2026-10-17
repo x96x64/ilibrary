@@ -160,7 +160,7 @@ Exit status is 0 on success, 1 on a failure or a finding from `check` or `doctor
 
 A catalog is a UTF-8 JSON document identified by `"format": "ilibrary-catalog-1"`. Album-level values apply to every track and may be overridden per track; an empty string means that a value is unknown. `ilibrary schema` prints the JSON Schema, and [Completing Catalogs with AI Agents](docs/catalog-for-agents.md) describes the authoring workflow.
 
-This excerpt illustrates the structure with "Billie Jean" from Michael Jackson's *Thriller*. It is not a complete album catalog; include every selected track before applying it.
+This excerpt illustrates the structure with "Bad" from Michael Jackson's *Bad*. The alias illustrates matching a remastered edition. It is not a complete album catalog; include every selected track before applying it.
 
 ```json
 {
@@ -168,15 +168,15 @@ This excerpt illustrates the structure with "Billie Jean" from Michael Jackson's
   "titleRules": { "case": "keep", "removeQualifiers": ["Remaster"], "bracketNested": true },
   "albums": [
     {
-      "album": "Thriller",
-      "aliases": ["Thriller (Remastered)"],
+      "album": "Bad",
+      "aliases": ["Bad (Remastered)"],
       "albumArtist": "Michael Jackson",
-      "copyright": "℗ 1982 MJJ Productions, Inc.",
-      "releaseDate": "1982-11-30",
+      "copyright": "℗ 1987 MJJ Productions, Inc.",
+      "releaseDate": "1987-08-31",
       "discs": [
         {
           "tracks": [
-            { "title": "Billie Jean", "composer": "Michael Jackson" }
+            { "title": "Bad", "composer": "Michael Jackson" }
           ]
         }
       ]
