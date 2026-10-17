@@ -2,7 +2,7 @@
 
 ## Status and Evidence
 
-Approved by the maintainer on October 17, 2026, and revised on the same date after the M10 timestamp measurements. The maintainer accepts differences in addition timestamps when Recently Added presents the intended album order. This revision is planning only: it does not authorize implementation, another Music experiment, personal-library operations, or publication. Version 0.1.0 is published. This plan supersedes the prospective version assignments in the [historical study](planning-study.md#outlook-to-version-100), not its completed measurements.
+Approved by the maintainer on October 17, 2026, and revised on the same date after the M10 timestamp measurements. The maintainer accepts differences in addition timestamps when Recently Added presents the intended album order. The subsequent Decision 34 authorizes guarded probe preparation and a separate-user handoff, with a stop before the maintainer's Music operations; it does not authorize product implementation, personal-library operations, or publication. Version 0.1.0 is published. This plan supersedes the prospective version assignments in the [historical study](planning-study.md#outlook-to-version-100), not its completed measurements.
 
 | Classification | Evidence | Consequence |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ If the intended display cannot be established or does not persist, stop the affe
 
 ## Remaining M10 Qualification
 
-The next work, after a new instruction to proceed, is to prepare a reproducible display-order validation and its Japanese handoff. Stop immediately before operations in the separate macOS user. The current probe, transferred version 2 bundle, and historical result files remain unchanged during this planning revision.
+Decision 34 authorizes preparation of reproducible display-order validation and its Japanese handoff. The [new procedure](rebuild-display-validation.md) is prepared; stop immediately before operations in the separate macOS user. The transferred version 2 bundle and historical result files remain unchanged. The [preparation report](reports/display-order-preparation.md) distinguishes completed preparation from unmeasured live behavior.
 
 1. First assess whether the existing small-case state can supply the missing display and preservation observations. Inspect its recorded identity and inventory before relying on it. A later observation must be labeled as later evidence, not reconstructed as an observation made during the original run. Unexpected changes stop reuse; they do not authorize clearing the library.
 2. Complete the missing small-case display, relaunch, repeat-safety, and final backup checks in the separate test user under a reviewed procedure. Reuse established results where their preconditions remain verifiable. When a fresh case is necessary, use a new isolated synthetic library and retain the old state.
@@ -90,7 +90,7 @@ Network metadata candidates, multidisc flattening, cloud-synchronized rebuilding
 
 Use milestone branches, atomic Conventional Commits, supported attribution trailers, and pull requests. Update Current Status at each checkpoint. Preserve historical reports. Before each approved push, present actual-file previews, section summaries, and Japanese translations. Future tags, releases, registry publication, and personal-library changes require explicit authorization; the 0.1.0 approvals do not extend to new releases.
 
-This revision changes documentation only. M10 has not passed, `rebuild` remains unimplemented, and no Music or personal-library operation is authorized now. The [M10 procedure](rebuild-feasibility-validation.md) preserves the previously performed version 2 experiment; it is not an instruction to resume under the new requirement. Prepare a replacement handoff only after implementation or further qualification work is requested.
+M10 has not passed and product `rebuild` remains unimplemented. The agent has completed the separately authorized probe preparation and stops before the maintainer's test-user operations. Follow only the [display-order procedure](rebuild-display-validation.md) for the next observations. The [older M10 procedure](rebuild-feasibility-validation.md) preserves the previously performed version 2 experiment and must not be rerun. Personal-library operations and publication require separate authorization.
 
 ## Recommended Models and Effort
 

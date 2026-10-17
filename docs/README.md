@@ -14,6 +14,7 @@
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
+- [Rebuilding Display-Order Validation](rebuild-display-validation.md): current Japanese M10 handoff, existing-small reuse, isolated cases, and one combined report
 - [Rebuilding Feasibility Validation](rebuild-feasibility-validation.md): retained version 2 instructions; do not resume this superseded experiment
 - [Saved Addition-Date Verification](rebuild-feasibility-date-check.md): completed read-only extraction of the stopped M10 run's saved timestamps
 - [Contributing](../CONTRIBUTING.md): development and verification requirements
@@ -57,3 +58,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Version 2 Rebuilding Feasibility Results](reports/rebuild-feasibility-v2-results.md)
 - 2026-10-17 — [Rebuilding Timestamp Gate Assessment](reports/rebuild-timestamp-gate.md)
 - 2026-10-17 — [Display-Order Plan Revision](reports/display-order-plan-revision.md)
+- 2026-10-17 — [Display-Order Validation Preparation](reports/display-order-preparation.md)
