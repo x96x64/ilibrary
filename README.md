@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/x96x64/ilibrary?include_prereleases)](https://github.com/x96x64/ilibrary/releases)
 [![npm](https://img.shields.io/npm/v/%40x96_64%2Filibrary)](https://www.npmjs.com/package/@x96_64/ilibrary)
-[![PyPI](https://img.shields.io/pypi/v/x96_64-ilibrary)](https://pypi.org/project/x96_64-ilibrary/)
+[![PyPI](https://img.shields.io/pypi/v/x96-64-ilibrary)](https://pypi.org/project/x96_64-ilibrary/)
 [![Homebrew](https://img.shields.io/badge/Homebrew-x96x64%2Ftap-FBB040?logo=homebrew&logoColor=white)](https://github.com/x96x64/homebrew-tap)
 [![CI](https://github.com/x96x64/ilibrary/actions/workflows/ci.yml/badge.svg)](https://github.com/x96x64/ilibrary/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
