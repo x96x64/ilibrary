@@ -13,7 +13,7 @@ ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary is experimental and available from source; no release has been published. All ten commands are implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. Live qualification of `add` and `check --library` is still pending; follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary is experimental and available from source; no release has been published. All ten commands are implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Contents
 
@@ -159,7 +159,7 @@ The package separates domain logic from platform integration, as iLyrics does. N
 | `FLACCore` | FLAC metadata blocks | Implemented; Foundation only |
 | `CatalogCore` | Catalog format, validation, matching, naming, ordering, title rules, dates | Implemented; Foundation only |
 | `ConversionMac` | Conversion to Apple Lossless through AudioToolbox and PCM verification | Implemented; macOS only |
-| `LibraryMac` | File dates, Music automation, media folder, permission state | Implemented; macOS only; live command qualification pending |
+| `LibraryMac` | File dates, Music automation, media folder, permission state | Implemented; macOS only; separate-user commands verified |
 | `ilibrary` | Command parsing, plans, and reports | Implemented; Foundation logic with conditional Mac adapters |
 
 The design rests on technical spikes recorded in the [Architecture Spike](docs/reports/architecture-spike.md) report, including measurements on synthetic files and on private copies of purchased and downloaded files.
@@ -187,7 +187,7 @@ Use audio and artwork that you are entitled to process. The repository contains 
 
 ## Limitations
 
-- Live qualification of the implemented Music commands is pending. Earlier application probes are recorded separately in [Music Behavior](docs/reports/music-behavior.md). Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
+- Live Music validation covers a separate test user on one macOS version; cloud matching remains unmeasured. See [Live Library Command Validation](docs/reports/library-command-validation.md). Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
 - Conversion and setting creation dates require macOS. On Linux, the catalog commands and copies by `import` run, but `timestamps` requires `--dry-run`, optionally with `--script`.
 - A catalog numbers discs and tracks by position; `export` reports gaps and repetitions in the files' numbers.
 - Conversion supports mono and stereo only, and refuses floating-point PCM. FLAC fields outside the standard set are not carried.

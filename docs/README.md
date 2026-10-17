@@ -31,3 +31,5 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Ordered Addition Corrections](reports/ordered-addition-corrections.md)
 - 2026-10-17 — [Library Checks and Diagnostics](reports/library-checks.md)
 - 2026-10-17 — [Documentation Review](reports/documentation-review.md)
+- 2026-10-17 — [Live Library Command Validation](reports/library-command-validation.md)
+- 2026-10-17 — [Library Copy Qualification](reports/library-qualification.md)
