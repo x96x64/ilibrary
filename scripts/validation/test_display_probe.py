@@ -27,6 +27,66 @@ class TestWorkspace(unittest.TestCase):
 
 
 class DisplayTests(TestWorkspace):
+    def test_only_regular_finder_state_is_excluded_without_removal(self):
+        payload = self.bundle / "nested/payload"
+        payload.parent.mkdir()
+        payload.write_bytes(b"required")
+        metadata = [self.bundle / ".DS_Store", payload.parent / ".DS_Store"]
+        for path in metadata:
+            path.write_bytes(b"synthetic Finder state")
+        before = {str(p): (p.read_bytes(), p.stat().st_mtime_ns) for p in [payload, *metadata]}
+        base.verify_bundle_files(self.bundle, {"nested/payload"})
+        self.assertEqual(before, {str(p): (p.read_bytes(), p.stat().st_mtime_ns) for p in [payload, *metadata]})
+
+    def test_other_additions_and_missing_entries_remain_refusals_with_private_details(self):
+        work = self.bundle / "reference-private"
+        work.mkdir()
+        base._diagnostic_work = work
+        for name in (".DS_Store.backup", ".ds_store", "unknown.txt"):
+            path = self.bundle / name
+            path.write_bytes(b"unknown")
+            with self.subTest(name=name), self.assertRaises(base.Refusal):
+                base.verify_bundle_files(self.bundle, {"required"})
+            row = json.loads((work / "diagnostics.jsonl").read_text().splitlines()[-1])
+            self.assertEqual(row["value"]["missing"], ["required"])
+            self.assertEqual(row["value"]["extra"], [name])
+            path.unlink()
+
+    def test_finder_named_links_directories_and_special_files_are_refused(self):
+        entry = self.bundle / ".DS_Store"
+        outside = self.home / "outside"
+        outside.write_bytes(b"not read")
+        entry.symlink_to(outside)
+        with self.assertRaises(base.Refusal):
+            base.bundle_files(self.bundle)
+        entry.unlink()
+        entry.mkdir()
+        with self.assertRaises(base.Refusal):
+            base.bundle_files(self.bundle)
+        entry.rmdir()
+        base.os.mkfifo(entry)
+        with self.assertRaises(base.Refusal):
+            base.bundle_files(self.bundle)
+
+    def test_current_bundle_with_finder_state_still_verifies_required_hashes(self):
+        files = {"bin/ilibrary", "display_probe.py", "rebuild_probe.py", "PROCEDURE.md"}
+        for name in probe.CASE_NAMES[1:]:
+            files.update(f"{name}/files/{r}" for r in probe.relatives(probe.case_spec(name)))
+            files.update((f"{name}/catalog.json", f"{name}/edited-catalog.json"))
+        manifest = {"format": probe.FORMAT, "commit": "a" * 40,
+                    "cases": {n: probe.case_spec(n) for n in probe.CASE_NAMES}, "files": {}}
+        for relative in files:
+            path = self.bundle / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"synthetic fixture")
+            manifest["files"][relative] = probe.digest(path)
+        (self.bundle / "manifest.json").write_text(json.dumps(manifest))
+        (self.bundle / ".DS_Store").write_bytes(b"synthetic Finder state")
+        self.assertEqual(probe.verify_bundle(self.bundle), manifest)
+        (self.bundle / "bin/ilibrary").write_bytes(b"changed")
+        with self.assertRaises(base.Refusal):
+            probe.verify_bundle(self.bundle)
+
     def test_both_media_names_pass_the_real_preference_parser(self):
         spec = probe.case_spec("small-existing")
         for name in ("Media", "Media.localized"):
@@ -400,7 +460,6 @@ class SimulatedRunTests(TestWorkspace):
         old = self.home / "ilibrary-m10-v2"
         work = old / "reference-private/small"
         work.mkdir(parents=True)
-        (old / "manifest.json").write_text("fixed legacy manifest")
         (work / "ilibrary-m10-results.txt").write_text("fixed legacy result")
         (work / "synthetic-backup.dmg").write_bytes(b"fixed backup image")
         backup = work / "restored-backup"
@@ -433,6 +492,29 @@ class SimulatedRunTests(TestWorkspace):
         (staging / ".ilibrary-add.json").write_text(json.dumps({"format": "ilibrary-add-journal-1", "entries": entries}))
         (work / "original-files.json").write_text(json.dumps(states))
         (work / "final-registration.json").write_text(json.dumps(self.rows))
+        # Exercise the actual retained-bundle verifier, including both cases.
+        manifest = {"format": base.FORMAT, "probeVersion": 2, "commit": probe.LEGACY_COMMIT,
+                    "cases": {}, "files": {}}
+        for name, (albums, tracks) in base.CASES.items():
+            entries = []
+            for a in range(1, albums + 1):
+                for t in range(1, tracks + 1):
+                    relative = f"{base.synthetic_album(a)}/{t:02d} M10 Song {t:02d}.m4a"
+                    file = old / name / "files" / relative
+                    file.parent.mkdir(parents=True, exist_ok=True)
+                    file.write_bytes(b"synthetic original")
+                    entries.append(relative)
+            manifest["cases"][name] = {"albums": albums, "tracks": albums * tracks, "files": entries}
+            for edited, filename in ((False, "catalog.json"), (True, "edited-catalog.json")):
+                (old / name / filename).write_text(json.dumps(base.catalog(albums, tracks, edited)))
+        for relative in ("bin/ilibrary", "rebuild_probe.py", "PROCEDURE.md"):
+            file = old / relative
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(b"synthetic test fixture; never executed")
+        for file in old.rglob("*"):
+            if file.is_file() and "reference-private" not in file.relative_to(old).parts:
+                manifest["files"][str(file.relative_to(old))] = probe.digest(file)
+        (old / "manifest.json").write_text(json.dumps(manifest))
         def native(argv):
             if argv[0].endswith("sw_vers"):
                 return "test OS"
@@ -444,7 +526,6 @@ class SimulatedRunTests(TestWorkspace):
         def override(stack):
             stack.enter_context(patch.object(probe, "LEGACY_MANIFEST", probe.digest(old / "manifest.json")))
             stack.enter_context(patch.object(probe, "LEGACY_REPORT", probe.digest(work / "ilibrary-m10-results.txt")))
-            stack.enter_context(patch.object(base, "verify_bundle", return_value={"commit": probe.LEGACY_COMMIT}))
             stack.enter_context(patch.object(base, "run", native))
         return old, override
 
@@ -458,6 +539,7 @@ class SimulatedRunTests(TestWorkspace):
 
     def test_localized_legacy_reuse_preserves_records_and_uses_the_real_preference_parser(self):
         old, legacy_override = self.setup_legacy("Media.localized")
+        (old / ".DS_Store").write_bytes(b"synthetic Finder state")
         before = {str(p.relative_to(old)): probe.digest(p) for p in old.rglob("*") if p.is_file()}
         read_media = base.media_directory
         def override(stack):
@@ -477,6 +559,23 @@ class SimulatedRunTests(TestWorkspace):
         self.assertEqual(self.run_case(["TEST"], override=override), 1)
         self.assertEqual(self.result["phase"], "legacy-evidence")
         self.assertEqual(self.mutations, [])
+
+    def test_missing_legacy_input_stops_without_observations_or_mutations(self):
+        old, override = self.setup_legacy()
+        (old / "small/catalog.json").unlink()
+        self.assertEqual(self.run_case(["TEST"], override=override), 1)
+        self.assertEqual(self.result["phase"], "legacy-evidence")
+        self.assertEqual(self.mutations, [])
+        self.assertEqual(self.result["observations"], [])
+
+    def test_changed_legacy_input_still_fails_its_actual_hash_check(self):
+        old, override = self.setup_legacy()
+        (old / ".DS_Store").write_bytes(b"synthetic Finder state")
+        (old / "small/catalog.json").write_bytes(b"changed")
+        self.assertEqual(self.run_case(["TEST"], override=override), 1)
+        self.assertEqual(self.result["phase"], "legacy-evidence")
+        self.assertEqual(self.mutations, [])
+        self.assertEqual(self.result["observations"], [])
 
     def test_unknown_legacy_order_is_recorded_without_repeating_deletion(self):
         old, override = self.setup_legacy()

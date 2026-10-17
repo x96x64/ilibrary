@@ -128,12 +128,42 @@ def prepare(output, binary, tagger, audio, commit, dry_run=False):
         run([str(output / "bin/ilibrary"), "validate", str(case / "catalog.json"), str(case / "files")])
         run([str(output / "bin/ilibrary"), "validate", str(case / "edited-catalog.json"), str(case / "files")])
         manifest["cases"][name] = {"albums": albums, "tracks": len(entries), "files": entries}
-    for file in sorted(output.rglob("*")):
-        if file.is_file():
-            manifest["files"][str(file.relative_to(output))] = digest(file)
+    for relative in sorted(bundle_files(output)):
+        manifest["files"][relative] = digest(output / relative)
     write_json(output / "manifest.json", manifest)
     verify_bundle(output)
     print("PASS: 6 曲と 300 曲の準備、カタログ照合、全ファイルのハッシュ照合。Music 未操作。")
+
+
+def bundle_files(bundle):
+    """List bundle files without following links or treating Finder state as input."""
+    bundle = safe_path(bundle)
+    actual = set()
+    def scan_error(error):
+        raise error
+    for directory, dirs, files in os.walk(bundle, followlinks=False, onerror=scan_error):
+        dirs[:] = [name for name in dirs if name != "reference-private"]
+        for name in dirs:
+            require(name != ".DS_Store", "補助ファイル名がフォルダに使われています。")
+            safe_path(Path(directory) / name)
+        for name in files:
+            if name == "reference-private":
+                continue
+            path = safe_path(Path(directory) / name)
+            require(stat.S_ISREG(path.lstat().st_mode), "検証一式に通常ファイル以外があります。")
+            if name != ".DS_Store":
+                actual.add(str(path.relative_to(bundle)))
+    return actual
+
+
+def verify_bundle_files(bundle, expected):
+    actual = bundle_files(bundle)
+    missing, extra = sorted(expected - actual), sorted(actual - expected)
+    if missing or extra:
+        record_diagnostic("bundle-file-differences", {
+            "bundle": str(bundle), "missing": missing, "extra": extra})
+    require(not missing and not extra,
+            f"検証一式のファイル一覧が一致しません（不足 {len(missing)}、追加 {len(extra)}）。")
 
 
 def verify_bundle(bundle):
@@ -141,9 +171,7 @@ def verify_bundle(bundle):
     manifest = json.loads(safe_path(bundle / "manifest.json").read_text())
     require(manifest.get("format") == FORMAT, "検証一式の形式が違います。")
     require(re.fullmatch(r"[0-9a-f]{40}", manifest.get("commit", "")), "コミット情報が不正です。")
-    actual = {str(p.relative_to(bundle)) for p in bundle.rglob("*")
-              if p.is_file() and "reference-private" not in p.relative_to(bundle).parts}
-    require(actual == set(manifest["files"]) | {"manifest.json"}, "検証一式のファイル一覧が一致しません。")
+    verify_bundle_files(bundle, set(manifest["files"]) | {"manifest.json"})
     for relative, expected in manifest["files"].items():
         path = safe_path(bundle / relative)
         require(path.is_relative_to(bundle) and digest(path) == expected, "検証一式の内容が変わっています。")

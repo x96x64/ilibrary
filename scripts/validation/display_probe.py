@@ -113,9 +113,8 @@ def prepare(output, binary, tagger, audio, commit, dry_run=False):
         for edited, file in ((False, "catalog.json"), (True, "edited-catalog.json")):
             write_json(directory / file, catalog(spec, edited))
             base.run([str(output / "bin/ilibrary"), "validate", str(directory / file), str(directory / "files")])
-    for path in sorted(output.rglob("*")):
-        if path.is_file():
-            manifest["files"][str(path.relative_to(output))] = digest(path)
+    for relative in sorted(base.bundle_files(output)):
+        manifest["files"][relative] = digest(output / relative)
     write_json(output / "manifest.json", manifest)
     verify_bundle(output)
     print("PASS: 合成音声324曲、カタログ、検証一式の照合。Music未操作。")
@@ -132,9 +131,7 @@ def verify_bundle(bundle):
         expected.update(f"{name}/files/{r}" for r in relatives(case_spec(name)))
         expected.update((f"{name}/catalog.json", f"{name}/edited-catalog.json"))
     require(set(manifest["files"]) == expected, "検証一式の登録ファイル一覧が違います。")
-    actual = {str(p.relative_to(bundle)) for p in bundle.rglob("*")
-              if p.is_file() and "reference-private" not in p.relative_to(bundle).parts}
-    require(actual == expected | {"manifest.json"}, "検証一式のファイルが増減しています。")
+    base.verify_bundle_files(bundle, expected | {"manifest.json"})
     for relative, checksum in manifest["files"].items():
         require(digest(safe_path(bundle / relative)) == checksum, "検証一式の内容が変わっています。")
     return manifest

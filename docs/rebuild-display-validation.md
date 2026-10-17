@@ -2,9 +2,11 @@
 
 ## Scope and Stop Boundary
 
-**現在は再実行しないでください。** 受領したdisplay-v2の結果は、メディアフォルダの確認を通過した後、以前の一式のファイル一覧の照合で停止しました。以下は実施済みの手順として保持します。次は[読み取り専用の差分確認](rebuild-bundle-diagnostics.md)だけを行います。転送済みのZIPと同梱手順書は当時のまま保存しています。
+**ファイル一覧の判定を修正したdisplay-v3の手順です。** 受領した診断では、旧一式の必要な314ファイルはすべて存在し、内容も一致しました。増えていたのはフォルダ表示用の`.DS_Store`一つだけです。これを入力に含めていたことが停止原因でした。
 
-**メディアフォルダ名の判定を修正した一式です。** 停止時の記録では、smallの保存先は`Media.localized`でした。旧検証が`Media`だけを認めていたことが停止の直接原因です。新しい一式は別名の`ilibrary-m10-display-v2`に展開します。旧`ilibrary-m10-display`と`ilibrary-m10-v2`、停止記録、ライブラリはそのまま残してください。
+新しい一式は、通常ファイルの`.DS_Store`だけを入力の照合から除外します。削除も内容の読み取りも行いません。必要なファイルの欠損・内容変更、未知の追加ファイル、シンボリックリンクは拒否します。旧一式を照合する実際の処理を使った試験を追加しています。
+
+新しい`ilibrary-m10-display-v3`を使います。旧`ilibrary-m10-display-v2`、`ilibrary-m10-display`、さらに古い`ilibrary-m10-v2`と、すべての停止記録・ライブラリを保持してください。`.DS_Store`の削除、フォルダ名やMusicの設定変更、旧一式の修復は不要です。診断手順を再実行する必要もありません。
 
 対象ライブラリの直下にある`Media`と`Media.localized`の両方を認めます。末尾を合わせるためのフォルダ作成・名前変更・曲の移動は不要です。別ライブラリの場所やシンボリックリンクは従来どおり拒否します。既存smallの現在の登録と保存済み記録は、改めて厳密に照合します。
 
@@ -28,8 +30,8 @@ smallの照合では、以前の実行記録・元ファイルの保存用コピ
 
 準備完了の報告で、次の2ファイルが共有場所に転送済みか確認してください。
 
-- `/Users/Shared/ilibrary-m10-display-v2.zip`
-- `/Users/Shared/ilibrary-m10-display-v2.zip.sha256`
+- `/Users/Shared/ilibrary-m10-display-v3.zip`
+- `/Users/Shared/ilibrary-m10-display-v3.zip.sha256`
 
 1. 作業中の文書を保存し、普段のユーザーからログアウトします。
 2. 前回使用した **`ilibrarytest`** などの検証用ユーザーでログインします。新しいユーザーは不要です。
@@ -38,11 +40,11 @@ smallの照合では、以前の実行記録・元ファイルの保存用コピ
 
 ```sh
 cd /Users/Shared &&
-shasum -a 256 -c ilibrary-m10-display-v2.zip.sha256 &&
+shasum -a 256 -c ilibrary-m10-display-v3.zip.sha256 &&
 cd ~ &&
-test ! -e ilibrary-m10-display-v2 &&
-unzip -q /Users/Shared/ilibrary-m10-display-v2.zip &&
-cd ~/ilibrary-m10-display-v2 &&
+test ! -e ilibrary-m10-display-v3 &&
+unzip -q /Users/Shared/ilibrary-m10-display-v3.zip &&
+cd ~/ilibrary-m10-display-v3 &&
 python3 display_probe.py verify .
 ```
 
@@ -51,7 +53,7 @@ ZIPの`OK`と、最後の`PASS: bundle verification; Music not accessed`を確�
 手順は一式の`PROCEDURE.md`にも入っています。確認するには次を実行できます。
 
 ```sh
-open -a TextEdit ~/ilibrary-m10-display-v2/PROCEDURE.md
+open -a TextEdit ~/ilibrary-m10-display-v3/PROCEDURE.md
 ```
 
 ## Step 2: Select the Existing Small Library
@@ -69,7 +71,7 @@ Optionキーによる既存ライブラリの選択と新規作成は[Appleの�
 まず予定を確認します。これはMusicを調べたり変更したりしません。
 
 ```sh
-cd ~/ilibrary-m10-display-v2 &&
+cd ~/ilibrary-m10-display-v3 &&
 python3 display_probe.py run --case small-existing --dry-run
 ```
 
@@ -119,7 +121,7 @@ smallが`STOP`なしで終了した場合だけ進みます。
 7. 次の予定表示を実行し、停止表示がなければ本測定を実行します。
 
 ```sh
-cd ~/ilibrary-m10-display-v2 &&
+cd ~/ilibrary-m10-display-v3 &&
 python3 display_probe.py run --case scale-release --dry-run
 ```
 
@@ -150,7 +152,7 @@ python3 display_probe.py run --case scale-release
 まず`artist`のライブラリを開いて実行します。`&&`により、予定表示が失敗した場合は本測定へ進みません。
 
 ```sh
-cd ~/ilibrary-m10-display-v2 &&
+cd ~/ilibrary-m10-display-v3 &&
 python3 display_probe.py run --case artist --dry-run &&
 python3 display_probe.py run --case artist
 ```
@@ -176,10 +178,10 @@ python3 display_probe.py run --case artist-release
 成功・不一致・未確認・途中停止のどの場合も、最後に**このブロックを一度実行**します。保存した結果をまとめるだけで、Musicにはアクセスしません。
 
 ```sh
-cd ~/ilibrary-m10-display-v2 &&
+cd ~/ilibrary-m10-display-v3 &&
 mkdir -p reference-private &&
-python3 display_probe.py report > reference-private/ilibrary-m10-display-v2-report.txt &&
-cat reference-private/ilibrary-m10-display-v2-report.txt
+python3 display_probe.py report > reference-private/ilibrary-m10-display-v3-report.txt &&
+cat reference-private/ilibrary-m10-display-v3-report.txt
 ```
 
 **表示された全文を一度、この会話へ貼り付ければ報告は完了です。** 実行しなかったケースも`NOT RUN`と記録されます。ケースごとの結果ファイルを探す必要はありません。報告には、段階・件数・日時の差・期待順と観察順・再起動前後の結果・停止理由が含まれ、個人パスや登録IDは含みません。
@@ -187,14 +189,14 @@ cat reference-private/ilibrary-m10-display-v2-report.txt
 ファイルの場所だけを伝えたい場合は、次を続けて実行します。
 
 ```sh
-cp -n reference-private/ilibrary-m10-display-v2-report.txt /Users/Shared/ilibrary-m10-display-v2-report.txt &&
-cmp -s reference-private/ilibrary-m10-display-v2-report.txt /Users/Shared/ilibrary-m10-display-v2-report.txt &&
+cp -n reference-private/ilibrary-m10-display-v3-report.txt /Users/Shared/ilibrary-m10-display-v3-report.txt &&
+cmp -s reference-private/ilibrary-m10-display-v3-report.txt /Users/Shared/ilibrary-m10-display-v3-report.txt &&
 echo '報告用コピー: OK'
 ```
 
 `OK`なら普段のユーザーに戻り、次の一文だけをこの会話へ送れます。
 
-> M10表示順検証の結果を評価してください：`/Users/Shared/ilibrary-m10-display-v2-report.txt`
+> M10表示順検証の結果を評価してください：`/Users/Shared/ilibrary-m10-display-v3-report.txt`
 
 `OK`が出なければ上書きせず、先ほどの全文を貼り付けます。`diagnostics.jsonl`、登録のJSON、音声、ディスクイメージは送らず、検証用ユーザー内の`reference-private/`に保持してください。
 
