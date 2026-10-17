@@ -51,14 +51,13 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 ## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/addition-timing-preparation.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility です。display-v3の旧smallは期待3,2,1に対し再起動前後とも2,3,1で不合格でした。保全と再実行は成功し、残り4ケースは未実行です。旧結果は保持しています。
-本人の指示で、新しい空のM10-timing-smallに合成3アルバム・6曲を追加する比較を準備しました。ソース1493bda、ZIPはilibrary-m10-timing.zip、SHA-256は2eaac34237c317ae508572bf1be6af8151e0417b14bb4bcb8af94c4b29ec0380です。共有場所へZIPと照合ファイルを転送済みです。docs/rebuild-timing-validation.mdと同梱PROCEDURE.mdが現在の手順です。
-アルバム間で少なくとも2秒待ち、Musicから読んだ次のアルバムの全曲の日時が前までの全曲より後か照合します。同じ日時・逆転・外部変更では停止し、追加済みの曲も残します。登録削除は一切行わず、旧ライブラリも読みません。画面順3,2,1を再起動前後に本人が確認します。2秒待てば成功するとは未確認です。
-93件の代替試験、releaseビルド、合成6曲と2カタログ、ZIPの照合、実ファイルだけのタグ・日時・バックアップ復元・保全確認が成功しました。Music呼び出しは行っていません。通常の実行ファイルはdisplay-v3と同一です。製品機能は変更していません。
-エージェントは別ユーザー操作直前で止まっています。次に評価するのは/Users/Shared/ilibrary-m10-timing-report.txtです。履歴の不合格と今回の結果を分け、実際の日時範囲・差・待ち時間・GUI観察・再起動・再実行・保全・停止箇所を評価してください。この小さな比較が成功してもM10全体は未完了です。300曲、ほかの順序、製品の待機方式、自動GUI空判定、別媒体バックアップは未検証です。
-旧small、すべてのライブラリ、一式、バックアップ、完了・停止記録を保持します。同じ実行の繰り返し、登録削除、手動再追加、記録削除、期待順の変更をしません。日時の重なりを対応範囲から除くには明示的な判断が必要です。実ライブラリ・私的音源は操作しません。M10完了前のM11以降・製品rebuild、未承認のpush・公開には進みません。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと要約・邦訳を示してください。
-次の結果評価の推奨は、Claude Code: Claude Opus 5.5／xhigh、Codex: GPT-6-Astra／xhighです。
+~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/addition-timing-results.md を読み、git status と git log を確認してください。
+現在は codex/m10-rebuild-feasibility です。M10日時分離の報告（ソース1493bda）は、Media.localizedの選択確認を通過した後、empty-libraryのメディア内ファイル確認で4.703秒後にSTOPしました。日時分離・追加・GUI・再実行・今回の保全確認には進んでいません。初期登録ゼロの通過はソースからの推測で、保存済みsnapshot自体は未受領です。
+拒否したファイルの名前・種類・由来は未確認です。設定ミスや.DS_Storeと断定しないでください。日時比較の手順は停止中です。次はdocs/rebuild-timing-diagnostics.mdの、同じ検証用ユーザーで行うMusic未操作の一覧確認だけです。報告先は/Users/Shared/reference-private/ilibrary-m10-timing-media-inventory.jsonです。報告が来たら、初期登録記録と現在のファイル一覧を評価し、停止時点の一覧と混同しないでください。未受領ならエージェントから検証ユーザーのメディアを読まず、別ユーザー操作前で止めてください。
+受領済みの停止報告はreference-private/m10-timing-results-2026-10-17/report.txt、SHA-256は5db76008caa4b5796bd05063f3edaa0a0b345c90503851970373e36ca3c32181です。旧display-v3のsmallは期待3,2,1に対し再起動前後とも2,3,1で不合格でした。保全と再実行は成功し、残り4ケースは未実行です。旧結果は変更しません。
+すべてのライブラリ、一式、バックアップ、完了・停止記録を保持します。同じ実行の繰り返し、登録削除、手動再追加、記録削除、設定や期待順の変更をしません。今回の結果から許可対象ファイルを追加したり、ガードを緩めたりしません。実ライブラリ・私的音源は操作しません。原因を確認してから、必要な限定修正と新しい手順を検討します。
+M10は未完了です。300曲、ほかの順序、製品の待機方式、自動GUI空判定、別媒体バックアップは未検証です。M10完了前のM11以降・製品rebuild、未承認のpush・公開には進みません。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと要約・邦訳を示してください。
+次の原因確認の推奨は、Claude Code: Claude Opus 5.5／xhigh、Codex: GPT-6-Astra／xhighです。
 ```
 
 ## Recommended Models and Effort
