@@ -1,9 +1,14 @@
 # iLibrary
 
+[![Release](https://img.shields.io/github/v/release/x96x64/ilibrary?include_prereleases)](https://github.com/x96x64/ilibrary/releases)
+[![npm](https://img.shields.io/npm/v/%40x96x64%2Filibrary)](https://www.npmjs.com/package/@x96x64/ilibrary)
+[![PyPI](https://img.shields.io/pypi/v/x96x64-ilibrary)](https://pypi.org/project/x96x64-ilibrary/)
+[![Homebrew](https://img.shields.io/badge/Homebrew-x96x64%2Ftap-FBB040?logo=homebrew&logoColor=white)](https://github.com/x96x64/homebrew-tap)
 [![CI](https://github.com/x96x64/ilibrary/actions/workflows/ci.yml/badge.svg)](https://github.com/x96x64/ilibrary/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
+[![AudioToolbox](https://img.shields.io/badge/AudioToolbox-lossless%20conversion-007AFF?logo=apple&logoColor=white)](https://developer.apple.com/documentation/audiotoolbox)
 [![Linux: Core targets](https://img.shields.io/badge/Linux-Core%20targets-FCC624?logo=linux&logoColor=black)](#how-it-works)
 
 iLibrary prepares downloaded music for a local Apple Music library and adds it in a controlled order. It converts lossless downloads to Apple Lossless, copies iTunes Store purchases without their purchase metadata, applies metadata from a catalog file without re-encoding, names files as the Music app does, and sets file dates to release dates. It adds albums to Music one at a time and diagnoses differences between files and library records.
@@ -13,7 +18,7 @@ ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary is experimental and available from source; no release has been published. All ten commands are implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary 0.1.0 is experimental. See [Current Status](docs/roadmap-to-stable.md) for publication and verification results. All ten commands are implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Contents
 
@@ -30,6 +35,7 @@ ilibrary apply catalog.json ./staging --dry-run
 - [Limitations](#limitations)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
+- [Star History](#star-history)
 - [Acknowledgments](#acknowledgments)
 - [License](#license)
 
@@ -55,7 +61,7 @@ The package declares macOS 14 as its deployment target; the current local verifi
 
 ## Installation
 
-The following package commands are prepared for version 0.1.0; publication awaits final approval. Check [Current Status](docs/roadmap-to-stable.md) for actual availability. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+The following commands install version 0.1.0. Check [Current Status](docs/roadmap-to-stable.md) for actual availability. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
 
 ### Homebrew
 
@@ -154,18 +160,26 @@ Exit status is 0 on success, 1 on a failure or a finding from `check` or `doctor
 
 A catalog is a UTF-8 JSON document identified by `"format": "ilibrary-catalog-1"`. Album-level values apply to every track and may be overridden per track; an empty string means that a value is unknown. `ilibrary schema` prints the JSON Schema, and [Completing Catalogs with AI Agents](docs/catalog-for-agents.md) describes the authoring workflow.
 
+This excerpt illustrates the structure with "Billie Jean" from Michael Jackson's *Thriller*. It is not a complete album catalog; include every selected track before applying it.
+
 ```json
 {
   "format": "ilibrary-catalog-1",
   "titleRules": { "case": "keep", "removeQualifiers": ["Remaster"], "bracketNested": true },
   "albums": [
     {
-      "album": "Example Album",
-      "aliases": ["Example Album (Remastered)"],
-      "albumArtist": "Example Artist",
-      "copyright": "℗ 1980 Example Records, Inc.",
-      "releaseDate": "1980-06-01",
-      "discs": [ { "tracks": [ { "title": "First Song", "composer": "Example Writer" } ] } ]
+      "album": "Thriller",
+      "aliases": ["Thriller (Remastered)"],
+      "albumArtist": "Michael Jackson",
+      "copyright": "℗ 1982 MJJ Productions, Inc.",
+      "releaseDate": "1982-11-30",
+      "discs": [
+        {
+          "tracks": [
+            { "title": "Billie Jean", "composer": "Michael Jackson" }
+          ]
+        }
+      ]
     }
   ]
 }
@@ -242,6 +256,15 @@ Use audio and artwork that you are entitled to process. The repository contains 
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for build commands, verification, evidence classification, and publication checks, and [AGENTS.md](AGENTS.md) for the engineering constraints. The public test suite uses original synthetic data and needs neither network access, private files, nor a Music library. Commits follow Conventional Commits and preserve human authorship with contribution trailers.
+
+## Star History
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/stars/dark.svg">
+  <img src="docs/media/stars/light.svg" alt="iLibrary star counts recorded daily, beginning on October 17, 2026 (UTC)" width="720">
+</picture>
+
+Star counts are recorded daily in UTC, beginning on October 17, 2026. Lines connect recorded observations; dates before the first observation and missed observations are not reconstructed. The [recorded counts](docs/media/stars/history.json) include decreases when stars are removed.
 
 ## Acknowledgments
 

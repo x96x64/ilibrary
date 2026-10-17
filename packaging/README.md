@@ -1,5 +1,12 @@
 # iLibrary
 
+[![Release](https://img.shields.io/github/v/release/x96x64/ilibrary?include_prereleases)](https://github.com/x96x64/ilibrary/releases)
+[![npm](https://img.shields.io/npm/v/%40x96x64%2Filibrary)](https://www.npmjs.com/package/@x96x64/ilibrary)
+[![PyPI](https://img.shields.io/pypi/v/x96x64-ilibrary)](https://pypi.org/project/x96x64-ilibrary/)
+[![Homebrew](https://img.shields.io/badge/Homebrew-x96x64%2Ftap-FBB040?logo=homebrew&logoColor=white)](https://github.com/x96x64/homebrew-tap)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](https://github.com/x96x64/ilibrary#requirements)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/x96x64/ilibrary/blob/main/LICENSE)
+
 iLibrary prepares downloaded music for a local Apple Music library. It converts lossless downloads to Apple Lossless, applies a JSON catalog without re-encoding, arranges filenames and dates, and adds albums in a controlled order.
 
 Version 0.1.0 is experimental. Start with copies and a separate test library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.

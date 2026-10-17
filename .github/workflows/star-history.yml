@@ -1,0 +1,37 @@
+name: Star History
+
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: star-history
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+      - name: Record the current star count
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/update_star_history.py
+      - name: Commit updated observations and charts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/media/stars/history.json docs/media/stars/light.svg docs/media/stars/dark.svg
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'docs(stars): record daily star observations'
+          git pull --rebase origin main
+          git push origin HEAD:main
