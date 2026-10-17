@@ -19,4 +19,26 @@ swiftc -O -swift-version 5 scripts/spikes/MP4Spike.swift -o "$work/tools/MP4Spik
 python3 scripts/validation/rebuild_probe.py prepare \
     --output "$work/ilibrary-m10" --binary "$binary" --tagger "$work/tools/MP4Spike" \
     --audio "$work/encoded/source.m4a" --commit "$(git rev-parse HEAD)"
+python3 - "$work" <<'PY'
+import hashlib
+import json
+from pathlib import Path
+import sys
+import zipfile
+
+work = Path(sys.argv[1])
+bundle = work / "ilibrary-m10"
+manifest = json.loads((bundle / "manifest.json").read_text())
+archive = work / "ilibrary-m10.zip"
+with zipfile.ZipFile(archive, "x", compression=zipfile.ZIP_DEFLATED) as output:
+    for relative in sorted([*manifest["files"], "manifest.json"]):
+        output.write(bundle / relative, "ilibrary-m10/" + relative)
+with zipfile.ZipFile(archive) as result:
+    assert result.testzip() is None
+    for relative, expected in manifest["files"].items():
+        assert hashlib.sha256(result.read("ilibrary-m10/" + relative)).hexdigest() == expected
+    assert (result.getinfo("ilibrary-m10/bin/ilibrary").external_attr >> 16) & 0o111
+checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
+(work / "ilibrary-m10.zip.sha256").write_text(checksum + "  ilibrary-m10.zip\n")
+PY
 echo 'PASS: 準備のみ完了。別ユーザーでの操作の前に docs/rebuild-feasibility-validation.md を読んでください。'
