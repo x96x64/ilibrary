@@ -15,7 +15,7 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
    - 今回やる作業の範囲
    - 完了条件（ゲート）
    - 私の Mac が必要かどうか
-   既に承認した範囲は再確認せず続けてください。0.1.0 の公開まで承認済みです。
+   既に承認した範囲は再確認せず続けてください。0.1.0 は公開・導入確認まで完了しています。
    M5/M6 の別ユーザー検証と M8 のコピー検証は報告書に記録済みです。
    公開の最終承認は取得済みです。push 前の実ファイルプレビュー・要約と邦訳は続けてください。
    途中の作業が残っている場合は、その続きから再開してください。
@@ -46,15 +46,16 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
 
 The same prompt applies in Claude Code. Replace the Codex attribution in item 3 with `Co-Authored-By: Claude <noreply@anthropic.com>`, optionally preceded by the model name, as defined in AGENTS.md.
 
-## Next Session for Version 0.1.0
+## Next Session after Version 0.1.0
 
 ```text
 ~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md を読み、Git の現状を確認してください。
 M5/M6 は別ユーザーで 12 項目成功、M8 は 301 ファイルのコピーで成功しています。詳細は新しい報告書を読んでください。
-0.1.0 の公開作業を引き継いでください。GitHub リリースは公開済みです。npm は @x96_64/ilibrary、PyPI は x96_64-ilibrary、Homebrew は x96x64/tap/ilibrary です。既に終えた検証を理由なく繰り返さないでください。
+0.1.0 は GitHub・npm・PyPI・Homebrew で公開済みです。npm は @x96_64/ilibrary、PyPI は x96_64-ilibrary、Homebrew は x96x64/tap/ilibrary です。公開先からの導入確認も成功しています。完了した公開や検証を理由なく繰り返さないでください。
 普段の Music と元ファイルは変更せず、私的なデータは reference-private/ 内だけで扱ってください。
-公開前に不要な生成物と統合済みブランチを整理し、実ファイルのプレビュー、各セクションの要約と邦訳を示してください。
-公開の最終承認は取得済みです。Current Status で各公開先と必要なアカウント操作の状態を確認し、タグと原本のソースは変更せず再開してください。
+利用者からの反応と残課題を確認し、0.2.0 に向けた次の作業範囲・完了条件・Mac の要否を日本語で提案してください。新しいマイルストーンは承認を得てから始めてください。
+既存のタグ、公開済みバージョン、履歴は変更しないでください。npm の次回 GitHub 公開を使う場合だけ、Trusted Publisher の設定を案内してください。
+今後の push 前も、実ファイルのプレビュー、各セクションの要約と邦訳を示してください。計画書と過去の報告書は保存してください。
 Current Status を更新してコミットし、結果・残課題・次の作業・引き継ぎプロンプトを日本語で報告してください。
 ```
 
