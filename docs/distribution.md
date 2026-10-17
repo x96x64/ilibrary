@@ -2,7 +2,7 @@
 
 ## Status
 
-Version 0.1.0 is an experimental release. The GitHub prerelease is published; registry publication and installation verification are recorded separately. Current publication and CI results belong in [Current Status](roadmap-to-stable.md).
+Version 0.1.0 is experimental. Its GitHub release is published and marked as Latest after the maintainer's installation and copy-movement checks. This display classification does not establish a stable interface or remove the experimental warning. Registry publication and installation verification are recorded separately. Current publication and CI results belong in [Current Status](roadmap-to-stable.md).
 
 ## Release Archive
 
@@ -64,16 +64,16 @@ The packages do not install a background service, download audio, or change a Mu
 
 ## Publication
 
-Publication requires the maintainer's final confirmation after document previews, section summaries and Japanese translations, verification, and cleanup. The release title is `iLibrary: v0.1.0, Catalog-Driven Music Libraries for Apple Music on macOS`; GitHub marks it as a prerelease. npm uses the `latest` distribution tag and PyPI uses numeric version `0.1.0`, so both package descriptions prominently identify it as experimental.
+Publication requires the maintainer's final confirmation after document previews, section summaries and Japanese translations, verification, and cleanup. The release title is `iLibrary: v0.1.0, Catalog-Driven Music Libraries for Apple Music on macOS`. GitHub initially marked it as a prerelease; the maintainer subsequently requested a release-name entry in the repository sidebar, and it is now a regular GitHub release marked as Latest. npm uses the `latest` distribution tag and PyPI uses numeric version `0.1.0`; the documentation and package descriptions continue to identify it as experimental.
 
 1. Integrate the reviewed branch through a pull request and confirm CI. Finalize the changelog date and publication wording only when their state is known.
 2. Build and verify the final clean commit. Retain its full commit ID and the SHA-256 of `SHA256SUMS`; if any source changes, rebuild and verify the packages. Present material documentation changes before pushing.
-3. After approval, create `v0.1.0` at that exact commit and a GitHub prerelease using [the release notes](releases/0.1.0.md). Upload exactly the seven files above, without replacing existing registry versions. Any later release-description correction must follow the metadata procedure below.
+3. After approval, create the tag at that exact commit and a GitHub release using [the release notes](releases/0.1.0.md) and the approved display classification. Upload exactly the seven files above, without replacing existing registry versions. Version 0.1.0 already exists; never recreate or move its tag. A release-body correction changes presentation only; package-metadata corrections must follow the procedure below.
 4. Configure the registry publisher identities described below. Run `Publish Reviewed Packages` on `main` with the tag, exact commit, and reviewed manifest digest. Its default `verify` choice only validates the release. Select a registry only for an approved publication.
 5. Publish the generated formula as `Formula/ilibrary.rb` in the existing Homebrew tap through a reviewed change. Keep existing formulas and tap documentation intact; add the iLibrary installation entry.
 6. Verify installation through each public channel, record the actual results and any unavailable channel, and update Current Status. A prepared package is not a published or publicly installable package.
 
-The workflow rechecks the tag's commit, integration into `main`, GitHub prerelease state, and reviewed manifest immediately before each registry publication. It does not create tags, releases, assets, or Homebrew commits. It has no push or tag trigger. A changed tag, unintegrated commit, draft release, or mismatched package is refused.
+The workflow rechecks the experimental `v0.x.y` tag's commit, integration into `main`, published GitHub release state, and reviewed manifest immediately before each registry publication. Either GitHub display classification is accepted; drafts and mismatched release tags are refused. It does not create tags, releases, assets, or Homebrew commits. It has no push or tag trigger. A changed tag, unintegrated commit, draft release, or mismatched package is refused.
 
 ### Metadata Corrections
 
