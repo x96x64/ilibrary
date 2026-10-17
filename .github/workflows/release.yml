@@ -71,7 +71,7 @@ jobs:
           python3 packaging/check_release.py "$TAG" "$COMMIT"
           gh release download "$TAG" --dir dist
           python3 packaging/verify.py dist --version "${TAG#v}" --commit "$COMMIT" --manifest-sha256 "$MANIFEST"
-          npm publish "dist/x96x64-ilibrary-${TAG#v}.tgz" --access public --provenance --tag latest
+          npm publish "dist/x96_64-ilibrary-${TAG#v}.tgz" --access public --provenance --tag latest
 
   pypi:
     if: inputs.publish == 'pypi' || inputs.publish == 'both'
@@ -96,7 +96,7 @@ jobs:
           gh release download "$TAG" --dir dist
           python3 packaging/verify.py dist --version "${TAG#v}" --commit "$COMMIT" --manifest-sha256 "$MANIFEST"
           mkdir wheelhouse
-          cp "dist/x96x64_ilibrary-${TAG#v}-py3-none-macosx_14_0_arm64.whl" wheelhouse/
+          cp "dist/x96_64_ilibrary-${TAG#v}-py3-none-macosx_14_0_arm64.whl" wheelhouse/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: wheelhouse/

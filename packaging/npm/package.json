@@ -1,5 +1,5 @@
 {
-  "name": "@x96x64/ilibrary",
+  "name": "@x96_64/ilibrary",
   "version": "__VERSION__",
   "description": "Catalog-driven music tagging and ordered import into Apple Music on macOS",
   "license": "Apache-2.0",

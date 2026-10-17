@@ -38,3 +38,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Live Library Command Validation](reports/library-command-validation.md)
 - 2026-10-17 — [Library Copy Qualification](reports/library-qualification.md)
 - 2026-10-17 — [Version 0.1.0 Release Preparation](reports/release-preparation.md)
+- 2026-10-17 — [Distribution Metadata Correction](reports/distribution-metadata-correction.md)

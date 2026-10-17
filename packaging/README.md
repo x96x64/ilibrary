@@ -1,8 +1,8 @@
 # iLibrary
 
 [![Release](https://img.shields.io/github/v/release/x96x64/ilibrary?include_prereleases)](https://github.com/x96x64/ilibrary/releases)
-[![npm](https://img.shields.io/npm/v/%40x96x64%2Filibrary)](https://www.npmjs.com/package/@x96x64/ilibrary)
-[![PyPI](https://img.shields.io/pypi/v/x96x64-ilibrary)](https://pypi.org/project/x96x64-ilibrary/)
+[![npm](https://img.shields.io/npm/v/%40x96_64%2Filibrary)](https://www.npmjs.com/package/@x96_64/ilibrary)
+[![PyPI](https://img.shields.io/pypi/v/x96_64-ilibrary)](https://pypi.org/project/x96_64-ilibrary/)
 [![Homebrew](https://img.shields.io/badge/Homebrew-x96x64%2Ftap-FBB040?logo=homebrew&logoColor=white)](https://github.com/x96x64/homebrew-tap)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](https://github.com/x96x64/ilibrary#requirements)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/x96x64/ilibrary/blob/main/LICENSE)
@@ -27,7 +27,7 @@ Choose one channel; all install the same command, `ilibrary`.
 ### npm
 
 ```bash
-npm install -g @x96x64/ilibrary@0.1.0
+npm install -g @x96_64/ilibrary@0.1.0
 ilibrary --version
 ```
 
@@ -37,7 +37,7 @@ Install in an isolated environment to avoid changing system Python:
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96x64-ilibrary==0.1.0
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.1.0
 .venv-ilibrary/bin/ilibrary --version
 source .venv-ilibrary/bin/activate
 ```
@@ -51,9 +51,9 @@ ilibrary --version
 
 ### Updating and Uninstalling
 
-Read the [changelog](https://github.com/x96x64/ilibrary/blob/main/CHANGELOG.md) before updating. Use `npm update -g @x96x64/ilibrary`, `python -m pip install --upgrade x96x64-ilibrary` in the chosen environment, or `brew upgrade ilibrary`, respectively. Packages on npm and PyPI have different names because PyPI does not support npm scopes; neither package is named simply `ilibrary`.
+Read the [changelog](https://github.com/x96x64/ilibrary/blob/main/CHANGELOG.md) before updating. Use `npm update -g @x96_64/ilibrary`, `python -m pip install --upgrade x96_64-ilibrary` in the chosen environment, or `brew upgrade ilibrary`, respectively. Packages on npm and PyPI have different names because PyPI does not support npm scopes; neither package is named simply `ilibrary`.
 
-Remove the corresponding installation with `npm uninstall -g @x96x64/ilibrary`, `python -m pip uninstall x96x64-ilibrary`, or `brew uninstall ilibrary`. Removing the executable does not undo file or library changes. Retain catalogs and addition journals needed for recovery.
+Remove the corresponding installation with `npm uninstall -g @x96_64/ilibrary`, `python -m pip uninstall x96_64-ilibrary`, or `brew uninstall ilibrary`. Removing the executable does not undo file or library changes. Retain catalogs and addition journals needed for recovery.
 
 ## Quick Start
 

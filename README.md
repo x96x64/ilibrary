@@ -1,8 +1,8 @@
 # iLibrary
 
 [![Release](https://img.shields.io/github/v/release/x96x64/ilibrary?include_prereleases)](https://github.com/x96x64/ilibrary/releases)
-[![npm](https://img.shields.io/npm/v/%40x96x64%2Filibrary)](https://www.npmjs.com/package/@x96x64/ilibrary)
-[![PyPI](https://img.shields.io/pypi/v/x96x64-ilibrary)](https://pypi.org/project/x96x64-ilibrary/)
+[![npm](https://img.shields.io/npm/v/%40x96_64%2Filibrary)](https://www.npmjs.com/package/@x96_64/ilibrary)
+[![PyPI](https://img.shields.io/pypi/v/x96_64-ilibrary)](https://pypi.org/project/x96_64-ilibrary/)
 [![Homebrew](https://img.shields.io/badge/Homebrew-x96x64%2Ftap-FBB040?logo=homebrew&logoColor=white)](https://github.com/x96x64/homebrew-tap)
 [![CI](https://github.com/x96x64/ilibrary/actions/workflows/ci.yml/badge.svg)](https://github.com/x96x64/ilibrary/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -74,14 +74,14 @@ Homebrew builds from source and requires Swift 6.
 ### npm
 
 ```bash
-npm install -g @x96x64/ilibrary@0.1.0
+npm install -g @x96_64/ilibrary@0.1.0
 ```
 
 ### PyPI
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96x64-ilibrary==0.1.0
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.1.0
 source .venv-ilibrary/bin/activate
 ```
 
@@ -101,13 +101,13 @@ The executable is `.build/release/ilibrary`. The `PATH` line makes it available 
 
 ### Updating
 
-Use `brew upgrade ilibrary`, `npm update -g @x96x64/ilibrary`, or `python -m pip install --upgrade x96x64-ilibrary` in the selected virtual environment.
+Use `brew upgrade ilibrary`, `npm update -g @x96_64/ilibrary`, or `python -m pip install --upgrade x96_64-ilibrary` in the selected virtual environment.
 
 In a clean source checkout, run `git pull --ff-only` and rebuild with `swift build -c release`. Review [Current Status](docs/roadmap-to-stable.md) and [CHANGELOG.md](CHANGELOG.md) before adopting a new development commit. If Git reports local changes or divergent history, preserve those changes and resolve them before updating.
 
 ### Uninstalling
 
-Use `brew uninstall ilibrary`, `npm uninstall -g @x96x64/ilibrary`, or `python -m pip uninstall x96x64-ilibrary` in the selected environment. For a source build, close the terminal session to discard the temporary `PATH` change. If the executable was copied elsewhere, remove only that copy. iLibrary has no background service. Keep catalogs, artwork, staging files, and `.ilibrary-add.json` journals until their recovery purpose is complete; removing the executable does not undo file or Music changes.
+Use `brew uninstall ilibrary`, `npm uninstall -g @x96_64/ilibrary`, or `python -m pip uninstall x96_64-ilibrary` in the selected environment. For a source build, close the terminal session to discard the temporary `PATH` change. If the executable was copied elsewhere, remove only that copy. iLibrary has no background service. Keep catalogs, artwork, staging files, and `.ilibrary-add.json` journals until their recovery purpose is complete; removing the executable does not undo file or Music changes.
 
 ## Quick Start
 
