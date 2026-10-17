@@ -18,9 +18,11 @@ The maintainer observes GUI emptiness and Recently Added order. Those observatio
 
 ## Local Verification
 
-Eighteen synthetic guard tests passed (measured). They cover refusal of ordinary and root users, path links, dry-run non-mutation, exact timestamp classification, changed identities and locations, unexpected registrations, missing evacuated files, changed or mounted backups, per-ID deletion scope, and a simulated deletion that unexpectedly modifies a file. Music calls are substituted; these are not live Music measurements. Both CI jobs are configured to run the same tests, but this branch has not been pushed and its CI has not run.
+Nineteen synthetic guard tests passed (measured). They cover refusal of ordinary and root users, spoofed environment user names, path links, dry-run non-mutation, exact timestamp classification, changed identities and locations, unexpected registrations, missing evacuated files, changed or mounted backups, per-ID deletion scope, and a simulated deletion that unexpectedly modifies a file. Music calls are substituted; these are not live Music measurements. Both CI jobs are configured to run the same tests, but this branch has not been pushed and its CI has not run.
 
-Preparation of the transfer bundle, static checks, and documentation checks must be recorded after they finish. These checks do not qualify actual registration removal or timestamp behavior.
+The release build and preparation of all 306 synthetic files passed (measured). Both catalogs validated against every file. On disposable copies, catalog edits, file checks, and repeated application passed for all six small-case and 300 scale-case files; repeated file bytes and dates were unchanged, and source bundle files remained unchanged. One edited sample retained identical decoded PCM in an independent FFmpeg comparison (measured). An attempted afconvert reference decode failed with `ExtAudioFileSetProperty` (`cfmt`, `fmt?`); its cause is unconfirmed and it is not counted as a successful check. FFmpeg is a verification reference only, not a probe or product dependency.
+
+All twelve publication-guard tests passed. Python syntax, shell syntax, staged privacy and local-link checks passed. An actual invocation from the normal user refused before any Music call, as intended. The initial restricted build could not write its compiler cache; the preparation-only build succeeded with the required cache access. None of these checks qualifies actual registration removal or timestamp behavior.
 
 ## Remaining Gates
 

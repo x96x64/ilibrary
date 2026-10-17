@@ -8,12 +8,12 @@ run by the agent during preparation. Results expose counts, not paths or IDs.
 
 import argparse
 import datetime
-import getpass
 import hashlib
 import json
 import os
 from pathlib import Path
 import plistlib
+import pwd
 import re
 import shutil
 import stat
@@ -140,7 +140,8 @@ def verify_bundle(bundle):
 
 
 def require_test_user(name=None):
-    name = getpass.getuser() if name is None else name
+    # Do not trust USER or LOGNAME: the guard must identify the actual process owner.
+    name = pwd.getpwuid(os.getuid()).pw_name if name is None else name
     require(re.fullmatch(r"(?:ilibrarytest|ilibrary-test)[a-zA-Z0-9_-]*", name) is not None,
             "別の検証用ユーザーに切り替えてください。Music は操作していません。")
     require(os.getuid() != 0, "管理者権限で実行しないでください。")

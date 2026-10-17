@@ -5,6 +5,7 @@ import importlib.util
 import io
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -40,10 +41,16 @@ class ProbeTests(unittest.TestCase):
 
     def test_normal_user_is_refused_before_music(self):
         with patch.object(probe, "music") as music, patch.object(probe.sys, "platform", "darwin"), \
-                patch.object(probe.getpass, "getuser", return_value="ordinary-user"):
+                patch.object(probe.pwd, "getpwuid", return_value=SimpleNamespace(pw_name="ordinary-user")):
             with self.assertRaises(probe.Refusal):
                 probe.execute(self.root, "small")
             music.assert_not_called()
+
+    def test_environment_name_cannot_bypass_user_guard(self):
+        with patch.dict(probe.os.environ, {"USER": "ilibrarytest", "LOGNAME": "ilibrarytest"}), \
+                patch.object(probe.pwd, "getpwuid", return_value=SimpleNamespace(pw_name="ordinary-user")):
+            with self.assertRaises(probe.Refusal):
+                probe.require_test_user()
 
     def test_lookalike_user_is_refused(self):
         with self.assertRaises(probe.Refusal):
