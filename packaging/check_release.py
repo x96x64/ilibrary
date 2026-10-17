@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that an explicitly selected prerelease still has its reviewed identity."""
+"""Check that an explicitly selected experimental release retains its reviewed identity."""
 
 import json
 import re
@@ -21,8 +21,8 @@ def main(tag, commit):
     if api(f"compare/{commit}...main")["status"] not in ("ahead", "identical"):
         raise SystemExit("The reviewed commit must be integrated into main.")
     release = api(f"releases/tags/{tag}")
-    if release["draft"] or not release["prerelease"] or release["tag_name"] != tag:
-        raise SystemExit("A published experimental GitHub prerelease is required.")
+    if release["draft"] or release["tag_name"] != tag:
+        raise SystemExit("A published GitHub release for the selected experimental tag is required.")
     print(f"Verified {tag} at {commit}.")
 
 

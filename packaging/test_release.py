@@ -56,6 +56,15 @@ class ReleaseGuardTests(unittest.TestCase):
         with patch.object(check_release, "api", side_effect=self.response), contextlib.redirect_stdout(io.StringIO()):
             check_release.main("v0.1.0", self.commit)
 
+    def test_regular_experimental_release_is_accepted(self):
+        def response(path):
+            result = self.response(path)
+            if path.startswith("releases/"):
+                result["prerelease"] = False
+            return result
+        with patch.object(check_release, "api", side_effect=response), contextlib.redirect_stdout(io.StringIO()):
+            check_release.main("v0.1.0", self.commit)
+
     def test_invalid_identifiers_make_no_request(self):
         with patch.object(check_release, "api") as api:
             for tag, commit in [("v1.0.0", self.commit), ("v0.1.0;bad", self.commit), ("v0.1.0", "main")]:
@@ -73,11 +82,20 @@ class ReleaseGuardTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 check_release.main("v0.1.0", self.commit)
 
-    def test_draft_or_stable_release_is_refused(self):
-        for draft, prerelease in [(True, True), (False, False)]:
+    def test_draft_release_is_refused(self):
+        for prerelease in (True, False):
             with patch.object(check_release, "api", side_effect=[
                 {"sha": self.commit}, {"status": "identical"},
-                {"draft": draft, "prerelease": prerelease, "tag_name": "v0.1.0"},
+                {"draft": True, "prerelease": prerelease, "tag_name": "v0.1.0"},
+            ]):
+                with self.assertRaises(SystemExit):
+                    check_release.main("v0.1.0", self.commit)
+
+    def test_other_release_tag_is_refused(self):
+        for prerelease in (True, False):
+            with patch.object(check_release, "api", side_effect=[
+                {"sha": self.commit}, {"status": "identical"},
+                {"draft": False, "prerelease": prerelease, "tag_name": "v0.2.0"},
             ]):
                 with self.assertRaises(SystemExit):
                     check_release.main("v0.1.0", self.commit)
