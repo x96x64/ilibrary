@@ -51,3 +51,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [iLyrics Documentation Conformance](reports/documentation-conformance.md)
 - 2026-10-17 — [Release Presentation and Maintainer Verification](reports/release-presentation.md)
 - 2026-10-17 — [Rebuilding Feasibility Preparation](reports/rebuild-feasibility-preparation.md)
+- 2026-10-17 — [Initial Rebuilding Feasibility Results](reports/rebuild-feasibility-results.md)

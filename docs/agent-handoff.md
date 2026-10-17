@@ -51,12 +51,13 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 
 ```text
 ~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility で M10 の別ユーザー検証を準備しています。0.1.0 の公開は完了しています。公開や過去の検証を繰り返さないでください。
+現在は codex/m10-rebuild-feasibility で M10 の初回測定結果を評価済みです。small と scale は、最初の登録後の保存場所確認で STOP となり、M10 は未完了です。0.1.0 の公開は完了しています。公開や過去の検証を繰り返さないでください。
 M10 の順序は、バックアップ確認→退避→登録の自動削除→ライブラリと GUI が空になった確認→Music 終了→タグ編集→1 アルバムずつ再登録です。
 全曲の「追加した日時」の完全一致と、「最近追加した項目」の表示順を別々に確認します。成立しない場合は条件を変えずに停止し、結果を説明してください。
-docs/rebuild-feasibility-validation.md と docs/reports/rebuild-feasibility-preparation.md を読み、準備済みの測定と未実施の測定を区別してください。
-本人が別 macOS ユーザーで測定する直前で停止する指示です。普段のユーザーで Music を開いたり、ライブラリを読み書きしたりしないでください。
-本人から small / scale の ilibrary-m10-results.txt が届いたら、測定値・本人の GUI 確認・未確認事項を分けて評価してください。片方だけ、STOP、日時不一致、表示順不明の場合は M10 未完了です。
+docs/rebuild-feasibility-validation.md、docs/reports/rebuild-feasibility-preparation.md、docs/reports/rebuild-feasibility-results.md を読み、記録された測定と未確認事項を区別してください。
+既存ログと記録では、6 曲・3 アルバムと 300 曲・20 アルバムの初回追加は成功しています。その後、プローブの保存場所の比較で停止しました。失敗した比較の実際の値は保存されておらず、原因は未確定です。退避・登録削除・再登録・追加日時・GUI 順序の測定には達していません。
+結果と診断記録のコピーは reference-private/m10-results-2026-10-17/ にあります。個人パスや ID を含むため公開しないでください。次はガード付きの読み取り専用診断を準備し、別ユーザーで実行する直前で止めて手順を示してください。普段のユーザーで Music を開いたり、ライブラリを読み書きしたりしないでください。
+停止した検証一式を再実行したり、登録を削除したりしないでください。保存場所の不一致を理解するまで比較条件を緩めず、両ケースのライブラリとファイルを保持します。測定未完了を、要求された動作が不可能だという証拠として扱わないでください。
 プローブは合成音声だけを扱います。読み取り専用ディスクイメージは同じ物理媒体上の模擬バックアップであり、本番用の独立したバックアップの証拠ではありません。
 M10 合格前に M11 以降や製品の rebuild を実装しないでください。実ライブラリの操作、新たな push・公開は別途承認が必要です。
 README の Bad の例は本人が選び、端末内の当該ファイルから公開用のタグだけを読み取りました。原本は変更していません。測定記録は reference-private/ 内だけです。
