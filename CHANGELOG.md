@@ -6,6 +6,7 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ### Added
 
+- Source installation and recovery guidance, contributor and support documents, and a Japanese separate-user handoff.
 - `check`: file diagnostics and optional Music comparisons by location, including duplicates, stale metadata, cloud status, and missing files.
 - `doctor`: environment diagnostics with recovery steps, without launching Music or requesting permission.
 - A separate-user validation script for ordered addition and library checks, with a preparation-only mode.
