@@ -51,11 +51,10 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 ## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/addition-timing-v2-results.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility です。修正版v2の日時比較（ソース4cd7c6b、新しいM10-timing-v2-small）はPASSしました。3アルバムを1枚ずつ別々に追加し、待機は2.397秒と2.678秒、追加日時は4秒と6秒の差で重なりなく増加しました。本人の目視で、最近追加した項目は再起動の前後とも期待どおり3,2,1でした。保存用コピーの復元、終了中の編集、再実行の安全性、最終保全も成功しました。報告はreference-private/m10-timing-v2-results-2026-10-17/report.txt、SHA-256はf7b026250623471c10d8e014565543b3b5ff25bda7076c0c26715f44ad0430caです。
-これは登録削除を含まない小さな1ケースの成功です。display-v3の不合格（アルバム間で同じ秒、表示2,3,1）と合わせて、同じ秒の重なりが原因という仮説を支持しますが、原因は確定していません。待機時間も適格ではありません。300曲、削除後の再追加、artist系3種の並べ方、自動GUI空判定、別媒体バックアップは未検証で、M10は未完了です。
-次は本人の判断待ちです。アルバムごとに追加時刻を分ける方法を候補方式として採用すると、アルバム間で同じ秒になる場合を対応範囲から外す明示的な仕様判断になります。本人がこの判断を示した場合に限り、Decisionとして記録し、その方式で大規模ケースと並べ方3種の新しい検証一式を準備し、別ユーザー操作の直前で止めてください。判断がなければ、新しい準備や実行をしません。
-v2・旧一式・すべてのライブラリ・バックアップ・完了と停止の記録を保持し、再実行しません。登録削除、手動再追加、記録削除、設定や期待順の変更をしません。実ライブラリ・私的音源は操作しません。M10完了前のM11以降・製品rebuild、未承認のpush・公開には進みません。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと要約・邦訳を示してください。
+~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/separated-addition-qualification-preparation.md、docs/rebuild-qualification-validation.md を読み、git status と git log を確認してください。
+現在は codex/m10-rebuild-feasibility（ローカルのみ、未push）です。mainはPR #11・#12のREADME修正をマージ済みのf5457b1です。決定36（アルバムごとに分けて追加し、アルバム間で同じ秒になったら停止）に基づき、scale-release（20アルバム・300曲）とartist・artist-desc・artist-releaseの4ケースの検証一式をコミットbf84ee9で準備しました。試験116件、324曲の準備、Music呼び出しを遮断したファイルのみの確認は成功し、ZIP（SHA-256 49b284482a177130e25340746d00d1c921f1377b51bee71de1fae9f4f2556a2b）と照合用ファイルは /Users/Shared/ に転送済みです。
+次は本人が別ユーザーで docs/rebuild-qualification-validation.md の手順を実行し、/Users/Shared/ilibrary-m10-qualification-report.txt を返す段階です。報告を受け取ったら、reference-private/ にバイト単位で保存してSHA-256を記録し、凍結したソースと照合して、保全・工程・表示順・再実行の各ゲートについて測定・推測・未確認を区別して評価してください。報告がなければ、新しい準備や実行は行いません。
+これまでの一式・ライブラリ・バックアップ・記録はすべて保持し、再実行しません。登録削除、手動再追加、記録削除、設定や期待順の変更はしません。実ライブラリや私的音源は操作しません。M10完了前にM11以降や製品rebuildへ進まず、未承認のpush・公開も行いません。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと要約・邦訳を示してください。
 次の作業の推奨は、Claude Code: Claude Opus 5.5／xhigh、Codex: GPT-6-Astra／xhighです。
 ```
 
