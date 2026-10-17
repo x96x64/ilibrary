@@ -51,17 +51,14 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 ## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility です。Decision 33で追加日時の差を許容し、Decision 34でM10表示順検証の準備が承認されました。新しい一式と日本語手順のソースは3b7e2feです。docs/reports/display-order-preparation.mdとdocs/rebuild-display-validation.mdを読んでください。0.1.0の公開は完了しています。
-v2 small（6曲・3アルバム）は、バックアップ復元、退避、対象登録の削除、本人による空のGUI確認、Music終了、終了中の編集、順序付き再登録と照合まで成功しました。その後の日時集計は指数表記を読めない検証側の不具合で停止しました。
-本人が保存済みの数値を返し、6曲の日時が2種類、差が1秒、先の日時が2曲、1秒後が4曲と確認できました。旧条件での不合格は docs/reports/rebuild-timestamp-gate.md に保存しています。新条件ではこの差だけで失敗にはなりませんが、M10全体を合格に変更してはいけません。アルバムごとの日時の割り当ては今回の出力からは分かりません。
-日時集計の修正 a608017 と31件の合成テスト成功は記録済みです。保存日時を読み直す手順も完了しています。scale、画面上の順序と再起動後の維持、再実行時の登録不変、最後のバックアップ照合は未確認です。自動でGUIが空と確認する方法と、別の物理媒体によるバックアップ復元も未確認です。
-準備は完了し、別ユーザーの操作直前で停止しています。61件の合成試験、releaseビルド、新しい324曲の一式、6曲と300曲のオフライン復元・編集結果照合、4種類のCatalogCoreの並び順が通っています。Musicの実測ではありません。ZIPと照合ファイルは共有場所へ転送し一致を確認済みです。準備を最初からやり直さないでください。
-本人は新しい日本語手順で、small-existing、scale-release、artist、artist-desc、artist-releaseの順に確認し、一つの報告を返します。small-existingは旧smallの照合と不足する観察だけで、退避や登録削除を繰り返しません。ほかの4件は新しい合成ライブラリです。古いv2のrunや日時抽出は再実行しません。現在の状態が記録と違えば、削除して合わせず停止します。
-次は本人からの統合結果の評価です。未実行・途中停止・表示不一致・確認不能・成功を区別し、実際の表示と再起動後の維持を判定してください。日時の差だけでは失敗にせず、1秒以内などの上限を作らないでください。後日の観察を元の実行時の観察として扱わないでください。画面の確認は本人の目視で、GUI自動判定と別物理媒体の保全は未検証です。
-エージェント自身は別ユーザーのMusicを操作しません。検証ライブラリ・音声・バックアップ・全記録を保持します。以前の生の結果は reference-private/m10-v2-results-2026-10-17/ にあります。新たに受領する詳細記録もreference-private/だけに保存し、過去の報告は変更しません。
-M10 合格前に M11 以降や製品の rebuild を実装しないでください。実ライブラリ、私的音源、普段の Music は操作禁止です。新たな push・公開は別途承認が必要です。
-区切りで Current Status を更新してコミットし、結果・残課題・次の作業・引き継ぎプロンプトを日本語で報告してください。変更文書は実ファイルのプレビューと各セクションの要約・邦訳を示してください。
+~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/display-order-results.md を読み、git status と git log を確認してください。
+現在は codex/m10-rebuild-feasibility です。本人は表示順検証の統合結果を返しました。ソースは3b7e2fe、small-existingはpreflightのメディアフォルダ比較でSTOP、残り4ケースはNOT RUNです。表示順の質問にも旧smallの再照合にも到達していません。これは表示順の不合格ではなく未測定です。
+本人はメディアフォルダを手順どおり合わせたと明言しています。判定は設定画面ではなくdefaultsで読んだ保存値と固定パスの比較です。読み取った値は統合報告にないため、原因も設定ミスも断定しないでください。準備テストはmedia_directoryを代替しており、画面との一致は未検証です。
+報告の原本と同一のコピーはreference-private/m10-display-results-2026-10-17/に保存済みです。SHA-256は86222edaae5558eec324dec91a5ac5c1416515d078eda6c10eb56941b32474d9です。旧レポート、検証コード、転送済みZIPは変更していません。
+次に必要なのは、検証用ユーザーの新しい一式にあるreference-private/small-existing/diagnostics.jsonlだけです。停止時の保存済みの設定値を含みます。本人にMusicを開かずこのファイルだけを/Users/Shared/reference-private/m10-display-preflight/へコピーしてもらう手順を案内済みです。受領したらignoreを確認しreference-private/に保管して読み、個人パスを公開文書や会話へそのまま出さないでください。
+新旧のrun、日時抽出、scaleを実行せず、ライブラリ作成・設定変更・登録削除・結果削除も行いません。保存ログから原因を絞り、必要なら過去の保存記録との読み取り専用の比較を準備します。原因確認前に照合条件を緩めたり、期待パスを変えて通したりしないでください。
+以前のv2 smallの成功は履歴として保持します。6曲の追加日時2種類・差1秒はDecision 33で許容されますが、実際の表示順と再起動後の維持、再実行の安全性、最後の保全確認、scaleは依然未確認です。後日の観察を以前の実測に混ぜないでください。
+Music・実ライブラリ・私的音源は操作しません。M10完了前にM11以降や製品rebuildへ進めません。新たなpush・公開は別途承認が必要です。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと各セクションの要約・邦訳を示してください。
 ```
 
 ## Recommended Models and Effort
