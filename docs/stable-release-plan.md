@@ -8,7 +8,7 @@ Approved by the maintainer on October 17, 2026, and revised on the same date aft
 | --- | --- | --- |
 | Measured, maintainer-reported | The version 2 small case completed evacuation, guarded registration removal, human-confirmed empty GUI, termination, editing while closed, and album-by-album readdition with file/library verification | Preserve these results; do not repeat destructive steps solely because the timestamp requirement changed |
 | Measured, supplied numeric evidence | Six saved addition timestamps contain two distinct values separated by one second | The historical equality gate failed; that difference alone does not fail the revised gate |
-| Measured, supplied display-v2 report | The media-directory check passed; retained-bundle inventory stopped before current registrations or display observation; four later cases were not run | Inspect the retained bundle read-only before any further live run; do not infer a display-order result |
+| Measured, supplied display-v2 report and inventory | The media check passed; the retained inputs are intact, with only an extra `.DS_Store` causing the old inventory refusal | Use corrected display-v3 while preserving old state; actual display order remains unmeasured |
 | Unknown | Recently Added order, repeated-addition stability, final backup verification, and the 300-track scale case | M10 remains incomplete |
 | Unknown | Automatic GUI emptiness detection, independent physical backup qualification, and behavior on other supported system versions | Retain explicit qualification work before production use |
 
@@ -42,7 +42,7 @@ If the intended display cannot be established or does not persist, stop the affe
 
 ## Remaining M10 Qualification
 
-Decision 34 authorizes preparation of reproducible display-order validation and its Japanese handoff. The media-name correction passed in the returned display-v2 run, which then stopped at the retained bundle's file-list comparison. The [new assessment](reports/display-order-v2-results.md) distinguishes that prerequisite refusal from unmeasured display behavior. Do not rerun the [display procedure](rebuild-display-validation.md). Follow only the [read-only diagnostic handoff](rebuild-bundle-diagnostics.md) to identify added or missing bundle entries before deciding a correction. Preserve all archives, stopped records, and library state.
+Decision 34 authorizes preparation of reproducible display-order validation and its Japanese handoff. The media-name correction passed in display-v2. Its subsequent file-list stop is now traced to an additional `.DS_Store`, with all expected inputs and hashes intact. The [correction report](reports/finder-metadata-verification.md) records the bounded fix and verification. Use the [updated display-v3 procedure](rebuild-display-validation.md), preserve every prior bundle and record, and do not repeat the completed diagnostic. Preparation tests do not qualify the pending live observations.
 
 1. First assess whether the existing small-case state can supply the missing display and preservation observations. Inspect its recorded identity and inventory before relying on it. A later observation must be labeled as later evidence, not reconstructed as an observation made during the original run. Unexpected changes stop reuse; they do not authorize clearing the library.
 2. Complete the missing small-case display, relaunch, repeat-safety, and final backup checks in the separate test user under a reviewed procedure. Reuse established results where their preconditions remain verifiable. When a fresh case is necessary, use a new isolated synthetic library and retain the old state.
@@ -91,7 +91,7 @@ Network metadata candidates, multidisc flattening, cloud-synchronized rebuilding
 
 Use milestone branches, atomic Conventional Commits, supported attribution trailers, and pull requests. Update Current Status at each checkpoint. Preserve historical reports. Before each approved push, present actual-file previews, section summaries, and Japanese translations. Future tags, releases, registry publication, and personal-library changes require explicit authorization; the 0.1.0 approvals do not extend to new releases.
 
-M10 has not passed and product `rebuild` remains unimplemented. Display-v2 stopped before display observation. The next task is assessment of a read-only retained-bundle inventory, using the [diagnostic procedure](rebuild-bundle-diagnostics.md); no live rerun is authorized by this stop. Preserve all test state. Personal-library operations and publication require separate authorization.
+M10 has not passed and product `rebuild` remains unimplemented. Display-v3 is prepared and transferred; the agent stops before the separate-user operations in the [updated procedure](rebuild-display-validation.md). The next task is assessment of its single combined result. Preserve all older state, including the metadata file; do not repair or rerun a stopped old bundle. Personal-library operations and publication require separate authorization.
 
 ## Recommended Models and Effort
 

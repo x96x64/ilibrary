@@ -51,14 +51,13 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 ## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/display-order-v2-results.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility です。display-v2（97d4c0b）の結果を受領しました。Media.localizedの確認はPASS、Music 1.7を取得し、legacy-evidenceで「検証一式のファイル一覧が一致しません」とSTOPしました。残り4ケースはNOT RUNです。表示順は未測定で、M10は未完了です。
-旧一式のmanifest識別情報は停止箇所より前に照合済みです（コードからの推定）。旧一式のファイル名集合で停止し、内容のハッシュ照合や現在の登録の確認には達していません。追加・欠損のどちらか、具体的なファイル名、原因はまだ不明です。音声破損やユーザーの操作ミスを断定しないでください。
-受領報告はreference-private/m10-display-v2-results-2026-10-17/report.txtに保存済みで、SHA-256は486f1ae64cbb9b1b7b41433dff48eeeb0695e3a4005444d93b3291b9f7c41cf6です。旧報告、ライブ検証コード、全ZIPは変更していません。
-c56190dで読み取り専用診断inspect_rebuild_bundle.pyを追加し、9件の合成試験が通っています。開発側の旧準備一式は314ファイルと内容が一致しましたが、検証ユーザー側の実態は未確認です。診断は検証用ユーザーに限定し、manifestを固定、リンクをたどらず、private記録を走査せず、追加ファイルの内容も読みません。差分の名前はreference-privateの新しい報告だけへ保存します。
-診断スクリプトと照合ファイルは/Users/Shared/ilibrary-m10-inspect-bundle.pyと同名の.py.sha256へ転送済みです。スクリプトのSHA-256は865e7820931af3341feb72269f1a9eba5dfcd801df2788fd89d978a5def262aeです。docs/rebuild-bundle-diagnostics.mdが現在の手順です。本人の別ユーザー操作の直前で止まっています。
-次に評価するのは/Users/Shared/reference-private/m10-display-inventory/inventory.jsonです。受領したらignoreを確認してreference-privateに保存し、追加・欠損・内容の差・リンク等を区別してください。未知の相対ファイル名も公開文書や会話にそのまま出さないでください。診断ログの再転送やMusicの再測定を先に求めないでください。
-差分の原因が分かるまで全ライブ手順を再実行しません。ファイル削除、旧一式の修復、設定変更、smallの作り直しは行いません。以前の6曲・ライブラリ・バックアップ・停止記録をすべて保持します。必要な修正は対象保護を維持して準備・検証し、別ユーザーでの操作前に止まってください。
+~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/finder-metadata-verification.md を読み、git status と git log を確認してください。
+現在は codex/m10-rebuild-feasibility です。旧一式の差分診断を受領しました。必要な314ファイルとmanifestはすべて一致し、欠損・内容変更・読み取り不能・通常ファイル以外は0件、追加は.DS_Store一つだけでした。旧検証がこれを入力として扱ったことが停止原因です。本人の設定ミスや音声の破損とは扱いません。
+受領記録はreference-private/m10-display-inventory-2026-10-17/inventory.jsonに保存し、SHA-256はe529747b427b903448e59f3394e8ad0ba7c0d04be5ea96a920d725a4aaefab12です。Musicの現在の登録やバックアップの状態を確認した結果ではありません。以前の報告とZIPは保持しています。
+修正f6511d5は通常ファイルの.DS_Storeだけを一式の入力から除外し、削除も内容読み取りもしません。必要な入力の一覧とハッシュ、別名の追加・欠損・変更・リンク等の拒否は維持します。73件の合成試験が通り、旧一式を照合する実際の関数を通したsmallの代替試験を含みます。旧準備一式のコピーで旧版の停止を再現し、修正版の成功と全ファイルの保持を確認しました。Musicの実測ではありません。
+新しい一式はilibrary-m10-display-v3、ソースはf6511d5です。releaseビルド、324曲と8カタログ、ZIPと共有コピーの照合が通っています。実行ファイルはdisplay-v2と同一です。ZIPのSHA-256は39e80493dc54f093428f1bdf3f62edfbe91b86abc0f1a15ea15fd913bf1b5adcです。共有場所へ転送済みで、docs/rebuild-display-validation.mdと同梱PROCEDURE.mdが現在の日本語手順です。
+エージェントは別ユーザー操作の直前で止まっています。次に評価するのは/Users/Shared/ilibrary-m10-display-v3-report.txtです。成功・不一致・未確認・停止・未実行を区別します。表示順、再起動後の維持、再実行の安全性、最終保全、残り4ケースは未確認です。M10は未完了です。
+旧smallの6曲、全一式、.DS_Store、停止記録、バックアップを保持します。旧コマンド・診断を繰り返さず、ファイル削除や修復、メディアフォルダの変更はしません。新しい一式でsmallを再照合し、退避・登録削除は繰り返しません。新たな停止を記録削除などで回避しません。
 Music・実ライブラリ・私的音源は操作しません。M10完了前にM11以降や製品rebuildへ進めません。新たなpush・公開は別途承認が必要です。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと各セクションの要約・邦訳を示してください。
 ```
 
