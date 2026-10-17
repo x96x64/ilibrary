@@ -46,7 +46,7 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
 
 The same prompt applies in Claude Code. Replace the Codex attribution in item 3 with `Co-Authored-By: Claude <noreply@anthropic.com>`, optionally preceded by the model name, as defined in AGENTS.md.
 
-## Next Session After M7
+## Next Session after M7
 
 ```text
 ~/ilibrary の AGENTS.md と docs/roadmap-to-stable.md を読み、Git と PR の現状を確認してください。

@@ -36,6 +36,8 @@ The [Test Library Validation](test-library-validation.md) procedure and `scripts
 
 Milestone M7 documentation is complete on `codex/m7-documentation`. [Pull request #6](https://github.com/x96x64/ilibrary/pull/6) tracks its publication, integration, and final CI result. The README now covers all implemented commands, source installation and updates, diagnostics, recovery, rights, and limitations. Contributor, support, operation, and Japanese handoff instructions are current. The documentation review checked local links, command help, headings, and consistency with the code; see [Documentation Review](reports/documentation-review.md). All 154 synthetic tests and strict formatting passed; the catalog and import end-to-end scripts passed 21 and 30 checks respectively (measured).
 
+The M7 automated review of `5b9bdac` reported three findings. The heading capitalization of “after” was corrected. The other two were rejected after verification: the reviewed commit retains `x96x64` as author and committer in both local Git and the GitHub commit object, and “Comparing Music with Files” already uses lowercase “with”. No attribution history was rewritten.
+
 The remaining prerequisite before M8 is separate-user live validation of M5/M6 using [Test Library Validation](test-library-validation.md), followed by a new report of the measured results. Development through M7 does not imply that this gate passed. Personal-library qualification, tags, and releases have not started and require a separate decision. The approved scope includes milestone commits, pushes, pull requests, and integration through M7 without renewed confirmation.
 
 ## Decisions in Force
