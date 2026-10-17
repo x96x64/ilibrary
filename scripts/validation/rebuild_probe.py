@@ -9,6 +9,7 @@ run by the agent during preparation. Results expose counts, not paths or IDs.
 import argparse
 import collections
 import datetime
+from decimal import Decimal
 import hashlib
 import json
 import os
@@ -336,8 +337,20 @@ def compare_files(paths, expected):
     require(file_state(paths) == expected, "ファイルの内容または日時が変わりました。これ以上の変更を止めます。")
 
 
+def addition_seconds(value):
+    # AppleScript coerces contemporary date offsets to exponent notation.
+    # Decimal preserves every exposed second; float conversion could round.
+    require(isinstance(value, str) and len(value) <= 64 and
+            re.fullmatch(r"[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]{1,3})?", value) is not None,
+            "追加日時の数値表現を確認できません。")
+    number = Decimal(value)
+    require(-(2 ** 31) <= number <= 2 ** 31 - 1 and number == number.to_integral_value(),
+            "追加日時を整数秒として確認できません。")
+    return int(number)
+
+
 def date_result(records):
-    values = [int(r["added"]) for r in records]
+    values = [addition_seconds(r["added"]) for r in records]
     require(values, "追加日時がありません。")
     return {"unique": len(set(values)), "span_seconds": max(values) - min(values),
             "equal": len(set(values)) == 1}

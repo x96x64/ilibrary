@@ -93,6 +93,19 @@ class ProbeTests(unittest.TestCase):
         with self.assertRaises(probe.Refusal):
             probe.date_result([])
 
+    def test_applescript_exponent_timestamps_preserve_one_second_difference(self):
+        records = [{"added": "8.4539124E+8"}, {"added": "8.45391241E+8"}]
+        self.assertEqual(probe.date_result(records), {"unique": 2, "span_seconds": 1, "equal": False})
+
+    def test_equal_seconds_with_different_numeric_representations_pass(self):
+        records = [{"added": value} for value in ("845391240", "8.4539124E+8", "845391240.0")]
+        self.assertEqual(probe.date_result(records), {"unique": 1, "span_seconds": 0, "equal": True})
+
+    def test_invalid_or_fractional_seconds_are_refused_without_rounding(self):
+        for value in ("", "NaN", "Infinity", "1.5", "8.453912401E+8", "1E+100", "2,000", " 100", None):
+            with self.subTest(value=value), self.assertRaises(probe.Refusal):
+                probe.date_result([{"added": value}])
+
     def test_unexpected_track_stops_before_removal(self):
         unexpected = dict(self.records[0], id="F" * 16)
         with patch.object(probe, "snapshot", return_value=self.records + [unexpected]), patch.object(probe, "music") as delete:
