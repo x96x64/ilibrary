@@ -8,7 +8,7 @@ Approved by the maintainer on October 17, 2026, and revised on the same date aft
 | --- | --- | --- |
 | Measured, maintainer-reported | The version 2 small case completed evacuation, guarded registration removal, human-confirmed empty GUI, termination, editing while closed, and album-by-album readdition with file/library verification | Preserve these results; do not repeat destructive steps solely because the timestamp requirement changed |
 | Measured, supplied numeric evidence | Six saved addition timestamps contain two distinct values separated by one second | The historical equality gate failed; that difference alone does not fail the revised gate |
-| Measured stop, cause unknown | The new display-order small case stopped at the media-path comparison; the maintainer reports the correct setting; four later cases were not run | Inspect saved diagnostics before another live case; no display-order conclusion follows |
+| Measured log and reproduced probe defect | The saved preference ends in `Media.localized`, which the old fixed `Media` comparison rejected; four later cases were not run | Use the corrected, separately named bundle; preserve stopped evidence and do not infer a display-order result |
 | Unknown | Recently Added order, repeated-addition stability, final backup verification, and the 300-track scale case | M10 remains incomplete |
 | Unknown | Automatic GUI emptiness detection, independent physical backup qualification, and behavior on other supported system versions | Retain explicit qualification work before production use |
 
@@ -42,7 +42,7 @@ If the intended display cannot be established or does not persist, stop the affe
 
 ## Remaining M10 Qualification
 
-Decision 34 authorizes preparation of reproducible display-order validation and its Japanese handoff. The [new procedure](rebuild-display-validation.md) was prepared and returned a small-case preflight stop, assessed in [Display-Order Validation Results](reports/display-order-results.md). Do not rerun it or start the four remaining cases. Inspect the saved diagnostic output first, without Music access, and establish the cause before preparing another handoff. The transferred bundles and historical result files remain unchanged. The [preparation report](reports/display-order-preparation.md) distinguishes completed preparation from unmeasured live behavior.
+Decision 34 authorizes preparation of reproducible display-order validation and its Japanese handoff. The first display attempt returned a preflight stop; the supplied diagnostics established a media-name compatibility defect. The [correction report](reports/display-media-path-correction.md) records the bounded fix, tests, and separately named replacement bundle. Follow the [updated procedure](rebuild-display-validation.md) using display-v2; do not rerun the original display bundle or alter its records. The older transferred bundles and historical results remain unchanged. Preparation and substituted tests remain separate from live qualification.
 
 1. First assess whether the existing small-case state can supply the missing display and preservation observations. Inspect its recorded identity and inventory before relying on it. A later observation must be labeled as later evidence, not reconstructed as an observation made during the original run. Unexpected changes stop reuse; they do not authorize clearing the library.
 2. Complete the missing small-case display, relaunch, repeat-safety, and final backup checks in the separate test user under a reviewed procedure. Reuse established results where their preconditions remain verifiable. When a fresh case is necessary, use a new isolated synthetic library and retain the old state.
@@ -91,7 +91,7 @@ Network metadata candidates, multidisc flattening, cloud-synchronized rebuilding
 
 Use milestone branches, atomic Conventional Commits, supported attribution trailers, and pull requests. Update Current Status at each checkpoint. Preserve historical reports. Before each approved push, present actual-file previews, section summaries, and Japanese translations. Future tags, releases, registry publication, and personal-library changes require explicit authorization; the 0.1.0 approvals do not extend to new releases.
 
-M10 has not passed and product `rebuild` remains unimplemented. The next step after the returned preflight stop is assessment of saved diagnostic evidence, not another execution of the [display-order procedure](rebuild-display-validation.md). The [older M10 procedure](rebuild-feasibility-validation.md) also remains historical and must not be rerun. Preserve all test state. Personal-library operations and publication require separate authorization.
+M10 has not passed and product `rebuild` remains unimplemented. The corrected display-v2 bundle is prepared, and the agent stops before test-user operations. The next result must follow the [updated display-order procedure](rebuild-display-validation.md). The original display attempt and [older M10 procedure](rebuild-feasibility-validation.md) remain historical and must not be rerun. Preserve all test state. Personal-library operations and publication require separate authorization.
 
 ## Recommended Models and Effort
 
