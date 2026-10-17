@@ -13,9 +13,9 @@
 ## Maintainer Documentation
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
-- [Plan for the Stable Release](stable-release-plan.md): approved M10–M15 sequence, preservation requirements, and feasibility gates
-- [Rebuilding Feasibility Validation](rebuild-feasibility-validation.md): Japanese M10 instructions for a separate test user
-- [Saved Addition-Date Verification](rebuild-feasibility-date-check.md): read-only extraction of the stopped M10 run's saved timestamps
+- [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
+- [Rebuilding Feasibility Validation](rebuild-feasibility-validation.md): retained version 2 instructions; do not resume this superseded experiment
+- [Saved Addition-Date Verification](rebuild-feasibility-date-check.md): completed read-only extraction of the stopped M10 run's saved timestamps
 - [Contributing](../CONTRIBUTING.md): development and verification requirements
 - [Distribution](distribution.md): package construction, installation verification, and publication
 - [Package Publication Setup](package-publishing.md): Japanese Web setup and result reporting for npm and PyPI
@@ -56,3 +56,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Rebuilding Probe Revision](reports/rebuild-probe-revision.md)
 - 2026-10-17 — [Version 2 Rebuilding Feasibility Results](reports/rebuild-feasibility-v2-results.md)
 - 2026-10-17 — [Rebuilding Timestamp Gate Assessment](reports/rebuild-timestamp-gate.md)
+- 2026-10-17 — [Display-Order Plan Revision](reports/display-order-plan-revision.md)

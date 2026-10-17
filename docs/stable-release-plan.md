@@ -2,9 +2,16 @@
 
 ## Status and Evidence
 
-Approved by the maintainer on October 17, 2026. This plan supersedes the prospective version assignments in the [historical study](planning-study.md#outlook-to-version-100), not its completed measurements. Version 0.1.0 is published. The maintainer authorized M10 preparation and required a stop before operations in a separate macOS user. Personal-library operations and future publication are not authorized by this plan.
+Approved by the maintainer on October 17, 2026, and revised on the same date after the M10 timestamp measurements. The maintainer accepts differences in addition timestamps when Recently Added presents the intended album order. This revision is planning only: it does not authorize implementation, another Music experiment, personal-library operations, or publication. Version 0.1.0 is published. This plan supersedes the prospective version assignments in the [historical study](planning-study.md#outlook-to-version-100), not its completed measurements.
 
-The existing measurements cover 301 private-file copies and twelve separate-user Music command checks. They do not establish evacuation, automatic registration removal, or an identical addition timestamp across an entire rebuilt library. Music's installed scripting dictionary declares `date added` read-only; that is interface evidence, not evidence that quitting Music produces identical dates.
+| Classification | Evidence | Consequence |
+| --- | --- | --- |
+| Measured, maintainer-reported | The version 2 small case completed evacuation, guarded registration removal, human-confirmed empty GUI, termination, editing while closed, and album-by-album readdition with file/library verification | Preserve these results; do not repeat destructive steps solely because the timestamp requirement changed |
+| Measured, supplied numeric evidence | Six saved addition timestamps contain two distinct values separated by one second | The historical equality gate failed; that difference alone does not fail the revised gate |
+| Unknown | Recently Added order, repeated-addition stability, final backup verification, and the 300-track scale case | M10 remains incomplete |
+| Unknown | Automatic GUI emptiness detection, independent physical backup qualification, and behavior on other supported system versions | Retain explicit qualification work before production use |
+
+See the [version 2 results](reports/rebuild-feasibility-v2-results.md), [timestamp assessment](reports/rebuild-timestamp-gate.md), and [plan revision record](reports/display-order-plan-revision.md). Music's installed scripting dictionary declares `date added` read-only. The revised plan does not depend on changing that property or on quitting Music aligning timestamps.
 
 ## Required Sequence
 
@@ -14,11 +21,35 @@ The existing measurements cover 301 private-file copies and twelve separate-user
 4. Confirm that all registrations and the GUI are empty, then quit Music and confirm termination.
 5. While Music remains closed, apply the reviewed catalog, names, and optional file dates to working files.
 6. Launch Music and add one album at a time in the selected order.
-7. Verify files, registrations, order, and addition timestamps.
+7. Verify files, registrations, and the intended Recently Added album order; record addition timestamps and their differences.
 
 Use the existing four automatic orders, with ascending release date as the default. Playlists, ratings, play counts, and other library-only history are not restored. This workflow supports local files without cloud library synchronization. It must not change synchronization settings automatically.
 
-Every track must have exactly the same `date added`, at the precision exposed by Music. Calendar-day equality or a visually grouped date is insufficient. The Recently Added display must also reflect the intended album sequence. These are separate gates. If the public interface cannot satisfy both together with album-by-album addition, stop the rebuilding work and the dependent stable release for a maintainer decision. Do not edit Music's database, change the system clock, or silently weaken the gate.
+## Display Order and Addition Dates
+
+Recently Added must show the intended album sequence. Differences produced during verified album-by-album addition are acceptable; exact timestamp equality is no longer a gate. Record the exposed timestamps, distinct values, total span, per-album spans, elapsed time, and any interruptions. No numerical tolerance is inferred from the one-second small-case result, and no maximum duration or timestamp spread is claimed to be qualified before measurement. Missing or unreadable timestamps remain an incomplete diagnostic result.
+
+The four existing orders describe **addition order**: `release` sorts by ascending release date; `artist` by ascending artist and album name; `artist-desc` reverses both names; and `artist-release` sorts by ascending artist and release date. Retain the existing deterministic tie rules and placement of undated albums. Save the exact album list with the plan, rather than recomputing a changed catalog during execution.
+
+Show a separate, explicit **expected display order**, read from the first visible album through the last in Recently Added. The initial qualification target is reverse addition order: for example, add albums A, B, and C from oldest to newest and expect C, B, and A on screen. This is the intended outcome to test, not a claim about measured Music behavior. Do not silently reverse command semantics or accept whatever order Music produces as the expectation.
+
+Qualification compares every expected album with the actual GUI, including albums requiring scrolling. Missing, duplicate, split, or out-of-order album cards prevent success. Check the result after the view has loaded and again after quitting and reopening Music. Include albums whose additions share an exposed timestamp and cases spanning different timestamps; the ordering must not rely on an untested tie assumption. Verify all four selectable orders before claiming them as supported rebuilding modes.
+
+The addition journal and timestamps do not prove GUI order. A recorded visual observation can qualify M10; it must identify the expected list, observed list, system version, and observation time. A product run must distinguish verified file/registration state from display confirmation. If reliable automatic observation is unavailable, it must report that display confirmation is pending and require a recorded user confirmation before reporting the whole rebuild verified. No interactive text user interface is planned.
+
+If the intended display cannot be established or does not persist, stop the affected qualification and dependent release. A failed experiment is not repaired by automatically deleting and readding registrations. Do not edit Music's database, change the system clock, or rewrite or round timestamps to manufacture success.
+
+## Remaining M10 Qualification
+
+The next work, after a new instruction to proceed, is to prepare a reproducible display-order validation and its Japanese handoff. Stop immediately before operations in the separate macOS user. The current probe, transferred version 2 bundle, and historical result files remain unchanged during this planning revision.
+
+1. First assess whether the existing small-case state can supply the missing display and preservation observations. Inspect its recorded identity and inventory before relying on it. A later observation must be labeled as later evidence, not reconstructed as an observation made during the original run. Unexpected changes stop reuse; they do not authorize clearing the library.
+2. Complete the missing small-case display, relaunch, repeat-safety, and final backup checks in the separate test user under a reviewed procedure. Reuse established results where their preconditions remain verifiable. When a fresh case is necessary, use a new isolated synthetic library and retain the old state.
+3. Qualify the full sequence with 20 albums and 300 synthetic tracks. Compare all album cards with the saved expectation, verify files and registrations, record timestamp differences, and check preservation and repeat safety. The scale run has not yet taken place.
+4. Cover each of the four order modes, deterministic ties, and empty-library detection. Keep API emptiness and human GUI emptiness as distinct observations. The six-track run established only human GUI confirmation; reliable automatic confirmation of emptiness is a separate prerequisite for the fully automated clearing stage in M12.
+5. Produce one consolidated report with each check marked passed, failed, or unverified, plus a reproducible recovery handoff on failure. Passing is not promised. A simulated detached disk-image backup qualifies only the synthetic experiment; independent physical backup and restoration remain M11 requirements.
+
+M10 passes only when the small and scale evidence covers the revised preservation, sequence, display, and repeat-safety gates. A one-second timestamp difference alone is acceptable. The earlier run is not retrospectively marked complete, and M11–M15 implementation remains gated on the missing evidence.
 
 ## Preservation and Recovery
 
@@ -26,24 +57,26 @@ Before registration removal, verify the bytes, relative paths, sizes, creation d
 
 Cross-volume evacuation retains its source until the replacement has been verified. Catalog edits affect working files only. Neither the backup nor recovery records are automatically deleted. These controls isolate a verified original from program and Music operations; they do not promise immunity to hardware failure or physical loss.
 
-Remove only the persistent IDs captured in the verified plan. Stop if the inventory changes or an unexpected registration appears. An interrupted removal must not expand its scope. Recovery records distinguish evacuation, removal, confirmed termination, edits, and addition. Resuming addition must recheck the timestamp gate; successful file recovery alone does not establish a successful rebuild.
+Remove only the persistent IDs captured in the verified plan. Stop if the inventory changes or an unexpected registration appears. An interrupted removal must not expand its scope. Recovery records distinguish evacuation, removal, confirmed termination, edits, and addition. Resuming addition must recheck preserved files, exact registrations, and intended display order. Record the interruption and resulting timestamp span; a larger span alone does not justify clearing or starting over. Successful file recovery alone does not establish a successful rebuild.
 
 ## Milestones and Gates
 
 | Milestone | Scope | Completion Gate | Mac Requirement |
 | --- | --- | --- | --- |
-| M10 | Measure automatic removal, evacuation preservation, empty GUI, termination, editing, and ordered readdition | Both small and practical-scale synthetic runs satisfy every gate, including exact timestamp equality and GUI order | Separate macOS test user; stop for maintainer operation |
-| M11 / 0.2.0 | Backup verification, inventory, evacuation plans, and strict catalog export | Complete inventory, tested restoration, and refusal before unsafe changes or unrepresentable catalog values | Portable logic on Linux; dates, storage, and restoration on macOS |
-| M12 / 0.3.0 | Implement the qualified staged rebuilding workflow | Separate-user end-to-end success, preserved originals, exactly one registration per file, correct order and dates | Separate macOS test user |
-| M13 / 0.4.0 | Interruptions, resumption, and recovery | Power/process interruption simulations, capacity failures, permission failures, disconnected volumes, and concurrent edits cannot cause an unverified source to be discarded | CI plus macOS and separate-user Music checks |
-| M14 / 0.9.0 | Freeze features; qualify scale, compatibility, distribution, and documentation | Supported environments have evidence; no unresolved data-loss, incorrect-removal, or recovery defect | macOS; private copies only with separate authorization |
-| M15 / 1.0.0 | Freeze compatibility policy and publish reviewed packages | Final approval, artifact audit, successful CI, and public installation checks | macOS verification and maintainer publication approval |
+| M10 | Complete small and scale feasibility checks under the display-order requirement; qualify all four order modes | Verified preservation and required sequence, exact registrations, intended GUI order after relaunch, repeat safety, and recorded timestamp differences; no missing required observation | Maintainer's Mac in a separate test user; stop before live operations and provide the procedure |
+| M11 / 0.2.0 | Independent backup verification, complete inventory, evacuation plans, strict catalog export, and versioned recovery records | Restore bytes, paths, and required dates from separate physical media; verify and disconnect the backup; reject incomplete inventories, overlap, unsupported values, insufficient capacity, and unsafe plans before mutation | Portable logic on Linux; dates, separate media, and restoration on macOS |
+| M12 / 0.3.0 | Implement the qualified staged rebuilding sequence and explicit display confirmation | Separate-user end-to-end success, preserved originals, exactly one registration per file, correct file dates and GUI order; reliable empty-GUI detection before automatic quit, and no edits while Music runs | Maintainer's Mac in a separate test user; additional UI permissions, if needed, must be documented before testing |
+| M13 / 0.4.0 | Interruptions during evacuation, removal, termination, editing, and addition; safe resumption and recovery | Fault tests preserve verified originals and exact scope; no duplicate registration or unverified source removal; resume only when files, registrations, and final display order can be verified, otherwise stop with recovery instructions | CI for portable state logic; macOS, storage-disconnection tests, and separate-user Music checks |
+| M14 / 0.9.0 | Freeze features; qualify practical scale, system compatibility, installation routes, and documentation | Full synthetic workflow and restart checks pass on the declared supported environments; separately authorized private-copy checks complete; no unresolved major preservation, removal, registration, display-order, or recovery defect | Maintainer's Mac; private-copy access requires separate authorization; personal-library rebuilding remains separately restricted |
+| M15 / 1.0.0 | Freeze CLI, catalog, and recovery-record compatibility; review and publish GitHub, npm, PyPI, and Homebrew artifacts | M10–M14 gates complete, final maintainer approval, clean artifact/privacy audit, successful CI, and installation checks through every published route | macOS for installation verification; explicit maintainer publication approval |
+
+Version numbers are release targets, not publication authorizations. Each milestone depends on the preceding gate; do not publish 1.0.0 while the required display order or preservation remains unqualified.
 
 Retain Apple silicon distribution. A macOS deployment target is not runtime qualification; qualify the stated minimum supported OS or revise the support declaration and package requirements before 1.0.0.
 
 ## Command and Compatibility Boundaries
 
-The planned interface is `rebuild prepare`, `rebuild stage`, `rebuild clear`, `rebuild apply`, `rebuild add`, and `rebuild status`. Preparation inventories files and registrations, verifies backups, and records the plan. Staging evacuates files. Clearing removes only planned registrations and quits after emptiness is established. Application edits working files while Music is closed. Addition verifies the resulting library. Status reports completed stages, failures, and the next required action.
+The planned interface is `rebuild prepare`, `rebuild stage`, `rebuild clear`, `rebuild apply`, `rebuild add`, and `rebuild status`. Preparation inventories files and registrations, verifies backups, and records both addition and expected display lists. Staging evacuates files. Clearing removes only planned registrations and quits after registration and GUI emptiness are established. Application edits working files while Music is closed. Addition verifies the resulting library and records display confirmation separately. Status reports completed stages, timestamp differences, pending observations, failures, and the next required action. These are planned commands, not additions to the published interface.
 
 Mutating stages require `--dry-run`, a complete preview, and post-operation verification. Plan changes require revalidation. Ordinary `add` retains its duplicate refusal and never removes registrations. Keep domain logic portable and platform operations in macOS targets; add no runtime package or external-tool dependency.
 
@@ -57,7 +90,7 @@ Network metadata candidates, multidisc flattening, cloud-synchronized rebuilding
 
 Use milestone branches, atomic Conventional Commits, supported attribution trailers, and pull requests. Update Current Status at each checkpoint. Preserve historical reports. Before each approved push, present actual-file previews, section summaries, and Japanese translations. Future tags, releases, registry publication, and personal-library changes require explicit authorization; the 0.1.0 approvals do not extend to new releases.
 
-M10 preparation does not implement `rebuild` or qualify it. The [M10 procedure](rebuild-feasibility-validation.md) describes the limited synthetic experiment and the remaining maintainer actions.
+This revision changes documentation only. M10 has not passed, `rebuild` remains unimplemented, and no Music or personal-library operation is authorized now. The [M10 procedure](rebuild-feasibility-validation.md) preserves the previously performed version 2 experiment; it is not an instruction to resume under the new requirement. Prepare a replacement handoff only after implementation or further qualification work is requested.
 
 ## Recommended Models and Effort
 
