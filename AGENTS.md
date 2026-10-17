@@ -39,7 +39,7 @@ Keep real purchased or downloaded files, library exports, and copyright-bearing 
 
 ## Archival Writing
 
-All project documentation, engineering reports, commit messages, and completion reports must use precise, grammatical, formal English suitable for an archival engineering record. Describe technical changes, evidence, uncertainty, and consequences without conversational framing, promotional language, agent-centric narration, or unsupported claims. Preserve completed planning and architecture reports as historical records, and record subsequent findings in new reports.
+All project documentation, engineering reports, and commit messages must use precise, grammatical, formal English suitable for an archival engineering record. Maintainer-facing replies, completion reports, and handoff prompts must be in Japanese; dedicated maintainer procedures may also be in Japanese. Describe technical changes, evidence, uncertainty, and consequences without conversational framing, promotional language, agent-centric narration, or unsupported claims. Preserve completed planning and architecture reports as historical records, and record subsequent findings in new reports.
 
 ## Commits
 
@@ -54,5 +54,7 @@ Historical attribution changes require explicit approval, a verified recoverable
 ## Agent Handoff
 
 This file governs Claude Code, Codex, and other agents equally; `CLAUDE.md` imports it. Keep project state in the repository rather than in conversations: at the end of each milestone, update the Current Status of `docs/roadmap-to-stable.md` and commit it, so that any agent can resume from the repository alone. Cloud sessions run on Linux and can build and test only the Foundation-only targets; verify macOS-only changes through macOS CI or on the maintainer's Mac. Releases, tags, repository creation, pushes, and publication require the maintainer's explicit approval in the current conversation. Before each push, present a preview of the changed documentation, a summary of the principal changes, and its Japanese translation.
+
+Continue within the scope already authorized in the active conversation without requesting repeated confirmation. When a new decision is necessary, explain it in plain Japanese with concise choices and a recommendation. Preserve restrictions on personal-library operations even during autonomous work.
 
 Every reply to the maintainer, including every handoff, next-session prompt, and milestone completion report, must end by stating a recommended model and reasoning effort for the next task, for Claude Code and for Codex. Recommend only models and effort levels confirmed to be available. Prefer the effort of the milestone table in `docs/roadmap-to-stable.md`, and explain any deviation. Do not recommend Codex's `ultra` effort, whose automatic task delegation conflicts with the scope controls of this file.

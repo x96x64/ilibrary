@@ -34,7 +34,9 @@ Milestone M6 is implemented on `m6-check`: `check` diagnoses files and optionall
 
 The [Test Library Validation](test-library-validation.md) procedure and `scripts/validation/library-commands.sh` combine the remaining M5/M6 live checks in a separate macOS user. Preparation-only validation passed without querying Music (measured). No personal library or private files were accessed. The maintainer requested uninterrupted progress through M7, so this manual check does not block M7 documentation work and is not represented as completed.
 
-The next development step is M7 documentation. The approved scope includes milestone commits, pushes, pull requests, and integration through M7 without renewed confirmation. Personal-library operations, M8 qualification, tags, and releases are outside this authorization.
+Milestone M7 documentation is complete on `codex/m7-documentation`, pending integration. The README now covers all implemented commands, source installation and updates, diagnostics, recovery, rights, and limitations. Contributor, support, operation, and Japanese handoff instructions are current. The documentation review checked local links, command help, headings, and consistency with the code; see [Documentation Review](reports/documentation-review.md). All 154 synthetic tests and strict formatting passed; the catalog and import end-to-end scripts passed 21 and 30 checks respectively (measured).
+
+The remaining prerequisite before M8 is separate-user live validation of M5/M6 using [Test Library Validation](test-library-validation.md), followed by a new report of the measured results. Development through M7 does not imply that this gate passed. Personal-library qualification, tags, and releases have not started and require a separate decision. The approved scope includes milestone commits, pushes, pull requests, and integration through M7 without renewed confirmation.
 
 ## Decisions in Force
 

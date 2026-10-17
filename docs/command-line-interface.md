@@ -151,9 +151,9 @@ Sets the creation and modification dates to each release date at local midnight,
 2. Album folders that hold the files of exactly one album, from the album's release date.
 3. Artist folders named after the album artist, from the artist's `folderDate` in the catalog. Without a `folderDate`, an artist folder is left unchanged (decision 15).
 
-Folders outside the given directories are never changed. Where a time zone skips midnight, the first instant of the day is used and reported. Every path is checked before any date is set: a missing path is reported and never created, and a symbolic link is refused. Each date is read back after it is set. Setting creation dates requires macOS; elsewhere, only `--dry-run` and `--script` are available.
+Folders outside the given directories are never changed. Where a time zone skips midnight, the first instant of the day is used and reported. Every path is checked before any date is set: a missing path is reported and never created, and a symbolic link is refused. Each date is read back after it is set. Setting creation dates requires macOS; elsewhere, use `--dry-run`, optionally with `--script`.
 
-- `--dry-run` lists the planned dates and changes nothing.
+- `--dry-run` lists the planned dates and leaves dates unchanged. With an explicit `--script FILE`, the script is still written; omit that option for a preview that creates no files.
 - `--script FILE` also writes an equivalent shell script. The script sets the time zone, checks that each path exists and is not a symbolic link before it calls `SetFile -d` and `touch -c -m -t`, reports and skips other paths, and exits with status 1 when any path was skipped. An existing file is never overwritten.
 
 ### check

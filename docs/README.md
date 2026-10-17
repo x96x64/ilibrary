@@ -4,6 +4,9 @@
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Agent Handoff](agent-handoff.md): a prompt for resuming work in Codex or Claude Code at any milestone
+- [Library Operations and Recovery](library-operations.md): previews, resumption, diagnostics, and private reports
+- [Contributing](../CONTRIBUTING.md): development and verification requirements
+- [Support](../SUPPORT.md): reporting a problem without private data
 - [Command-Line Interface](command-line-interface.md): commands, options, and exit status
 - [Completing Catalogs with AI Agents](catalog-for-agents.md): the authoring workflow for agents and chats
 - [Test Library Validation](test-library-validation.md): step-by-step Japanese instructions for validating the implemented M5/M6 commands in a separate user
@@ -27,3 +30,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Ordered Addition](reports/ordered-addition.md)
 - 2026-10-17 — [Ordered Addition Corrections](reports/ordered-addition-corrections.md)
 - 2026-10-17 — [Library Checks and Diagnostics](reports/library-checks.md)
+- 2026-10-17 — [Documentation Review](reports/documentation-review.md)

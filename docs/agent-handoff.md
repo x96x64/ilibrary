@@ -15,7 +15,10 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
    - 今回やる作業の範囲
    - 完了条件（ゲート）
    - 私の Mac が必要かどうか
-   私の承認を得てから作業を始めてください。途中の作業が残っている場合は、その続きから再開してください。
+   既に承認した範囲は再確認せず続けてください。M7 までの実装・文書・push・PR・マージは承認済みです。
+   M5/M6 の別ユーザー検証が未実施なら、完了したことにはせず記録してください。
+   M8 の私の実ライブラリでの検証とリリースは別の承認が必要です。
+   途中の作業が残っている場合は、その続きから再開してください。
 3. 作業はマイルストーン用のブランチで行い、AGENTS.md の規約に従ってください。
    - コミットは iLyrics と同じ Conventional Commits、正式な英語、小さな単位とし、
      実質的に関与したコミットには Co-authored-by: Codex <codex@openai.com> を付けてください。
@@ -24,11 +27,15 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
 4. 私の実ライブラリ（~/Music/Music/Media.localized/Music）と Apple Music のライブラリには、
    私の明示的な指示なしに触れないでください。検証はコピーまたは合成ファイルで行ってください。
    実際の音楽ファイル、Apple ID、個人パスは reference-private/ 以外に置かず、公開物に含めないでください。
-5. push、タグ、リポジトリ作成、リリース、レジストリへの公開は、私の明示的な承認なしに行わないでください。
+5. M7 までの既存承認の範囲で push とマージを進めてください。
+   タグ、リリース、レジストリへの公開や M8 は、私の明示的な承認なしに行わないでください。
    push の前には、変更した文書のプレビュー、主要な変更の要約、その日本語訳を示してください。
 6. 区切りごとに docs/roadmap-to-stable.md の Current Status を更新してコミットし、
    Claude Code に戻っても続けられる状態にしてください。
-7. 最後に日本語で、次の4点を報告してください。
+7. 返信はすべて日本語にしてください。確認が不可欠な場合だけ、専門用語を控え、選択肢と推奨を添えてください。
+   docs/test-library-validation.md に、別ユーザーへの切り替えと結果の報告方法があります。
+   普段のユーザーでは Music や私の音楽ファイルを操作しないでください。
+8. 最後に日本語で、次の4点を報告してください。
    - やったこと、検証結果、残っている課題
    - 次の作業
    - 次の作業の推奨モデルとエフォート（Claude Code と Codex それぞれ。Codex は GPT のモデル名で、ultra は使わない）
@@ -38,3 +45,18 @@ This document contains a general-purpose prompt for resuming work in Codex or Cl
 ## Use in Claude Code
 
 The same prompt applies in Claude Code. Replace the Codex attribution in item 3 with `Co-Authored-By: Claude <noreply@anthropic.com>`, optionally preceded by the model name, as defined in AGENTS.md.
+
+## Next Session After M7
+
+```text
+~/ilibrary の AGENTS.md と docs/roadmap-to-stable.md を読み、Git と PR の現状を確認してください。
+M7 までの実装・文書整備を引き継いでください。M5/M6 の別ユーザー検証は、結果が届くまで未確認です。
+貼り付けた ilibrary-command-results.txt があれば、そのコミットと検査結果を確認し、必要な修正を進めてください。
+結果がなければ、docs/test-library-validation.md の手順を日本語で案内してください。
+普段の Music や実ライブラリには触れず、M8・タグ・リリースは開始しないでください。
+既存の承認範囲では再確認を挟まず、Current Status と引き継ぎ記録を更新してください。
+```
+
+## Recommended Models and Effort
+
+For the remaining live validation and any resulting addition fixes, use Claude Opus 5.5 with xhigh in Claude Code, or GPT-6-Astra with xhigh in Codex, following M5 in the roadmap. For M7 documentation alone, use Claude Opus 5.5 with high or GPT-6-Astra with high. These are the models recorded as available to the maintainer; do not select `ultra`.
