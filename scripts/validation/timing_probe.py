@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -16,17 +17,25 @@ import display_probe as display
 
 base = display.base
 require, safe_path, digest, write_json = base.require, base.safe_path, base.digest, base.write_json
-FORMAT = "ilibrary-m10-timing-1"
-NAME = "timing-small"
+FORMAT = "ilibrary-m10-timing-2"
+NAME = "timing-v2-small"
 WAIT_SECONDS = 2.0
 WAIT_LIMIT = 30.0
 PRIOR_SOURCE = "f6511d56250504d82f1c55c1039905838615ebbc"
 PRIOR_REPORT = "6b859c028563f78efd741344ace1ebf23c67f70b0748ef11f029f68113795cfe"
+STOPPED_SOURCE = "1493bdaa36257c848730a6fcdaabca17d24f1068"
+STOPPED_REPORT = "5db76008caa4b5796bd05063f3edaa0a0b345c90503851970373e36ca3c32181"
+STOPPED_INVENTORY = "2476349b1562f831fc09cc7863592c7b35cf79d59f66a0479449f899be9f4b47"
+# Music 1.7 created these in a new Media.localized folder (measured inventory); contents are never read.
+LOCALIZATION = re.compile(r"[a-z]{2,3}(?:_[A-Za-z0-9]{2,4})?\.strings")
+SCAFFOLDING_LIMIT = 65536
+MEDIA_ENTRY_LIMIT = 5000
+MEDIA_DEPTH_LIMIT = 20
 
 
 def spec():
     result = display.case_spec("small-existing")
-    result["library"] = "M10-timing-small"
+    result["library"] = "M10-timing-v2-small"
     return result
 
 
@@ -81,6 +90,48 @@ def prepare(output, binary, tagger, audio, commit, dry_run=False):
     print("PASS: 合成6曲、2カタログ、検証一式の照合。Music未操作。")
 
 
+def media_category(relative, info):
+    """Classify one entry of a new media folder from its name, type, and size only."""
+    parts = relative.split("/")
+    if stat.S_ISDIR(info.st_mode):
+        return "directory"
+    if not stat.S_ISREG(info.st_mode):
+        return None
+    if parts[-1] == ".DS_Store":
+        return "finder-state"
+    if info.st_size > SCAFFOLDING_LIMIT:
+        return None
+    if parts == [".Media Preferences.plist"]:
+        return "music-preferences"
+    localized = parts[:-1] == [".localized"] or (
+        len(parts) == 3 and parts[0].endswith(".localized") and parts[1] == ".localized")
+    if localized and LOCALIZATION.fullmatch(parts[-1]):
+        return "music-localization"
+    return None
+
+
+def media_inventory(media):
+    """List a new media folder without following links or opening any file."""
+    rows = []
+
+    def visit(directory, prefix, depth):
+        require(depth <= MEDIA_DEPTH_LIMIT, "新しいメディアフォルダの階層が深すぎます。")
+        with os.scandir(directory) as entries:
+            for entry in sorted(entries, key=lambda e: e.name):
+                require(len(rows) < MEDIA_ENTRY_LIMIT, "新しいメディアフォルダの項目が多すぎます。")
+                info = entry.stat(follow_symlinks=False)
+                kind = ("directory" if stat.S_ISDIR(info.st_mode) else "file" if stat.S_ISREG(info.st_mode) else
+                        "symlink" if stat.S_ISLNK(info.st_mode) else "other")
+                row = {"relative": prefix + entry.name, "type": kind, "size": info.st_size,
+                       "category": media_category(prefix + entry.name, info)}
+                rows.append(row)
+                if kind == "directory":
+                    visit(entry.path, row["relative"] + "/", depth + 1)
+
+    visit(safe_path(media), "", 0)
+    return rows
+
+
 def wait_between(check, clock=time.monotonic, sleep=time.sleep):
     """Wait after confirmation, then recheck state. Never infer Music dates from this clock."""
     start = clock()
@@ -128,9 +179,19 @@ class Measurement(display.Measurement):
     def measure(self):
         self.step("empty-library")
         require(not self.capture("initial-registration", {}), "新しい空のライブラリではありません。")
-        for path in self.media.rglob("*"):
-            safe_path(path)
-            require(path.is_dir() or path.name == ".DS_Store", "新しいメディアフォルダに既存ファイルがあります。")
+        entries = media_inventory(self.media)
+        write_json(self.work / "initial-media.json", entries)
+        refused = [e for e in entries if e["category"] is None]
+        counts = {c: sum(e["category"] == c for e in entries)
+                  for c in ("directory", "finder-state", "music-preferences", "music-localization")}
+        self.log(f"MEASURED: new media folder entries: {len(entries)}; directories: {counts['directory']}; "
+                 f"Finder state: {counts['finder-state']}; Music preferences: {counts['music-preferences']}; "
+                 f"Music localization: {counts['music-localization']}; refused: {len(refused)}")
+        if refused:
+            first = refused[0]
+            self.log(f"REFUSED: first media entry {first['relative']!r}; type {first['type']}; size {first['size']}")
+        require(not refused, "新しいメディアフォルダに想定外の項目があります。削除・移動せず報告してください。")
+        self.log("PASS: new media folder holds no audio or other unexpected entry; contents were not read")
         self.step("copy-and-backup")
         staging = self.work / "staging"
         base.run(["/usr/bin/ditto", str(self.bundle / "files"), str(staging)])
@@ -238,7 +299,7 @@ def execute(bundle, dry_run=False):
     require(bundle.is_relative_to(home) and not bundle.is_relative_to(home / "Music"),
             "一式は検証用ユーザーのホーム内、Musicフォルダ外へ置いてください。")
     manifest = verify_bundle(bundle)
-    print("予定: 新しい空のM10-timing-smallだけに合成3アルバムを追加します。登録削除は行いません。")
+    print("予定: 新しい空のM10-timing-v2-smallだけに合成3アルバムを追加します。登録削除は行いません。")
     print("予定: コピーの保全と編集、アルバム間の待機と日時照合、画面確認2回、完了済み追加の再実行を行います。")
     if dry_run:
         print("Dry run: Musicへのアクセスとファイル作成は行っていません。")
@@ -255,7 +316,7 @@ def execute(bundle, dry_run=False):
         m.log("started: " + m.result["started"])
         m.log("macOS: " + base.run(["/usr/bin/sw_vers", "-productVersion"]))
         base.check_account()
-        require(input("検証用ユーザー・Apple Account未設定・同期なし・新しい空のM10-timing-smallを確認し、TESTと入力: ").strip() == "TEST",
+        require(input("検証用ユーザー・Apple Account未設定・同期なし・新しい空のM10-timing-v2-smallを確認し、TESTと入力: ").strip() == "TEST",
                 "開始を取り消しました。")
         m.media = display.selected_media(home, m.spec)
         m.log("PASS: selected media folder matches the new library; name: " + m.media.name)
@@ -292,7 +353,11 @@ def report(bundle, output, dry_run=False):
     text = "iLibrary M10 timing comparison report\nsource commit: " + manifest["commit"] + "\n\n"
     text += ("== Historical comparison; not rerun\nsource commit: " + PRIOR_SOURCE + "\nreport SHA-256: " + PRIOR_REPORT +
              "\nObserved display before and after relaunch: 2,3,1; expected: 3,2,1\n"
-             "Two distinct addition timestamps; one-second span; cross-album ties observed\n\n== New isolated case\n")
+             "Two distinct addition timestamps; one-second span; cross-album ties observed\n\n"
+             "== Stopped timing comparison; not rerun\nsource commit: " + STOPPED_SOURCE + "\nreport SHA-256: " +
+             STOPPED_REPORT + "\ninventory SHA-256: " + STOPPED_INVENTORY +
+             "\nStopped in empty-library before addition; Music-created preference and localization files were refused\n\n"
+             "== New isolated case\n")
     text += result.read_text() if result.is_file() else "NOT RUN: no saved measurement\n"
     saved = safe_path(result.with_name("result.json"))
     if result.is_file():

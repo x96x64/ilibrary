@@ -14,6 +14,19 @@ from unittest.mock import patch
 import timing_probe as probe
 
 base, display = probe.base, probe.display
+# Locale names observed in a new Music 1.7 media folder; fixture contents are synthetic.
+LOCALES = ("ar ca cs da de el en en_AU en_CA en_GB en_IN en_PH es es_419 es_US fi fr fr_CA he hi hr hu id it ja "
+           "ko ms nl no pl pt pt_PT ro ru sk sl sv th tr uk vi zh_CN zh_HK zh_TW").split()
+
+
+def music_scaffolding(media):
+    """Create the observed names, types, and sizes with synthetic contents."""
+    (media / ".DS_Store").write_bytes(b"synthetic Finder state")
+    (media / ".Media Preferences.plist").write_bytes(b"synthetic preferences")
+    for folder in (media, media / "Automatically Add to Music.localized"):
+        (folder / ".localized").mkdir(parents=True)
+        for locale in LOCALES:
+            (folder / ".localized" / (locale + ".strings")).write_bytes(b"synthetic localization")
 
 
 class TimingTests(unittest.TestCase):
@@ -54,10 +67,11 @@ class RunTests(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.home = Path(temp.name).resolve()
-        self.bundle = self.home / "ilibrary-m10-timing"
+        self.bundle = self.home / "ilibrary-m10-timing-v2"
         self.bundle.mkdir()
-        self.media = self.home / "Music/M10-timing-small/Media.localized"
+        self.media = self.home / "Music/M10-timing-v2-small/Media.localized"
         self.media.mkdir(parents=True)
+        music_scaffolding(self.media)
         self.rows, self.actions, self.running = [], [], True
         self.dates = {1: ["845559632", "845559632"], 2: ["845559635", "845559635"],
                       3: ["845559638", "845559638"]}
@@ -172,7 +186,7 @@ class RunTests(unittest.TestCase):
                 code = probe.execute(self.bundle, dry_run)
             finally:
                 self.output = output.getvalue()
-        path = self.bundle / "reference-private/timing-small/result.json"
+        path = self.bundle / "reference-private" / probe.NAME / "result.json"
         self.result = json.loads(path.read_text()) if path.exists() else None
         self.assertNotIn(str(self.home), self.output)
         self.assertEqual(self.old.read_bytes(), b"retained historical negative result")
@@ -188,6 +202,11 @@ class RunTests(unittest.TestCase):
         self.assertEqual(self.result["dates"]["cross_album_ties"], 0)
         self.assertEqual([r["waited_seconds"] for r in self.result["boundaries"]], [0, 2, 2])
         self.assertEqual(before, {n: probe.digest(self.bundle / n) for n in before})
+        saved = json.loads((self.bundle / "reference-private" / probe.NAME / "initial-media.json").read_text())
+        self.assertEqual(len(saved), 93)
+        self.assertNotIn(None, [e["category"] for e in saved])
+        self.assertIn("directories: 3; Finder state: 1; Music preferences: 1; Music localization: 88; refused: 0",
+                      self.output)
 
     def test_tied_or_reversed_dates_stop_before_the_next_album_without_removal(self):
         for date in ("845559632", "845559631"):
@@ -201,7 +220,7 @@ class RunTests(unittest.TestCase):
                     self.assertEqual(len(case.rows), 4)
                     self.assertNotIn(3, case.actions)
                     self.assertFalse(case.result["boundaries"][-1]["separated"])
-                    self.assertTrue((case.bundle / "reference-private/timing-small/synthetic-backup.dmg").exists())
+                    self.assertTrue((case.bundle / "reference-private" / probe.NAME / "synthetic-backup.dmg").exists())
                 finally:
                     case.doCleanups()
 
@@ -239,6 +258,71 @@ class RunTests(unittest.TestCase):
         self.assertEqual(self.execute(("TEST",)), 1)
         self.assertEqual(self.actions, [])
         self.assertEqual(unexpected.read_bytes(), b"retain")
+        self.assertIn("REFUSED: first media entry 'retained.wav'; type file; size 6", self.output)
+        self.assertEqual(self.result["phase"], "empty-library")
+        saved = json.loads((self.bundle / "reference-private" / probe.NAME / "initial-media.json").read_text())
+        self.assertEqual([e["relative"] for e in saved if e["category"] is None], ["retained.wav"])
+
+    def test_scaffolding_names_outside_their_observed_places_are_refused(self):
+        cases = {
+            "ja.strings": b"misplaced localization",
+            "Music/.localized/ja.strings": b"nested localization",
+            "Music/.Media Preferences.plist": b"nested preferences",
+            ".localized/notes.txt": b"other localization entry",
+            ".localized/ja.strings.m4a": b"audio name",
+            ".localized/localization.strings": b"name outside the locale form",
+            "Artist/Album/01 Song.m4a": b"audio",
+        }
+        for relative, content in cases.items():
+            with self.subTest(relative=relative):
+                media = self.home / ("case-" + str(len(list(self.home.glob("case-*"))))) / "Media.localized"
+                media.mkdir(parents=True)
+                music_scaffolding(media)
+                path = media / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(content)
+                rows = {r["relative"]: r for r in probe.media_inventory(media)}
+                self.assertIsNone(rows[relative]["category"])
+                self.assertEqual(path.read_bytes(), content)
+        media = self.home / "case-oversized" / "Media.localized"
+        media.mkdir(parents=True)
+        music_scaffolding(media)
+        (media / ".localized/ja.strings").write_bytes(b"x" * (probe.SCAFFOLDING_LIMIT + 1))
+        (media / ".Media Preferences.plist").write_bytes(b"x" * (probe.SCAFFOLDING_LIMIT + 1))
+        rows = {r["relative"]: r for r in probe.media_inventory(media)}
+        self.assertIsNone(rows[".localized/ja.strings"]["category"])
+        self.assertIsNone(rows[".Media Preferences.plist"]["category"])
+        self.assertEqual(rows[".DS_Store"]["category"], "finder-state")
+
+    def test_links_in_the_media_folder_are_refused_without_being_followed(self):
+        outside = self.home / "outside"
+        (outside / ".localized").mkdir(parents=True)
+        (outside / ".localized/ja.strings").write_bytes(b"outside")
+        (self.media / "linked").symlink_to(outside, target_is_directory=True)
+        (self.media / "Automatically Add to Music.localized/.localized/ja.strings").unlink()
+        (self.media / "Automatically Add to Music.localized/.localized/ja.strings").symlink_to(
+            outside / ".localized/ja.strings")
+        rows = {r["relative"]: r for r in probe.media_inventory(self.media)}
+        self.assertEqual(rows["linked"]["type"], "symlink")
+        self.assertIsNone(rows["linked"]["category"])
+        self.assertNotIn("linked/.localized/ja.strings", rows)
+        self.assertIsNone(rows["Automatically Add to Music.localized/.localized/ja.strings"]["category"])
+        self.assertEqual(self.execute(("TEST",)), 1)
+        self.assertEqual(self.actions, [])
+        self.assertEqual((outside / ".localized/ja.strings").read_bytes(), b"outside")
+
+    def test_media_inventory_is_bounded(self):
+        current = self.home / "deep" / "Media.localized"
+        current.mkdir(parents=True)
+        media = current
+        for _ in range(probe.MEDIA_DEPTH_LIMIT + 2):
+            current = current / "child"
+            current.mkdir()
+        with self.assertRaises(base.Refusal):
+            probe.media_inventory(media)
+        with patch.object(probe, "MEDIA_ENTRY_LIMIT", 10):
+            with self.assertRaises(base.Refusal):
+                probe.media_inventory(self.media)
 
     def test_changed_registration_during_wait_stops_before_second_addition(self):
         def wait(check):
@@ -300,7 +384,7 @@ class RunTests(unittest.TestCase):
 
     def test_missing_final_record_is_reported_as_incomplete(self):
         self.execute()
-        (self.bundle / "reference-private/timing-small/result.json").unlink()
+        (self.bundle / "reference-private" / probe.NAME / "result.json").unlink()
         output = self.home / "incomplete-report.txt"
         with contextlib.redirect_stdout(io.StringIO()):
             probe.report(self.bundle, output)

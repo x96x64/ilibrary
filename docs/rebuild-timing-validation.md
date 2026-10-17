@@ -2,7 +2,9 @@
 
 ## Scope and Stop Boundary
 
-**この手順は停止中です。再実行しないでください。** 受領した日時比較は、メディアフォルダ内の既存ファイルの確認で停止し、追加には進んでいません。[結果評価](reports/addition-timing-results.md)と[停止原因だけを確認する手順](rebuild-timing-diagnostics.md)を参照してください。以下は既に渡した検証手順の記録です。同梱の`PROCEDURE.md`や停止記録は書き換えません。
+**これは修正版v2の手順です。** 前回の一式`ilibrary-m10-timing`は、追加の前に、Musicが新しいメディアフォルダに自動で作る設定ファイル1件と言語ファイル88件を「想定外のファイル」として止まりました。音声ファイルはありませんでした。v2は、観測したこの3種類（Finderの`.DS_Store`、メディアフォルダ直下の`.Media Preferences.plist`、決まった2か所の`.localized`内の言語ファイル）だけを、名前・種類・大きさで受け入れます。中身は読みません。それ以外の項目があれば、最初の項目の名前を記録して、追加の前に止まります。詳細は[メディア一覧の評価と修正](reports/timing-media-scaffolding.md)にあります。
+
+前回の一式、`M10-timing-small`ライブラリ、停止記録、一覧の報告は、すべてそのまま残します。前回の一式は再実行しません。
 
 新しい空のライブラリに、合成3アルバム・6曲を追加する比較です。**既存のsmall・scale・displayのライブラリ、結果、保存用コピーは残します。今回、曲の登録削除は一切行いません。** 普段のユーザーと実ライブラリでは実行しません。エージェントは一式の準備・確認・共有場所への転送までで止まります。
 
@@ -20,11 +22,11 @@
 
 ```sh
 cd /Users/Shared &&
-shasum -a 256 -c ilibrary-m10-timing.zip.sha256 &&
+shasum -a 256 -c ilibrary-m10-timing-v2.zip.sha256 &&
 cd ~ &&
-test ! -e ilibrary-m10-timing &&
-unzip -q /Users/Shared/ilibrary-m10-timing.zip &&
-cd ~/ilibrary-m10-timing &&
+test ! -e ilibrary-m10-timing-v2 &&
+unzip -q /Users/Shared/ilibrary-m10-timing-v2.zip &&
+cd ~/ilibrary-m10-timing-v2 &&
 python3 timing_probe.py verify .
 ```
 
@@ -33,15 +35,15 @@ python3 timing_probe.py verify .
 手順を別ユーザーでも開けます。
 
 ```sh
-open -a TextEdit ~/ilibrary-m10-timing/PROCEDURE.md
+open -a TextEdit ~/ilibrary-m10-timing-v2/PROCEDURE.md
 ```
 
 ## Step 2: Create One Empty Test Library
 
 1. 検証用ユーザーでMusicを終了します。
 2. **Optionキーを押したままMusicを開き、「ライブラリを作成」**を選びます。
-3. 保存先をホームの「ミュージック」にし、名前を **`M10-timing-small`** にして作成します。同名のライブラリがあれば、上書きせず停止します。以前のライブラリを選んだり空にしたりしません。
-4. Musicの「設定」→「ファイル」で、メディアの場所を **`~/Music/M10-timing-small/Media`** にします。この新しいライブラリ直下の`Media.localized`でも構いません。既にその場所なら変更しません。必要な場合だけ、この新しいライブラリ内に空の`Media`フォルダを作って選びます。以前のフォルダを移動・変更しません。
+3. 保存先をホームの「ミュージック」にし、名前を **`M10-timing-v2-small`** にして作成します。前回の`M10-timing-small`は選ばず、そのまま残します。同名のライブラリがあれば、上書きせず停止します。以前のライブラリを選んだり空にしたりしません。
+4. Musicの「設定」→「ファイル」で、メディアの場所を **`~/Music/M10-timing-v2-small/Media`** にします。この新しいライブラリ直下の`Media.localized`でも構いません。既にその場所なら変更しません。必要な場合だけ、この新しいライブラリ内に空の`Media`フォルダを作って選びます。以前のフォルダを移動・変更しません。
 5. この新しいライブラリで、メディアフォルダの整理と、追加時にメディアフォルダへコピーする設定をオンにします。
 6. 未サインイン・同期なしを確認し、「曲」と「最近追加した項目」が空であることを確認します。Musicは開いたままにします。
 
@@ -52,7 +54,7 @@ open -a TextEdit ~/ilibrary-m10-timing/PROCEDURE.md
 まず予定を確認します。Musicへのアクセスやファイル作成は行いません。
 
 ```sh
-cd ~/ilibrary-m10-timing &&
+cd ~/ilibrary-m10-timing-v2 &&
 python3 timing_probe.py run --dry-run
 ```
 
@@ -79,21 +81,21 @@ python3 timing_probe.py run
 成功・不一致・途中停止のどの場合も、検証用ユーザーで次を一度実行します。以前の結果の要約と今回の結果を、一つの新しい報告にまとめます。Musicは操作しません。
 
 ```sh
-cd ~/ilibrary-m10-timing &&
-python3 timing_probe.py report --output /Users/Shared/ilibrary-m10-timing-report.txt
+cd ~/ilibrary-m10-timing-v2 &&
+python3 timing_probe.py report --output /Users/Shared/ilibrary-m10-timing-v2-report.txt
 ```
 
 `PASS: 共有報告を保存・照合しました。`が出たら完了です。報告先が既にあれば上書きせず止まります。報告自体が止まった場合は、最後の表示をそのまま伝えてください。検証用ユーザーのフォルダを丸ごと共有する必要はありません。
 
 普段のユーザーに戻り、次の一文だけを送ってください。
 
-> M10追加日時分離の結果を評価してください：`/Users/Shared/ilibrary-m10-timing-report.txt`
+> M10追加日時分離v2の結果を評価してください：`/Users/Shared/ilibrary-m10-timing-v2-report.txt`
 
 合成曲、Musicライブラリ、旧一式、新一式、保存用コピー、途中記録はすべて残します。こちらで評価する前に手動の削除や再追加をしないでください。
 
 ## Evidence Limits and Preparation
 
-前回の表示不一致は、前回の報告のコミットとSHA-256を添えた履歴として記載します。今回そのライブラリを読み直すことはありません。個人のパスや登録IDを含む詳細ログは新一式内の`reference-private/`に保持し、共有報告は合成アルバムの番号、時刻、判定を中心とした要約です。
+前回の表示不一致と、前回の日時比較の停止は、それぞれの報告のコミットとSHA-256を添えた履歴として記載します。今回そのライブラリを読み直すことはありません。個人のパスや登録IDを含む詳細ログは新一式内の`reference-private/`に保持し、共有報告は合成アルバムの番号、時刻、判定を中心とした要約です。
 
 同じディスクの保存用イメージは保全の模擬試験であり、別の物理媒体の検証にはなりません。画面は本人の観察で、自動GUI判定ではありません。今回の方法は検証スクリプトだけのものです。公開済みの`ilibrary add`や、まだ未実装の`rebuild`に待機機能を追加しません。
 
