@@ -2,46 +2,21 @@
 
 ## Purpose
 
-This document contains a general-purpose prompt for resuming work in Codex or Claude Code from the repository alone. It applies at any milestone. The prompt is written in Japanese, the maintainer's working language; the rules it refers to are defined in [AGENTS.md](../AGENTS.md). Recommended models and effort levels are listed in the [roadmap](roadmap-to-stable.md#recommended-models-and-effort).
+This document contains a general-purpose prompt for resuming work in Codex or Claude Code from the repository alone. It applies at any milestone. The prompt is written in formal English, as required by [AGENTS.md](../AGENTS.md), which defines the rules it refers to; dedicated maintainer procedures remain in Japanese. Recommended models and effort levels are listed in the [roadmap](roadmap-to-stable.md#recommended-models-and-effort).
 
 ## Prompt
 
-```
-作業ディレクトリは ~/ilibrary です。この会話の前の経緯は、リポジトリにすべて記録されています。
+```text
+The working directory is ~/ilibrary. The history preceding this conversation is recorded in the repository.
 
-1. まず AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md（特に Current Status と
-   Decisions in Force）を読み、git log と git status で現在の状態を確認してください。
-2. Current Status に書かれた次のマイルストーンを特定し、作業に入る前に、次の内容を日本語で私に示してください。
-   - 今回やる作業の範囲
-   - 完了条件（ゲート）
-   - 私の Mac が必要かどうか
-   既に承認した範囲は再確認せず続けてください。0.1.0 は公開・導入確認まで完了しています。
-   M5/M6 の別ユーザー検証と M8 のコピー検証は報告書に記録済みです。
-   取得済みの公開承認は完了した0.1.0に限ります。新しい push・公開には明示的な承認が必要です。
-   承認済みの push 前にも、実ファイルプレビュー・要約と邦訳を続けてください。
-   途中の作業が残っている場合は、その続きから再開してください。
-3. 作業はマイルストーン用のブランチで行い、AGENTS.md の規約に従ってください。
-   - コミットは iLyrics と同じ Conventional Commits、正式な英語、小さな単位とし、
-     実質的に関与したコミットには Co-authored-by: Codex <codex@openai.com> を付けてください。
-   - 文書の見出しは MLA のタイトルケースにしてください。
-   - 根拠は測定・推測・未確認に区分し、確かめていないことを事実として書かないでください。
-4. 私の実ライブラリ（~/Music/Music/Media.localized/Music）と Apple Music のライブラリには、
-   私の明示的な指示なしに触れないでください。検証はコピーまたは合成ファイルで行ってください。
-   実際の音楽ファイル、Apple ID、個人パスは reference-private/ 以外に置かず、公開物に含めないでください。
-5. 0.1.0 は公開済みで、私の手元確認も完了しています。GitHub は修正済み本文と Latest 表示を確認してください。
-   完了した公開や検証は繰り返さず、新しい公開経路や版の公開は別途承認を得てください。
-   公開済みの版を再公開したり、既存タグを動かしたりしないでください。
-   push の前には、変更した文書のプレビュー、主要な変更の要約、その日本語訳を示してください。
-6. 区切りごとに docs/roadmap-to-stable.md の Current Status を更新してコミットし、
-   Claude Code に戻っても続けられる状態にしてください。
-7. 返信はすべて日本語にしてください。確認が不可欠な場合だけ、専門用語を控え、選択肢と推奨を添えてください。
-   docs/test-library-validation.md に、別ユーザーへの切り替えと結果の報告方法があります。
-   普段のユーザーでは Music や私の音楽ファイルを操作しないでください。
-8. 最後に日本語で、次の4点を報告してください。
-   - やったこと、検証結果、残っている課題
-   - 次の作業
-   - 次の作業の推奨モデルとエフォート（Claude Code と Codex それぞれ。Codex は GPT のモデル名で、ultra は使わない）
-   - 次のセッション用のプロンプト
+1. Read AGENTS.md, docs/planning-study.md, and docs/roadmap-to-stable.md, particularly Current Status and Decisions in Force, and determine the current state with git log and git status.
+2. Identify the next milestone named in Current Status. Before beginning work, state its scope, its completion criteria (gates), and whether it requires the maintainer's Mac. Continue within scope already approved without requesting repeated confirmation. Version 0.1.0 has been published and its installation verified. The separate-user validation of M5 and M6 and the copy validation of M8 are recorded in reports. Existing publication approvals apply only to the completed 0.1.0 release; any new push or publication requires explicit approval. Before an approved push, continue to present actual-file previews, a summary, and its Japanese translation. If work remains in progress, resume from that point.
+3. Work on a milestone branch and follow AGENTS.md. Commits use Conventional Commits as in iLyrics, formal English, and small units; append Co-authored-by: Codex <codex@openai.com> to commits to which Codex materially contributed. Documentation headings use MLA title case. Classify evidence as measured, inferred, or unknown, and do not record unverified matters as fact.
+4. Do not access the maintainer's real library (~/Music/Music/Media.localized/Music) or Apple Music library without the maintainer's explicit instruction. Validate with copies or synthetic files. Keep real music files, Apple Account details, and personal paths only under reference-private/, and exclude them from published material.
+5. Version 0.1.0 is published, and the maintainer's local verification is complete; confirm on GitHub the corrected release body and the Latest display. Do not repeat completed publication or validation, and obtain separate approval for any new publication route or version. Do not republish a published version or move an existing tag. Before each push, present a preview of the changed documentation, a summary of the principal changes, and its Japanese translation.
+6. At each checkpoint, update and commit the Current Status of docs/roadmap-to-stable.md, so that work can continue after returning to Claude Code.
+7. Write all replies in precise, formal English, in separated paragraphs without headings or lists. When confirmation is indispensable, use plain language and describe the alternatives and a recommendation. docs/test-library-validation.md describes how to switch to the separate user and report results. Do not operate Music or the maintainer's music files as the ordinary user.
+8. Conclude with a report in formal English that states the work performed, the verification results, and the remaining issues; the next task and whether it requires the maintainer; the recommended model and effort for the next task, for Claude Code and for Codex, using GPT model names for Codex and never ultra; and the prompt for the next session.
 ```
 
 ## Use in Claude Code
@@ -51,11 +26,11 @@ The same prompt applies in Claude Code. Replace the Codex attribution in item 3 
 ## Next Session for M10
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md、docs/stable-release-plan.md、docs/reports/separated-addition-qualification-preparation.md、docs/rebuild-qualification-validation.md を読み、git status と git log を確認してください。
-現在は codex/m10-rebuild-feasibility（ローカルのみ、未push）です。mainはPR #11・#12のREADME修正をマージ済みのf5457b1です。決定36（アルバムごとに分けて追加し、アルバム間で同じ秒になったら停止）に基づき、scale-release（20アルバム・300曲）とartist・artist-desc・artist-releaseの4ケースの検証一式をコミットbf84ee9で準備しました。試験116件、324曲の準備、Music呼び出しを遮断したファイルのみの確認は成功し、ZIP（SHA-256 49b284482a177130e25340746d00d1c921f1377b51bee71de1fae9f4f2556a2b）と照合用ファイルは /Users/Shared/ に転送済みです。
-次は本人が別ユーザーで docs/rebuild-qualification-validation.md の手順を実行し、/Users/Shared/ilibrary-m10-qualification-report.txt を返す段階です。報告を受け取ったら、reference-private/ にバイト単位で保存してSHA-256を記録し、凍結したソースと照合して、保全・工程・表示順・再実行の各ゲートについて測定・推測・未確認を区別して評価してください。報告がなければ、新しい準備や実行は行いません。
-これまでの一式・ライブラリ・バックアップ・記録はすべて保持し、再実行しません。登録削除、手動再追加、記録削除、設定や期待順の変更はしません。実ライブラリや私的音源は操作しません。M10完了前にM11以降や製品rebuildへ進まず、未承認のpush・公開も行いません。Current Statusと引き継ぎを更新してコミットし、実ファイルプレビューと要約・邦訳を示してください。
-次の作業の推奨は、Claude Code: Claude Opus 5.5／xhigh、Codex: GPT-6-Astra／xhighです。
+Read AGENTS.md, docs/planning-study.md, docs/roadmap-to-stable.md, docs/stable-release-plan.md, docs/reports/separated-addition-qualification-preparation.md, and docs/rebuild-qualification-validation.md in ~/ilibrary, and check git status and git log.
+The current branch is codex/m10-rebuild-feasibility, which is local and unpushed. main is f5457b1, which includes the README corrections of pull requests #11 and #12. Under Decision 36 (each album is added separately, and a run stops when albums share an exposed addition second), commit bf84ee9 prepared the qualification set for four cases: scale-release (20 albums, 300 tracks), artist, artist-desc, and artist-release. The 116 tests, preparation of 324 tracks, and file-only checks with Music calls blocked passed. The ZIP (SHA-256 49b284482a177130e25340746d00d1c921f1377b51bee71de1fae9f4f2556a2b) and its checksum file have been transferred to /Users/Shared/.
+The next stage is the maintainer's execution of the procedure in docs/rebuild-qualification-validation.md as the separate user and the return of /Users/Shared/ilibrary-m10-qualification-report.txt. On receipt of the report, preserve it byte-for-byte under reference-private/, record its SHA-256, compare it with the frozen source, and assess the preservation, phase, display-order, and repeat gates, distinguishing measured, inferred, and unknown results. In the absence of a report, perform no new preparation or run.
+Retain every earlier bundle, library, backup, and record, and rerun none of them. Do not remove registrations, add tracks manually, delete records, or change settings or expected orders. Do not operate the real library or private audio. Do not proceed to M11 or later, or to the product rebuild, before M10 is complete, and perform no unapproved push or publication. Update and commit Current Status and the handoff, and present actual-file previews with a summary and its Japanese translation.
+The recommended configuration for the next task is Claude Opus 5.5 at xhigh in Claude Code and GPT-6-Astra at xhigh in Codex.
 ```
 
 ## Recommended Models and Effort

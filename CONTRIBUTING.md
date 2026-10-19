@@ -32,7 +32,7 @@ Distribution changes also require the offline package checks and isolated instal
 
 Every mutating command must offer a dry run, print a plan before changes, and verify results. Retain verified originals until the selected operation permits removal; do not introduce automatic library cleanup. Keep tests proportional to the changed behavior and include regression cases for safety fixes.
 
-Classify evidence as **measured**, **inferred**, or **unknown**. A test double does not measure Music, and an older application probe does not qualify a new command. Preserve completed engineering reports; add a new report for subsequent findings. Use MLA title case for English documentation headings while retaining command and API capitalization.
+Classify evidence as **measured**, **inferred**, or **unknown**. A test double does not measure Music, and an older application probe does not qualify a new command. Preserve completed engineering reports; add a new report for subsequent findings. Use MLA title case for English documentation titles and headings while retaining command and API capitalization. In newly written English prose, use straight quotation marks (U+0027 and U+0022) rather than typographic ones; leave code, literal data, fixtures, and historical quotations unchanged.
 
 ## Commits and Pull Requests
 
