@@ -7,7 +7,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 echo '予定: artifacts/m10-qualification-v2-preparation に新しい分離追加検証一式と合成音声324曲を作成します。旧一式とMusicは変更しません。'
 [ "$mode" != --dry-run ] || exit 0
-[ -z "$(git status --porcelain -- Sources Package.swift scripts/validation/display_probe.py scripts/validation/rebuild_probe.py scripts/validation/prepare-qualification-probe.sh scripts/validation/timing_probe.py scripts/validation/qualification_probe.py scripts/validation/qualification_snapshot.py docs/rebuild-qualification-validation.md scripts/validation/test_qualification_probe.py)" ] || {
+[ -z "$(git status --porcelain -- Sources Package.swift scripts/validation/display_probe.py scripts/validation/rebuild_probe.py scripts/validation/prepare-qualification-probe.sh scripts/validation/timing_probe.py scripts/validation/qualification_probe.py scripts/validation/qualification_snapshot.py docs/rebuild-qualification-validation.md docs/rebuild-qualification-v2-validation.md scripts/validation/test_qualification_probe.py)" ] || {
     echo '検証一式のソースをコミットしてから準備してください。'; exit 1;
 }
 [ ! -e artifacts/m10-qualification-v2-preparation ] || { echo '準備先が既にあります。上書きしません。'; exit 1; }

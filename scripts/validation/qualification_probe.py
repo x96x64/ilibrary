@@ -84,7 +84,7 @@ def prepare(output, binary, tagger, audio, commit, dry_run=False):
     shutil.copy2(binary, output / "bin/ilibrary")
     for name in SCRIPTS:
         shutil.copy2(Path(__file__).with_name(name), output / name)
-    shutil.copy2(Path(__file__).resolve().parents[2] / "docs/rebuild-qualification-validation.md",
+    shutil.copy2(Path(__file__).resolve().parents[2] / "docs/rebuild-qualification-v2-validation.md",
                       output / "PROCEDURE.md")
     for name in CASE_NAMES:
         spec = case_spec(name)

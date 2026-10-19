@@ -14,7 +14,8 @@
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
-- [Separated Addition Qualification](rebuild-qualification-validation.md): Japanese procedure for the scale and three artist-order cases under Decision 36; the scale case stopped in registration removal, so the procedure must not be continued
+- [Separated Addition Qualification, Version 2](rebuild-qualification-v2-validation.md): Japanese procedure for the scale and three artist-order cases under Decision 36 with new libraries `M10-separated-v2-<case>`
+- [Separated Addition Qualification, First Run](rebuild-qualification-validation.md): completed Japanese first-run procedure; the scale case stopped in registration removal; retained for the record and not to be continued
 - [Rebuilding Addition Timing Validation](rebuild-timing-validation.md): completed Japanese version 2 timing procedure; its small case passed; retained for the record
 - [Stopped Timing Probe Diagnostics](rebuild-timing-diagnostics.md): completed file-only media inventory of the stopped first timing run; retained for the record
 - [Rebuilding Display-Order Validation](rebuild-display-validation.md): retained Japanese display-v3 procedure; further execution is paused after the small-case display failure
