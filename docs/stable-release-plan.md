@@ -95,7 +95,7 @@ Network metadata candidates, multidisc flattening, cloud-synchronized rebuilding
 
 ## Delivery and Handoff
 
-Use milestone branches, atomic Conventional Commits, supported attribution trailers, and pull requests. Update Current Status at each checkpoint. Preserve historical reports. Before each approved push, present actual-file previews, section summaries, and Japanese translations. Future tags, releases, registry publication, and personal-library changes require explicit authorization; the 0.1.0 approvals do not extend to new releases.
+Use milestone branches, atomic Conventional Commits, supported attribution trailers, and pull requests. Update Current Status at each checkpoint. Preserve historical reports. Before each approved push, present actual-file previews, section summaries, and verification results in English (Decision 42 of the roadmap). Future tags, releases, registry publication, and personal-library changes require explicit authorization; the 0.1.0 approvals do not extend to new releases.
 
 Under Decision 40 of the roadmap, M10 passed on October 20, 2026, on the four-case version 2 separated-addition qualification; see [M10 Separated Addition Qualification Results](reports/m10-separated-addition-qualification-results.md). Product `rebuild` remains unimplemented. M11 planning is authorized, and the proposed [M11 plan](m11-plan.md) awaits approval before implementation. Personal-library operations and publication require separate authorization.
 
