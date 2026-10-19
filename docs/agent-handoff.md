@@ -2,68 +2,37 @@
 
 ## Purpose
 
-This document contains a general-purpose prompt for resuming work in Codex or Claude Code from the repository alone. It applies at any milestone. The prompt is written in Japanese, the maintainer's working language; the rules it refers to are defined in [AGENTS.md](../AGENTS.md). Recommended models and effort levels are listed in the [roadmap](roadmap-to-stable.md#recommended-models-and-effort).
+This document contains a general-purpose prompt for resuming work in Codex or Claude Code from the repository alone. It applies at any milestone. The prompt is written in formal English, as required by [AGENTS.md](../AGENTS.md), which defines the rules it refers to; dedicated maintainer procedures remain in Japanese. Recommended models and effort levels are listed in the [roadmap](roadmap-to-stable.md#recommended-models-and-effort).
 
 ## Prompt
 
-```
-作業ディレクトリは ~/ilibrary です。この会話の前の経緯は、リポジトリにすべて記録されています。
+```text
+The working directory is ~/ilibrary. The history preceding this conversation is recorded in the repository.
 
-1. まず AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md（特に Current Status と
-   Decisions in Force）を読み、git log と git status で現在の状態を確認してください。
-2. Current Status に書かれた次のマイルストーンを特定し、作業に入る前に、次の内容を日本語で私に示してください。
-   - 今回やる作業の範囲
-   - 完了条件（ゲート）
-   - 私の Mac が必要かどうか
-   既に承認した範囲は再確認せず続けてください。0.1.0 は公開・導入確認まで完了しています。
-   M5/M6 の別ユーザー検証と M8 のコピー検証は報告書に記録済みです。
-   公開の最終承認は取得済みです。push 前の実ファイルプレビュー・要約と邦訳は続けてください。
-   途中の作業が残っている場合は、その続きから再開してください。
-3. 作業はマイルストーン用のブランチで行い、AGENTS.md の規約に従ってください。
-   - コミットは iLyrics と同じ Conventional Commits、正式な英語、小さな単位とし、
-     実質的に関与したコミットには Co-authored-by: Codex <codex@openai.com> を付けてください。
-   - 文書の見出しは MLA のタイトルケースにしてください。
-   - 根拠は測定・推測・未確認に区分し、確かめていないことを事実として書かないでください。
-4. 私の実ライブラリ（~/Music/Music/Media.localized/Music）と Apple Music のライブラリには、
-   私の明示的な指示なしに触れないでください。検証はコピーまたは合成ファイルで行ってください。
-   実際の音楽ファイル、Apple ID、個人パスは reference-private/ 以外に置かず、公開物に含めないでください。
-5. 0.1.0 は公開済みで、私の手元確認も完了しています。GitHub は修正済み本文と Latest 表示を確認してください。
-   完了した公開や検証は繰り返さず、新しい公開経路や版の公開は別途承認を得てください。
-   公開済みの版を再公開したり、既存タグを動かしたりしないでください。
-   push の前には、変更した文書のプレビュー、主要な変更の要約、その日本語訳を示してください。
-6. 区切りごとに docs/roadmap-to-stable.md の Current Status を更新してコミットし、
-   Claude Code に戻っても続けられる状態にしてください。
-7. 返信はすべて日本語にしてください。確認が不可欠な場合だけ、専門用語を控え、選択肢と推奨を添えてください。
-   docs/test-library-validation.md に、別ユーザーへの切り替えと結果の報告方法があります。
-   普段のユーザーでは Music や私の音楽ファイルを操作しないでください。
-8. 最後に日本語で、次の4点を報告してください。
-   - やったこと、検証結果、残っている課題
-   - 次の作業
-   - 次の作業の推奨モデルとエフォート（Claude Code と Codex それぞれ。Codex は GPT のモデル名で、ultra は使わない）
-   - 次のセッション用のプロンプト
+1. Read AGENTS.md, docs/planning-study.md, and docs/roadmap-to-stable.md, particularly Current Status and Decisions in Force, and determine the current state with git log and git status.
+2. Identify the next milestone named in Current Status. Before beginning work, state its scope, its completion criteria (gates), and whether it requires the maintainer's Mac. Continue within scope already approved without requesting repeated confirmation. Version 0.1.0 has been published and its installation verified. The separate-user validation of M5 and M6 and the copy validation of M8 are recorded in reports. Existing publication approvals apply only to the completed 0.1.0 release; any new push or publication requires explicit approval. Before an approved push, continue to present actual-file previews, a summary, verification results, and the privacy check, in English only. If work remains in progress, resume from that point.
+3. Work on a milestone branch and follow AGENTS.md. Commits use Conventional Commits as in iLyrics, formal English, and small units; append Co-authored-by: Codex <codex@openai.com> to commits to which Codex materially contributed. Documentation headings use MLA title case. Classify evidence as measured, inferred, or unknown, and do not record unverified matters as fact.
+4. Do not access the maintainer's real library (~/Music/Music/Media.localized/Music) or Apple Music library without the maintainer's explicit instruction. Validate with copies or synthetic files. Keep real music files, Apple Account details, and personal paths only under reference-private/, and exclude them from published material.
+5. Version 0.1.0 is published, and the maintainer's local verification is complete; confirm on GitHub the corrected release body and the Latest display. Do not repeat completed publication or validation, and obtain separate approval for any new publication route or version. Do not republish a published version or move an existing tag. Before each push, present in English a preview of the changed documentation, a summary of the principal changes, and the verification results; add no Japanese translation (Decision 42).
+6. At each checkpoint, update and commit the Current Status of docs/roadmap-to-stable.md, so that work can continue after returning to Claude Code.
+7. Write all replies in precise, formal English, in separated paragraphs without headings or lists. When confirmation is indispensable, use plain language and describe the alternatives and a recommendation. docs/test-library-validation.md describes how to switch to the separate user and report results. Do not operate Music or the maintainer's music files as the ordinary user.
+8. Conclude with a report in formal English that states the work performed, the verification results, and the remaining issues; the next task and whether it requires the maintainer; the recommended model and effort for the next task, for Claude Code and for Codex, using GPT model names for Codex and never ultra; and the prompt for the next session.
 ```
 
 ## Use in Claude Code
 
 The same prompt applies in Claude Code. Replace the Codex attribution in item 3 with `Co-Authored-By: Claude <noreply@anthropic.com>`, optionally preceded by the model name, as defined in AGENTS.md.
 
-## Next Session after Version 0.1.0
+## Next Session for M11
 
 ```text
-~/ilibrary の AGENTS.md、docs/planning-study.md、docs/roadmap-to-stable.md を読み、Git の現状を確認してください。
-M5/M6 は別ユーザーで 12 項目成功、M8 は 301 ファイルのコピーで成功しています。詳細は新しい報告書を読んでください。
-0.1.0 は GitHub・npm・PyPI・Homebrew で公開済みです。npm は @x96_64/ilibrary、PyPI は x96_64-ilibrary、Homebrew は x96x64/tap/ilibrary です。公開先からの導入確認も成功しています。完了した公開や検証を理由なく繰り返さないでください。
-普段の Music と元ファイルは変更せず、私的なデータは reference-private/ 内だけで扱ってください。
-文書修正と手元確認は完了しています。npm の導入・起動・カタログ検査に加え、実曲 10 ファイルのコピーでカタログ出力と移動が成功しました。原本の内容・名前・作成日時・更新日時は不変で、Music は操作していません。
-GitHub の既存 0.1.0 は、修正済みの iLyrics 形式の本文と、通常リリースの Latest 表示へ変更しました。実験版という位置付けは保っています。GitHub Packages への追加配布や、公開済み npm 0.1.0 の再公開は不要です。
-既存のタグ、公開済みバージョン、履歴は変更しないでください。npm の次回 GitHub 公開を使う場合だけ、Trusted Publisher の設定を案内してください。
-docs/planning-study.md の Outlook to Version 1.0.0 にある当初の見通しは提示済みです。これは確定した新計画ではありません。
-追加で検討したい用途は、音楽ファイルを Music のメディアフォルダ外にある任意の作業フォルダ（文書例は ./staging）へ退避して保管し、Music の全曲登録を私が GUI から削除して空にし、その後 Music を終了してから、追加したいアルバムも含めた全体を希望の順番で登録し直すことです。既存登録を残したまま途中へ差し込む意図ではありません。0.1.0 の add は登録削除後の順序付き追加を担えますが、全曲の退避から再登録までの通しの検証は未実施です。4 種類の並び順、またはアルバムごとの呼び出しが現行の選択肢です。GUI での全登録削除は私が行う手順で、自動削除や実ライブラリ操作をエージェントに許可したわけではありません。原本の保全、空にした後の Music 終了、希望する登録順を計画に含め、まだ実装や実ライブラリ操作は始めないでください。
-新しい 1.0.0 までの計画は GPT-6-Astra で作りたいので、別モデルなら計画を作り始める直前で止まってください。GPT-6-Astra へ切り替えた後は、現状と残課題を踏まえて計画を作成してください。新実装はまだ始めないでください。
-今後の push 前も、実ファイルのプレビュー、各セクションの要約と邦訳を示してください。計画書と過去の報告書は保存してください。
-Current Status を更新してコミットし、結果・残課題・次の作業・引き継ぎプロンプトを日本語で報告してください。
+Read AGENTS.md, docs/planning-study.md, docs/roadmap-to-stable.md (Current Status and Decisions in Force, especially Decisions 40 and 41), docs/stable-release-plan.md, docs/m11-plan.md, and docs/reports/m10-separated-addition-qualification-results.md in ~/ilibrary, and check git status, git log, and the state of the M10 pull request.
+M10 passed under Decision 40, and the M11 plan with its safeguards was approved under Decision 41. If the M10 pull request has not been merged, confirm its complete diff and CI results and ask the maintainer for merge authorization; opening the pull request did not authorize merging it.
+After the M10 source is in main, create a new milestone branch from main and implement M11 within the approved scope and safeguards, delegating bounded implementation and synthetic verification and reviewing every change. Keep the check --library optimization in a separate commit. Do not remove registrations, rebuild a library, evacuate originals, or perform other M12 and M13 operations.
+For the M11 qualification, prepare the procedure and bundle and stop before maintainer-operated verification. Run no probe and make no Music call, do not operate the real library, private audio, or the physical backup device, and do not push, merge, tag, or publish beyond the recorded approvals. Update and commit Current Status and this handoff, and before any approved push present actual-file previews, a summary, and verification results in English only. Write every response, and instruct every delegated subagent to write every response, entirely in English without Japanese translations, as required by AGENTS.md and Decision 42.
+The recommended configuration for M11 is Claude Opus 5.5 at high in Claude Code and GPT-6-Astra at high in Codex, as in the milestone table.
 ```
 
 ## Recommended Models and Effort
 
-For the remaining M9 documentation and release closeout, use Claude Opus 5.5 with high in Claude Code, or GPT-6.1-Sol with high in Codex, following the roadmap. For the subsequent version 1.0.0 planning, the maintainer explicitly selected GPT-6-Astra; use high and stop before planning until that model is selected. Claude Opus 5.5 with high is the corresponding Claude Code recommendation. These models are recorded as available to the maintainer; do not select `ultra`.
+For M10 feasibility and the subsequent registration-removal and recovery work, use Claude Opus 5.5 with xhigh in Claude Code or GPT-6-Astra with xhigh in Codex. The maintainer selected this effort before starting M10; it follows the M5 safety rationale. Use the milestone table for later work. Do not use ultra.

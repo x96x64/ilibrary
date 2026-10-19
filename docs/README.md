@@ -13,6 +13,16 @@
 ## Maintainer Documentation
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
+- [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
+- [Plan for M11](m11-plan.md): proposed backup, inventory, strict export, and recovery-record work for 0.2.0, with the decisions required before implementation
+- [Separated Addition Qualification, Version 2](rebuild-qualification-v2-validation.md): Japanese procedure for the scale and three artist-order cases under Decision 36 with new libraries `M10-separated-v2-<case>`
+- [Separated Addition Qualification, First Run](rebuild-qualification-validation.md): completed Japanese first-run procedure; the scale case stopped in registration removal; retained for the record and not to be continued
+- [Rebuilding Addition Timing Validation](rebuild-timing-validation.md): completed Japanese version 2 timing procedure; its small case passed; retained for the record
+- [Stopped Timing Probe Diagnostics](rebuild-timing-diagnostics.md): completed file-only media inventory of the stopped first timing run; retained for the record
+- [Rebuilding Display-Order Validation](rebuild-display-validation.md): retained Japanese display-v3 procedure; further execution is paused after the small-case display failure
+- [Retained Rebuilding Bundle Diagnostics](rebuild-bundle-diagnostics.md): completed read-only inventory diagnostic; retained for the record
+- [Rebuilding Feasibility Validation](rebuild-feasibility-validation.md): retained version 2 instructions; do not resume this superseded experiment
+- [Saved Addition-Date Verification](rebuild-feasibility-date-check.md): completed read-only extraction of the stopped M10 run's saved timestamps
 - [Contributing](../CONTRIBUTING.md): development and verification requirements
 - [Distribution](distribution.md): package construction, installation verification, and publication
 - [Package Publication Setup](package-publishing.md): Japanese Web setup and result reporting for npm and PyPI
@@ -48,3 +58,25 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-17 — [Version 0.1.0 Publication](reports/release-publication.md)
 - 2026-10-17 — [iLyrics Documentation Conformance](reports/documentation-conformance.md)
 - 2026-10-17 — [Release Presentation and Maintainer Verification](reports/release-presentation.md)
+- 2026-10-17 — [Rebuilding Feasibility Preparation](reports/rebuild-feasibility-preparation.md)
+- 2026-10-17 — [Initial Rebuilding Feasibility Results](reports/rebuild-feasibility-results.md)
+- 2026-10-17 — [Rebuilding Probe Revision](reports/rebuild-probe-revision.md)
+- 2026-10-17 — [Version 2 Rebuilding Feasibility Results](reports/rebuild-feasibility-v2-results.md)
+- 2026-10-17 — [Rebuilding Timestamp Gate Assessment](reports/rebuild-timestamp-gate.md)
+- 2026-10-17 — [Display-Order Plan Revision](reports/display-order-plan-revision.md)
+- 2026-10-17 — [Display-Order Validation Preparation](reports/display-order-preparation.md)
+- 2026-10-17 — [Display-Order Validation Results](reports/display-order-results.md)
+- 2026-10-17 — [Display-Probe Media-Path Correction](reports/display-media-path-correction.md)
+- 2026-10-17 — [Display-Order Version 2 Results](reports/display-order-v2-results.md)
+- 2026-10-17 — [Finder Metadata and Bundle Verification](reports/finder-metadata-verification.md)
+- 2026-10-17 — [Display-Order Version 3 Results](reports/display-order-v3-results.md)
+- 2026-10-17 — [Separated Addition Timing Preparation](reports/addition-timing-preparation.md)
+- 2026-10-17 — [Separated Addition Timing Results](reports/addition-timing-results.md)
+- 2026-10-17 — [Timing Media Scaffolding Correction](reports/timing-media-scaffolding.md)
+- 2026-10-17 — [Separated Addition Timing Version 2 Results](reports/addition-timing-v2-results.md)
+- 2026-10-17 — [README Example and Badge Corrections](reports/readme-example-corrections.md)
+- 2026-10-17 — [Separated Addition Qualification Preparation](reports/separated-addition-qualification-preparation.md)
+- 2026-10-19 — [Separated Addition Qualification Results](reports/separated-addition-qualification-results.md)
+- 2026-10-19 — [Removal Performance Revision](reports/removal-performance-revision.md)
+- 2026-10-19 — [Separated Addition Qualification, Version 2 Results](reports/separated-addition-qualification-v2-results.md)
+- 2026-10-20 — [M10 Separated Addition Qualification Results](reports/m10-separated-addition-qualification-results.md)

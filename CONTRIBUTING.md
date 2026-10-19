@@ -32,7 +32,7 @@ Distribution changes also require the offline package checks and isolated instal
 
 Every mutating command must offer a dry run, print a plan before changes, and verify results. Retain verified originals until the selected operation permits removal; do not introduce automatic library cleanup. Keep tests proportional to the changed behavior and include regression cases for safety fixes.
 
-Classify evidence as **measured**, **inferred**, or **unknown**. A test double does not measure Music, and an older application probe does not qualify a new command. Preserve completed engineering reports; add a new report for subsequent findings. Use MLA title case for English documentation headings while retaining command and API capitalization.
+Classify evidence as **measured**, **inferred**, or **unknown**. A test double does not measure Music, and an older application probe does not qualify a new command. Preserve completed engineering reports; add a new report for subsequent findings. Use MLA title case for English documentation titles and headings while retaining command and API capitalization. In newly written English prose, use straight quotation marks (U+0027 and U+0022) rather than typographic ones; leave code, literal data, fixtures, and historical quotations unchanged.
 
 ## Commits and Pull Requests
 
@@ -40,4 +40,4 @@ Use small Conventional Commits: `type(scope): imperative subject`, in formal Eng
 
 Before a commit, review staged changes and run appropriate checks. Before publication, inspect the proposed history, untracked and ignored-file categories, and every staged path. Confirm that `reference-private/` and generated output remain ignored. Never publish the contents of those directories.
 
-Describe the problem, resulting behavior, relevant tests, and remaining uncertainty in the pull request. Milestones integrate through pull requests. Update Current Status at each milestone so another agent can resume from the repository. Pushes, releases, tags, and package publication require authorization in the active conversation; existing authorization covers only its stated scope. Show changed-document previews and the principal summary with its Japanese translation before each push.
+Describe the problem, resulting behavior, relevant tests, and remaining uncertainty in the pull request. Milestones integrate through pull requests. Update Current Status at each milestone so another agent can resume from the repository. Pushes, releases, tags, and package publication require authorization in the active conversation; existing authorization covers only its stated scope. Show changed-document previews, the principal summary, verification results, and the privacy check, in English, before each push.
