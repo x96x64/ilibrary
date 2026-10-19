@@ -9,7 +9,7 @@
 ```
 ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]
 ilibrary add PATH... [--order release|artist|artist-desc|artist-release] [--dry-run]
-ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--dry-run]
+ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--strict] [--dry-run]
 ilibrary prompt CATALOG.json
 ilibrary schema
 ilibrary validate CATALOG.json [PATH...]
@@ -95,8 +95,11 @@ Writes a draft catalog from the tags of the `.m4a` files. Files are grouped into
 - `-o`, `--output FILE` names the catalog to write. It is required, and an existing file is never overwritten.
 - `--dry-run` lists the catalog and covers that would be written and writes nothing. Without it, the same list is printed before writing, and every written file is read back. The catalog's folder and the artwork location must be writable directories; when a write or readback fails, the files and the directory that the export created are removed.
 - `--artwork DIR` writes each album's cover to `DIR` in its embedded JPEG or PNG format, without re-encoding (decision 14), and references it from the catalog by a path relative to the catalog. Without this option, the catalog names no artwork, and `apply` leaves the files' covers unchanged.
+- `--strict` refuses the export, with status 1 and without writing a catalog, artwork, or directory, when it would not be a complete inventory. Every reason is listed on standard error, followed by a line stating that nothing was changed. The check runs before any write and also under `--dry-run`; when it passes, the usual plan is printed.
 
 Files without an album tag or a track number are not exported. Gaps or repetitions in disc and track numbers are reported, because a catalog numbers its discs and tracks by position.
+
+Without `--strict`, every condition above is reported as a warning and the export proceeds as described. With `--strict`, the following conditions are refusals: a path skipped by the scan (a symbolic link, a protected `.m4p` file, an explicitly named file that is not `.m4a`, or any other scan refusal); a file without an album tag or a track number; a repeated disc and track pair; disc numbers that are not exactly 1 to n; track numbers within a disc that are not exactly 1 to n; a positive track total declared by the track-number tags of a disc that differs from the number of tracks exported for that disc, or that differs between tracks of the disc; a positive disc total declared by the disc-number tags of an album that differs from the number of discs exported, or that differs between tracks of the album (a total of 0 or an absent total is undeclared and is permitted); and a release date tag that is present but not a full `YYYY-MM-DD` date, such as a year alone, a year and month, or a malformed value. No month or day is invented, and nothing is renumbered. An absent release date is permitted, and an undated album keeps its documented placement. The following remain warnings in strict mode: several album artists in one album, a compilation flag on some tracks only, differing or missing covers, and a missing title replaced by the file name.
 
 ### prompt
 

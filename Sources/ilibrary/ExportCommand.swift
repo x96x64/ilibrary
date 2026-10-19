@@ -6,7 +6,7 @@ enum ExportCommand {
     static let syntax = CommandSyntax(
         name: "export",
         usage: """
-            Usage: ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--dry-run]
+            Usage: ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--strict] [--dry-run]
 
             Writes a draft catalog from the tags of the .m4a files under the paths, grouped into albums and
             discs by their album, album artist, disc, and track tags. Values shared by every track of an album
@@ -14,11 +14,20 @@ enum ExportCommand {
             written to DIR in their embedded JPEG or PNG format and referenced by the catalog. Every file to be
             written is listed first, existing files are never overwritten, and written files are read back.
 
+            With --strict, the export is refused, and nothing is written, when it would not be a complete
+            inventory: a path skipped by the scan, a file without an album tag or a track number, a repeated
+            disc and track pair, disc or track numbers that are not consecutive from 1, a declared disc or
+            track total that differs from the number exported or between tracks, or a release date that is
+            present but not a full YYYY-MM-DD date. An absent release date is permitted. Every reason is
+            listed. Other warnings remain warnings. This also applies under --dry-run.
+
             Options:
               -o, --output FILE   the catalog to write (required)
               --artwork DIR       write album covers to DIR
+              --strict            refuse an export that is not a complete inventory
               --dry-run           list the files to be written and write nothing
-            """, valued: ["--output": ["-o"], "--artwork": []], flags: ["--dry-run"], positionals: 1...Int.max)
+            """, valued: ["--output": ["-o"], "--artwork": []], flags: ["--dry-run", "--strict"],
+        positionals: 1...Int.max)
 
     struct Entry {
         var file: AudioFile
@@ -40,11 +49,25 @@ enum ExportCommand {
         }
 
         let scan = try LibraryFiles.scan(parsed.positionals)
-        for refusal in scan.refused { console.warning("\(refusal.path): \(refusal.reason); not exported") }
+        let strict = parsed.flag("--strict")
+        var refusals: [String] = []
+        for refusal in scan.refused {
+            if strict {
+                refusals.append("\(refusal.path): \(refusal.reason); not exported")
+            } else {
+                console.warning("\(refusal.path): \(refusal.reason); not exported")
+            }
+        }
         let files = try scan.files.map(LibraryFiles.read)
-        let (catalog, covers, warnings) = draft(
-            files, catalogDirectory: output.deletingLastPathComponent(), artworkDirectory: artworkDirectory)
+        let (catalog, covers, warnings, findings) = draft(
+            files, catalogDirectory: output.deletingLastPathComponent(), artworkDirectory: artworkDirectory,
+            strict: strict)
         for warning in warnings { console.warning(warning) }
+        refusals += findings
+        if !refusals.isEmpty {
+            for refusal in refusals { console.error(refusal) }
+            throw CommandError.failure("strict export refused; nothing was changed")
+        }
 
         // Every destination is checked before anything is written.
         if let artworkDirectory, pathKind(artworkDirectory) != .missing, pathKind(artworkDirectory) != .directory {
@@ -125,21 +148,31 @@ enum ExportCommand {
         var data: Data
     }
 
-    /// Groups files into a catalog. Returns the covers to write and warnings about values that a catalog
-    /// cannot represent, such as gaps in track numbers.
-    static func draft(_ files: [AudioFile], catalogDirectory: URL, artworkDirectory: URL?)
-        -> (Catalog, [Cover], [String])
+    /// Groups files into a catalog. Returns the covers to write, warnings about values that a catalog
+    /// cannot represent, such as gaps in track numbers, and, when `strict` is set, the findings that make the
+    /// export an incomplete inventory. In strict mode those conditions are findings and not warnings.
+    static func draft(_ files: [AudioFile], catalogDirectory: URL, artworkDirectory: URL?, strict: Bool = false)
+        -> (Catalog, [Cover], [String], [String])
     {
         var warnings: [String] = []
+        var findings: [String] = []
+        /// Records a condition as a finding in strict mode and as a warning otherwise.
+        func report(_ message: String) {
+            if strict { findings.append(message) } else { warnings.append(message) }
+        }
         var order: [String] = []
         var groups: [String: [Entry]] = [:]
         for file in files {
+            if strict, let date = LibraryFiles.text(file.file, .releaseDate), ReleaseDate(tagValue: date) == nil {
+                findings.append(
+                    "\(file.url.path) has the release date \"\(date)\", which is not a full YYYY-MM-DD date")
+            }
             guard let album = file.tags.album else {
-                warnings.append("\(file.url.path) has no album tag; not exported")
+                report("\(file.url.path) has no album tag; not exported")
                 continue
             }
             guard let track = file.tags.trackNumber else {
-                warnings.append("\(file.url.path) has no track number; not exported")
+                report("\(file.url.path) has no track number; not exported")
                 continue
             }
             let key = TitleRules.comparisonKey(album) + "\u{0}" + TitleRules.comparisonKey(file.tags.albumArtist ?? "")
@@ -157,7 +190,7 @@ enum ExportCommand {
             var seen: Set<[Int]> = []
             entries = entries.filter { entry in
                 guard seen.insert([entry.disc, entry.track]).inserted else {
-                    warnings.append(
+                    report(
                         "\(entry.file.url.path) repeats disc \(entry.disc) track \(entry.track) of \"\(name)\"; not exported"
                     )
                     return false
@@ -166,14 +199,40 @@ enum ExportCommand {
             }
             let discNumbers = Array(Set(entries.map(\.disc))).sorted()
             if discNumbers != Array(1...discNumbers.count) {
-                warnings.append(
+                report(
                     "\"\(name)\" has disc numbers \(discNumbers); the catalog numbers its discs consecutively")
+            }
+            if strict {
+                let totals = Set(
+                    entries.compactMap { LibraryFiles.pair($0.file.file, .discNumber)?.total }.filter { $0 > 0 })
+                if totals.count > 1 {
+                    findings.append(
+                        "\"\(name)\" has tracks that declare different disc totals \(totals.sorted())")
+                } else if let total = totals.first, total != discNumbers.count {
+                    findings.append(
+                        "\"\(name)\" declares \(total) discs but \(discNumbers.count) would be exported")
+                }
             }
             var discs: [Disc] = []
             for number in discNumbers {
                 let discEntries = entries.filter { $0.disc == number }
+                if strict {
+                    let totals = Set(
+                        discEntries.compactMap { LibraryFiles.pair($0.file.file, .trackNumber)?.total }.filter {
+                            $0 > 0
+                        })
+                    if totals.count > 1 {
+                        findings.append(
+                            "\"\(name)\" disc \(number) has tracks that declare different track totals \(totals.sorted())"
+                        )
+                    } else if let total = totals.first, total != discEntries.count {
+                        findings.append(
+                            "\"\(name)\" disc \(number) declares \(total) tracks but \(discEntries.count) would be exported"
+                        )
+                    }
+                }
                 if discEntries.map(\.track) != Array(1...discEntries.count) {
-                    warnings.append(
+                    report(
                         "\"\(name)\" disc \(number) has track numbers \(discEntries.map(\.track)); the catalog numbers its tracks consecutively"
                     )
                 }
@@ -198,7 +257,7 @@ enum ExportCommand {
             }
             albums.append(album)
         }
-        return (Catalog(albums: albums), covers, warnings)
+        return (Catalog(albums: albums), covers, warnings, findings)
     }
 
     static func track(for file: AudioFile) -> Track {

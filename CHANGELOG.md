@@ -4,6 +4,10 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- `export --strict`: refuses, without writing, an export that is not a complete inventory, namely skipped paths, files dropped for a missing album tag or track number, repeated or non-consecutive disc and track numbers, declared disc and track totals that disagree with the exported counts or with each other, and release dates that are present but not a full `YYYY-MM-DD` date. The non-strict export is unchanged.
+
 ## [0.1.0] - 2026-10-17
 
 ### Added
