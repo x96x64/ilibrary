@@ -2,7 +2,7 @@
 
 ## Status and Authorization
 
-This document is a proposal for milestone M11 (target version 0.2.0) of the [Plan for the Stable Release](stable-release-plan.md). Under Decision 40 (October 20, 2026), the maintainer accepted M10 as passed and authorized M11 planning within that plan's scope. This plan has not been approved, and no M11 product implementation has begun. Implementation starts only after the maintainer approves this plan or a revision of it and decides the questions in [Decisions Required Before Implementation](#decisions-required-before-implementation). Publication of 0.2.0, pushes, merges, tags, and registry releases require separate approval.
+This document is the plan for milestone M11 (target version 0.2.0) of the [Plan for the Stable Release](stable-release-plan.md). Under Decision 40 (October 20, 2026), the maintainer accepted M10 as passed and authorized M11 planning. Under Decision 41 (October 20, 2026), the maintainer approved this plan, as proposed in commit `235bd79`, with the recommended answers to Decisions A to G and the safeguards recorded in [Approved Decisions and Safeguards](#approved-decisions-and-safeguards). Implementation begins on a new milestone branch only after the M10 branch has been integrated into `main`; opening the M10 pull request does not authorize merging it. Live Music qualification, operations on the maintainer's physical backup device, publication of 0.2.0, tags, and registry releases require separate approval.
 
 The evidence on which this plan relies is classified as in the rest of the repository. Statements about the existing source are established by a read-only survey of the M10 branch at `ebea671`. Statements about Music, filesystems, and storage devices that have not been measured are marked as inferred or unknown.
 
@@ -55,7 +55,7 @@ The refusal logic belongs in `ExportCommand.draft`, where files are dropped and 
 
 ### Whole-Library Music Inventory
 
-`MusicApp.allTracks` reads 16 properties of every track as separate Apple Events. In the M10 qualification, the probe's bulk snapshot of 300 tracks took 0.482 s, against 40.092 s for a per-track read of 8 properties (measured). A new bulk reader in `LibraryMac` reads the persistent ID, name, album, artist, album artist, location, date added, and cloud status of every track in a fixed number of Apple Events. A first-and-last ID consistency check guards it, and stub tests and a live equivalence check against the per-track reader establish that it returns the same fields. It is used by `rebuild prepare`. Changing `check --library` to use it is a separate decision (Decision F).
+`MusicApp.allTracks` reads 16 properties of every track as separate Apple Events. In the M10 qualification, the probe's bulk snapshot of 300 tracks took 0.482 s, against 40.092 s for a per-track read of 8 properties (measured). A new bulk reader in `LibraryMac` reads, in a fixed number of Apple Events, every field that the existing per-track reader `describeTracks` returns: persistent ID, name, album, artist, album artist, composer, genre, year, track number, disc number, location, cloud status, comment, track count, disc count, and compilation. It also reads date added. The field set is therefore a superset of what `check --library` uses, which resolves the difference noted in Decision F. A first-and-last ID consistency check guards it, and stub tests and a live equivalence check against the per-track reader establish that it returns the same fields. It is used by `rebuild prepare`. Changing `check --library` to use it is a separate decision (Decision F).
 
 Each registration is classified as selected and supported, or as one of the following: unselected, a non-file or cloud-only track, a missing or unreadable location, a location outside the selection, a duplicate location, protected audio, or an ambiguous cloud status. Any classification other than selected and supported prevents preparation unless the plan defines how the registration is left untouched. Which cloud statuses Music reports for local-only files under the qualified conditions is only partly measured; the procedure requires iCloud Music Library to be off and records the observed statuses (unknown until measured).
 
@@ -93,22 +93,38 @@ The bulk Music reader is tested with stubs. Its live equivalence, the backup on 
 | Reject insufficient capacity | Per-volume capacity tests, including unknown capacity |
 | Reject unsafe plans before mutation | Tests that each refusal occurs before any write, and that a changed input invalidates the record |
 
-## Decisions Required Before Implementation
+## Approved Decisions and Safeguards
+
+The maintainer approved the recommended answer to each decision below under Decision 41, subject to the safeguards that follow each paragraph. The safeguards are requirements of M11; none weakens an existing safety, evidence, or publication requirement.
 
 Decision A concerns the SHA-256 implementation. A hand-written, streaming SHA-256 in the Foundation-only target, verified against the published test vectors and against CryptoKit on macOS, keeps the no-dependency rule. Adding `swift-crypto` would trade a small amount of audited code for a new package dependency. The recommendation is the hand-written implementation.
 
+Safeguards for Decision A: the implementation streams with bounded memory and is verified against the published test vectors, against CryptoKit on macOS, across different chunk boundaries, for empty input and large files, and for read errors. Avoiding a dependency does not justify any loss of correctness or unbounded memory use.
+
 Decision B concerns who creates the backup. In verification only, the user creates the backup, for example by a Finder copy to the removable drive, and iLibrary verifies it and never writes to it. The alternative is a command that creates the backup itself. The recommendation is verification only for 0.2.0, which keeps iLibrary from writing to the medium whose independence it must confirm.
+
+Safeguard for Decision B: the maintainer creates the backup, and no iLibrary operation modifies its contents.
 
 Decision C concerns how physical independence is established. Automatic refusal of the same whole disk, disk images, and network volumes, combined with a recorded explicit statement by the user, is recommended over the statement alone. Automatic signals that later prove unreliable are reported as limitations rather than relied upon.
 
+Safeguard for Decision C: physical independence requires both the available device information and the maintainer's explicit confirmation. Unknown or unreliable device identity results in refusal, never in an assertion of independence.
+
 Decision D concerns the extent of the restoration test. A full restoration into a user-selected directory, which is kept after verification and never deleted automatically, satisfies the gate as written. A sampled restoration needs less capacity but restores only part of the bytes and dates. The recommendation is a full restoration.
+
+Safeguard for Decision D: the complete selected inventory is restored into a separate user-selected directory, its bytes, paths, and required dates are verified, and the restored files are kept until the maintainer removes them explicitly.
 
 Decision E concerns the backup filesystem. Supporting only APFS and HFS+ backup volumes in 0.2.0, which store creation dates, is recommended. FAT and exFAT have coarse or missing creation dates and time-zone ambiguity, so they would require a weaker comparison. The exact date tolerance is set from the filesystem's resolution and recorded with each verification.
 
+Safeguard for Decision E: before any verification result is accepted, the timestamp precision and tolerances of APFS and HFS+ are defined, documented, and tested. The date-preservation requirements are not weakened to make a comparison pass.
+
 Decision F concerns `check --library`. A separate read-only investigation found that it sends one Apple Event plus 16 per track over the whole library, and proposed a bulk read (inferred from source; its live cost is unmeasured). Including that change in M11 reuses the new bulk reader but changes a published command's implementation. The recommendation is to include it as a separately reviewed commit with an equivalence test, without changing the command's output.
 
-Decision G concerns integration. The M10 branch, `codex/m10-rebuild-feasibility`, is local, unpushed, and 39 commits ahead of `main`. The recommendation is to approve pushing it and opening a pull request to `main` after the usual preview, summary, and Japanese translation, and then to begin M11 on a new branch from `main`.
+Safeguards for Decision F: the change is conditional. It preserves every existing diagnostic field, output behavior, error condition, and supported track classification of `check --library`. Tests demonstrate field-level and diagnostic equivalence, including missing locations, mixed audio formats, duplicate records, cloud statuses, and unavailable properties. The optimization is a separately reviewable commit. Live equivalence is not claimed before the maintainer's separate-user verification.
+
+Decision G concerns integration. The M10 branch, `codex/m10-rebuild-feasibility`, was local and unpushed when this plan was proposed. The recommendation is to approve pushing it and opening a pull request to `main` after the usual preview, summary, and Japanese translation, and then to begin M11 on a new branch from `main`.
+
+Safeguards for Decision G: before the push, the actual changes, principal summaries with Japanese translations, test results, and the complete unpublished commit range are presented, and the range is checked for private information and unrelated changes. There is no force push or history rewrite. Opening the pull request does not authorize merging it; the complete diff, the required CI results, and the merge conditions are confirmed before integration authorization is requested. M11 implementation does not share a branch with the unpublished M10 history.
 
 ## Recommended Models and Effort
 
-The roadmap table recommends Claude Opus 5.5 with high in Claude Code and GPT-6-Astra with high in Codex for M11. M11 adds no destructive Music operation, so the xhigh effort used for M10 and planned for M12 and M13 is not required. Do not use ultra.
+Bounded implementation and synthetic verification are delegated to Claude Sonnet 5.5 at medium effort; architecture, safety assessment, acceptance decisions, and final review remain with the coordinating agent. The roadmap table recommends Claude Opus 5.5 with high in Claude Code and GPT-6-Astra with high in Codex for M11. M11 adds no destructive Music operation, so the xhigh effort used for M10 and planned for M12 and M13 is not required. Do not use ultra.
