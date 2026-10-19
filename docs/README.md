@@ -78,3 +78,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-19 — [Separated Addition Qualification Results](reports/separated-addition-qualification-results.md)
 - 2026-10-19 — [Removal Performance Revision](reports/removal-performance-revision.md)
 - 2026-10-19 — [Separated Addition Qualification, Version 2 Results](reports/separated-addition-qualification-v2-results.md)
+- 2026-10-20 — [M10 Separated Addition Qualification Results](reports/m10-separated-addition-qualification-results.md)
