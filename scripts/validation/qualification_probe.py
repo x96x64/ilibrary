@@ -9,6 +9,7 @@ Preparation and reporting never address Music.
 """
 
 import argparse
+import collections
 import json
 import os
 from pathlib import Path
@@ -20,26 +21,30 @@ import time
 
 sys.dont_write_bytecode = True
 import timing_probe as timing
+import qualification_snapshot as bulk
 
 display = timing.display
 base = display.base
 require, safe_path, digest, write_json = base.require, base.safe_path, base.digest, base.write_json
-FORMAT = "ilibrary-m10-qualification-1"
+FORMAT = "ilibrary-m10-qualification-2"
 CASE_NAMES = ("scale-release", "artist", "artist-desc", "artist-release")
 WAIT_SECONDS = 2.0
 # Bounds the confirmation checks around each wait; 300 registrations take longer to read than 6.
 WAIT_LIMIT = 120.0
+GATE_FIELDS = ("id", "title", "album", "artist", "path", "path_error", "added")
+FIRST_SOURCE = "bf84ee9"
+FIRST_REPORT = "deb58894e0f00c6351c084e90fac8a4375019a714dd1ef2bc2da41d3684d421f"
 DISPLAY_SOURCE = "f6511d56250504d82f1c55c1039905838615ebbc"
 DISPLAY_REPORT = "6b859c028563f78efd741344ace1ebf23c67f70b0748ef11f029f68113795cfe"
 TIMING_SOURCE = "4cd7c6b30065df1aef9c94b80bf5ab1bb2ef8f10"
 TIMING_REPORT = "f7b026250623471c10d8e014565543b3b5ff25bda7076c0c26715f44ad0430ca"
-SCRIPTS = ("qualification_probe.py", "timing_probe.py", "display_probe.py", "rebuild_probe.py")
+SCRIPTS = ("qualification_probe.py", "qualification_snapshot.py", "timing_probe.py", "display_probe.py", "rebuild_probe.py")
 
 
 def case_spec(name):
     require(name in CASE_NAMES, "検証ケースが不正です。")
     result = display.case_spec(name)
-    result["library"] = "M10-separated-" + name
+    result["library"] = "M10-separated-v2-" + name
     return result
 
 
@@ -131,6 +136,125 @@ class Measurement(timing.Measurement):
         self.result = {"case": name, "state": "STOP", "phase": self.phase, "observations": [],
                        "boundaries": [], "commit": manifest["commit"], "started": display.now()}
         self.started, self.media = time.monotonic(), None
+        self.result["phase_seconds"] = {}
+        self.phase_clock, self.use_bulk = time.monotonic(), False
+
+    def snapshot(self):
+        # The per-track snapshot is used only until the equivalence gate has passed.
+        return bulk.snapshot() if self.use_bulk else base.snapshot()
+
+    def capture(self, label, paths, ids=None):
+        self.guard()
+        rows = self.snapshot()
+        write_json(self.work / (label + ".json"), rows)
+        display.inventory(rows, paths, ids)
+        return rows
+
+    def unchanged(self, rows, paths):
+        self.guard()
+        require(base.music_running(), "Musicが終了しています。次の追加は行いません。")
+        current = self.snapshot()
+        display.inventory(current, paths)
+        require(display.stable(current) == display.stable(rows), "確認済みの登録が変わりました。")
+
+    def step(self, name):
+        self.close_phase()
+        super().step(name)
+        self.phase_clock = time.monotonic()
+
+    def close_phase(self):
+        if self.phase_clock is not None:
+            seconds = round(time.monotonic() - self.phase_clock, 3)
+            self.result["phase_seconds"][self.phase] = seconds
+            self.phase_clock = None
+            self.log(f"DURATION: phase {self.phase}; seconds: {seconds}")
+
+    def equivalence_gate(self, paths):
+        """Require the bulk snapshot to equal the per-track snapshot before any file is moved."""
+        self.guard()
+        start = time.monotonic()
+        per_track = base.snapshot()
+        middle = time.monotonic()
+        bulk_rows = bulk.snapshot()
+        end = time.monotonic()
+        write_json(self.work / "seed-registration.json", per_track)
+        self.log(f"MEASURED: per-track snapshot of {len(per_track)} registrations: {middle - start:.3f} seconds")
+        self.log(f"MEASURED: bulk snapshot of {len(bulk_rows)} registrations: {end - middle:.3f} seconds")
+        legacy_errors = sum(bool(r.get("legacy_error")) for r in per_track)
+        self.log(f"MEASURED: per-track rows with a legacy location read error (diagnostic only, not compared): "
+                 f"{legacy_errors} of {len(per_track)}")
+        compared = lambda rows: sorted(({k: r[k] for k in GATE_FIELDS} for r in rows), key=lambda r: r["id"])
+        if compared(per_track) != compared(bulk_rows):
+            write_json(self.work / "seed-registration-bulk.json", bulk_rows)
+            self.log("STOP: bulk snapshot differs from the per-track snapshot; both are saved; nothing was evacuated")
+            raise base.Refusal("一括取得と1曲ずつの取得が一致しません。退避せず停止します。")
+        display.inventory(per_track, paths)
+        self.log("PASS: bulk snapshot equals the per-track snapshot (fields compared: id, title, album, artist, path, path_error, added; order-insensitive)")
+        self.use_bulk = True
+        return per_track
+
+    def remove_registrations(self, records, paths, originals, states, image, image_hash, mount):
+        """Delete this run's registrations one persistent ID per call; see display_probe.remove_seeded."""
+        display.inventory(records, originals)
+        by_identity = {(Path(r).parts[-3], Path(r).parts[-2], Path(r).stem[3:]): r for r in paths}
+        total, completed, pending = len(records), 0, None
+        left = collections.Counter((r["artist"], r["album"]) for r in records)
+        albums_done, albums_total = 0, len(left)
+        journal = bulk.Journal(self.work / "removal-journal.jsonl")
+        started = time.monotonic()
+        try:
+            journal.write(event="begin", ids=[r["id"] for r in records], count=total,
+                          image_sha256=image_hash, commit=self.manifest["commit"])
+            remaining = list(records)
+            for row in records:
+                self.guard()
+                if completed == 0:
+                    base.compare_files(paths, states)
+                selected = {by_identity[(t["artist"], t["album"], t["title"])]:
+                            paths[by_identity[(t["artist"], t["album"], t["title"])]] for t in remaining}
+                display.inventory(self.snapshot(), selected, [r["id"] for r in remaining], originals)
+                require(digest(image) == image_hash and not os.path.ismount(mount), "保存用コピーが変化しました。")
+                if pending:
+                    # Only the inventory and image checks above prove that the previous deletion removed exactly that registration.
+                    journal.write(event="verified", seq=pending[0], id=pending[1])
+                    pending = None
+                journal.write(event="intent", seq=completed + 1, id=row["id"])
+                base.music(base.DELETE, row["id"], row["title"], row["album"], row["artist"])
+                remaining = [r for r in remaining if r["id"] != row["id"]]
+                base.compare_files(paths, states)
+                completed += 1
+                pending = (completed, row["id"])
+                journal.write(event="returned", seq=completed, id=row["id"])
+                elapsed = time.monotonic() - started
+                self.log(f"PROGRESS: returned removals {completed}/{total}; remaining {total - completed}; "
+                         f"phase elapsed seconds: {elapsed:.1f}; mean seconds per removal: {elapsed / completed:.2f}")
+                key = (row["artist"], row["album"])
+                left[key] -= 1
+                if left[key] == 0:
+                    albums_done += 1
+                    self.log(f"CHECKPOINT: album {row['album']} fully removed; albums {albums_done}/{albums_total}; "
+                             f"registrations removed {completed}/{total}")
+            require(not self.snapshot(), "全登録が空になっていません。")
+            if pending:
+                journal.write(event="verified", seq=pending[0], id=pending[1])
+                pending = None
+        except BaseException as error:
+            journal.write(event="interrupted" if isinstance(error, KeyboardInterrupt) else "stop",
+                          returned=completed, verified=completed - (1 if pending else 0),
+                          returned_unverified=1 if pending else 0, reason=type(error).__name__)
+            raise
+        else:
+            journal.write(event="end", returned=completed, verified=completed)
+        finally:
+            journal.close()
+
+    def journal_summary(self):
+        verified, unverified, indeterminate, _ = bulk.read(self.work / "removal-journal.jsonl")
+        self.result.update(confirmed_removals=verified, returned_unverified_removals=unverified,
+                           indeterminate_removal=indeterminate)
+        self.log(f"removals verified by a later snapshot: {verified}")
+        self.log(f"removals returned without verification: {unverified}")
+        self.log("indeterminate removal (intent without returned record): " + ("yes" if indeterminate else "no"))
 
     def media_check(self):
         entries = timing.media_inventory(self.media)
@@ -161,7 +285,7 @@ class Measurement(timing.Measurement):
         self.cli("add", seed, "--order", spec["mode"], "--dry-run")
         self.cli("add", seed, "--order", spec["mode"])
         originals = {r: self.media / "Music" / r for r in display.relatives(spec)}
-        records = self.capture("seed-registration", originals)
+        records = self.equivalence_gate(originals)
         display.journal_check(seed / ".ilibrary-add.json", spec, seed, originals, records)
         self.log("PASS: only freshly generated tracks registered; product addition order matches the saved plan")
 
@@ -190,7 +314,7 @@ class Measurement(timing.Measurement):
         self.log("PASS: evacuation retains every byte and file date")
 
         self.step("registration-removal")
-        display.remove_seeded(records, paths, originals, states, image, image_hash, self.work / "backup-mount", self.guard)
+        self.remove_registrations(records, paths, originals, states, image, image_hash, self.work / "backup-mount")
         backup_check()
         self.log(f"PASS: removed only this run's {len(records)} inventoried registrations, one persistent ID per call; "
                  "evacuated files unchanged")
@@ -201,7 +325,7 @@ class Measurement(timing.Measurement):
         require(input("1: 両方空 / 2: 空ではない・判断できない。番号を入力: ").strip() == "1",
                 "空の画面を確認できません。終了・編集せず停止します。")
         self.guard()
-        require(not base.snapshot(), "空の確認中に登録が変わりました。")
+        require(not self.snapshot(), "空の確認中に登録が変わりました。")
         self.log("PASS: empty GUI confirmed by maintainer; automatic GUI detection remains unverified")
 
         self.step("quit-and-edit")
@@ -307,6 +431,8 @@ def check_progress(bundle, name, commit):
         path = safe_path(bundle / "reference-private" / prior / "result.json")
         require(path.is_file(), "先のケースの結果がありません。手順の順番を確認し、報告してください。")
         result = json.loads(path.read_text())
+        require(result.get("state") != "INTERRUPTED",
+                "先のケースが中断されています（INTERRUPTED）。次を始めず、一つの報告を作ってください。")
         require(result.get("case") == prior and result.get("commit") == commit and
                 result.get("phase") == "complete" and result.get("state") in ("PASS", "FAIL", "UNVERIFIED"),
                 "先のケースが途中で停止しています。次を始めず、一つの報告を作ってください。")
@@ -353,13 +479,21 @@ def execute(bundle, name, dry_run=False):
         write_json(m.work / "plan.json", {"spec": spec, "media": str(m.media), "wait_seconds": WAIT_SECONDS,
                                           "wait_limit": WAIT_LIMIT, "time": display.now()})
         m.measure()
-    except (base.Refusal, OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired, EOFError, KeyboardInterrupt) as error:
+    except KeyboardInterrupt as error:
+        m.result["state"] = "INTERRUPTED"
+        m.log("INTERRUPTED: measurement interrupted by the operator; preserve all state; do not rerun")
+        m.log("interrupted phase: " + m.phase)
+        m.journal_summary()
+        (m.work / "failure.txt").write_text(type(error).__name__ + "\n")
+    except (base.Refusal, OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired, EOFError) as error:
         m.result["state"] = "STOP"
         m.log("STOP: measurement incomplete; preserve all state; do not rerun")
         m.log("stopped phase: " + m.phase)
+        m.journal_summary()
         m.log("reason: " + (str(error) if isinstance(error, base.Refusal) else type(error).__name__))
         (m.work / "failure.txt").write_text(type(error).__name__ + ": " + str(error) + "\n")
     finally:
+        m.close_phase()
         m.result["finished"] = display.now()
         m.result["elapsed_seconds"] = round(time.monotonic() - m.started, 3)
         m.log("elapsed seconds: " + str(m.result["elapsed_seconds"]))
@@ -367,8 +501,8 @@ def execute(bundle, name, dry_run=False):
         write_json(m.work / "result.json", m.result)
         m.report.close()
         base._diagnostic_work = None
-    # A completed negative observation may be followed by an independent case. A STOP must not be bypassed.
-    return 1 if m.result["state"] == "STOP" else 0
+    # A completed negative observation may be followed by an independent case. A STOP or INTERRUPTED case must not be bypassed.
+    return 1 if m.result["state"] in ("STOP", "INTERRUPTED") else 0
 
 
 def report(bundle, output, dry_run=False):
@@ -380,6 +514,9 @@ def report(bundle, output, dry_run=False):
     text += ("== Historical evidence; not rerun\n"
              "display-v3 small: source " + DISPLAY_SOURCE + "; report SHA-256 " + DISPLAY_REPORT +
              "\nObserved display before and after relaunch: 2,3,1; expected: 3,2,1; cross-album ties observed\n"
+             "first qualification run: source " + FIRST_SOURCE + "; report SHA-256 " + FIRST_REPORT +
+             "\nscale-release STOP in registration-removal with KeyboardInterrupt after 803.057 seconds; "
+             "artist cases not run\n"
              "timing v2 small: source " + TIMING_SOURCE + "; report SHA-256 " + TIMING_REPORT +
              "\nSeparated additions; observed display before and after relaunch: 3,2,1; expected: 3,2,1; no removal\n")
     states, ties = [], 0
@@ -399,13 +536,16 @@ def report(bundle, output, dry_run=False):
             continue
         data = json.loads(saved.read_text())
         require(data.get("case") == name and data.get("commit") == manifest["commit"] and
-                data.get("state") in ("PASS", "FAIL", "UNVERIFIED", "STOP"), "保存した結果の識別情報が違います。")
+                data.get("state") in ("PASS", "FAIL", "UNVERIFIED", "STOP", "INTERRUPTED"), "保存した結果の識別情報が違います。")
         require(f"case result: {data['state']}\n" in body and
-                (data["state"] == "STOP" or data.get("phase") == "complete"), "結果の本文と終了記録が一致しません。")
+                (data["state"] in ("STOP", "INTERRUPTED") or data.get("phase") == "complete"), "結果の本文と終了記録が一致しません。")
         states.append(data["state"])
         ties += data.get("dates", {}).get("cross_album_ties", 0)
     text += "\n== Aggregate\n"
     text += "".join(f"{name}: {state}\n" for name, state in zip(CASE_NAMES, states))
+    if "INTERRUPTED" in states:
+        text += "Interrupted by the operator, not stopped by a refusal: " + ", ".join(
+            n for n, s in zip(CASE_NAMES, states) if s == "INTERRUPTED") + "\n"
     text += "Cross-album timestamp ties in completed readditions: " + str(ties) + "\n"
     text += ("Separated-addition synthetic qualification: " +
              ("PASS" if states == ["PASS"] * len(CASE_NAMES) else "NOT COMPLETE") + "\n")
