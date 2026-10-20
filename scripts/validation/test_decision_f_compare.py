@@ -1,7 +1,8 @@
 """Regression tests for decision-f-compare.sh, run on a disposable copy against stub executables.
 
-No real ilibrary executable and no Music are involved: the copy of the tracked script has only its user-name,
-root, and Apple Account guard lines replaced, and the stubs print controlled doctor and check output.
+No real ilibrary executable and no Music are involved: the copy of the tracked script has only its user-name
+and root guard lines replaced and its account export command pointed at a stub that prints synthetic preference
+text; the real plutil reads only that text. The stubs print controlled doctor and check output.
 """
 
 import hashlib
@@ -16,7 +17,27 @@ SCRIPT = Path(__file__).resolve().parent / "decision-f-compare.sh"
 
 USER_GUARD = "[[ $user == ilibrarytest* || $user == ilibrary-test* ]] || stop"
 ROOT_GUARD = "[[ $(id -u) != 0 ]] || stop 'the command runs as root'"
-ACCOUNT_LINE = "account=$(/usr/bin/defaults export MobileMeAccounts - 2>&1)"
+EXPORT_LINE = 'account=$(/usr/bin/defaults export MobileMeAccounts - 2>"$export_error_file")'
+
+PLIST_HEAD = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+              '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+              '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n')
+
+
+def plist(body):
+    return PLIST_HEAD + body + "\n</plist>\n"
+
+
+EMPTY_DICT = plist("<dict/>")
+EMPTY_ARRAY = plist("<dict><key>Accounts</key><array/></dict>")
+STRING_ACCOUNT = "<dict><key>AccountID</key><string>synthetic@example.invalid</string></dict>"
+DEFAULTS_STUB = """#!/bin/sh
+d=$(dirname "$0")
+echo "$0 $*" >> "@LOG@"
+cat "$d/defaults.out"
+cat "$d/defaults.err" >&2
+exit "$(cat "$d/defaults.code")"
+"""
 
 UNCHANGED_OUT = "Checked 12 files against the Music library\nNo problems found.\n"
 REMOVED_NAME = "03 Synthetic Track.m4a"
@@ -30,6 +51,7 @@ def removal_out(name=REMOVED_NAME):
 
 STUB = """#!/bin/sh
 d=$(dirname "$0")
+echo "$0 $*" >> "@LOG@"
 if [ "$1" = doctor ]; then
     cat "$d/doctor.out"
     exit "$(cat "$d/doctor.code")"
@@ -51,24 +73,35 @@ exit 0
 class Bundle:
     """A disposable bundle: script copy, stubs, library folders, checksums, and results."""
 
-    def __init__(self, root, phase="unchanged", out=None, err="", code=0, removed=None):
+    def __init__(self, root, phase="unchanged", out=None, err="", code=0, removed=None,
+                 export_out=EMPTY_DICT, export_err="", export_code=0):
         self.root = Path(root)
         self.phase = phase
         self.bundle = self.root / "bundle"
-        self.media = self.root / "DecisionF-comparison-v3" / "Media"
+        self.media = self.root / "DecisionF-comparison-v4" / "Media"
         self.target = self.media / "Music"
         self.target.mkdir(parents=True)
         (self.bundle / "results").mkdir(parents=True)
         (self.bundle / "SOURCES").write_text("synthetic sources\n")
+        self.log = self.root / "invocations.log"
+        self.log.write_text("")
+        stubs = self.root / "stubs"
+        stubs.mkdir()
+        defaults = stubs / "defaults"
+        defaults.write_text(DEFAULTS_STUB)
+        defaults.chmod(0o755)
+        (stubs / "defaults.out").write_text(export_out)
+        (stubs / "defaults.err").write_text(export_err)
+        (stubs / "defaults.code").write_text(str(export_code))
         text = SCRIPT.read_text()
-        for guard in (USER_GUARD, ROOT_GUARD, ACCOUNT_LINE):
+        for guard in (USER_GUARD, ROOT_GUARD, EXPORT_LINE):
             assert guard in text, f"the tracked script no longer contains the guard line {guard!r}"
         lines = []
         for line in text.split("\n"):
             if line.startswith(USER_GUARD) or line == ROOT_GUARD:
                 line = "true"
-            elif line == ACCOUNT_LINE:
-                line = "account=''"
+            elif line == EXPORT_LINE:
+                line = line.replace("/usr/bin/defaults", str(defaults))
             lines.append(line)
         (self.bundle / "decision-f-compare.sh").write_text("\n".join(lines))
         if out is None:
@@ -79,7 +112,7 @@ class Bundle:
             folder = self.bundle / "bin" / exe
             folder.mkdir(parents=True)
             stub = folder / "ilibrary"
-            stub.write_text(STUB)
+            stub.write_text(STUB.replace("@LOG@", str(self.log)))
             stub.chmod(0o755)
             self.write(exe, "doctor.out", f"ok     version: synthetic\nok     media folder: {self.media}\n")
             self.write(exe, "doctor.code", "0")
@@ -140,6 +173,56 @@ class CompareScriptTests(unittest.TestCase):
         self.assertFalse(bundle.results.exists())
         for exe in ("reference", "candidate"):
             self.assertEqual(list((bundle.bundle / "bin" / exe).glob("count-*")), [])
+
+    def assertAccountRejected(self, **export):
+        bundle = self.bundle(**export)
+        result = bundle.run()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("STOP", result.stderr)
+        self.assertFalse((bundle.bundle / "results" / "unchanged").exists())
+        self.assertEqual(bundle.log.read_text(), "")
+        return result
+
+    def test_account_export_rejections_stop_before_any_executable_runs(self):
+        cases = {
+            "non-empty array of string dictionaries": dict(export_out=plist(
+                f"<dict><key>Accounts</key><array>{STRING_ACCOUNT}</array></dict>")),
+            "entry with a date value": dict(export_out=plist(
+                "<dict><key>Accounts</key><array><dict><key>When</key>"
+                "<date>2020-01-01T00:00:00Z</date></dict></array></dict>")),
+            "entry with a data value": dict(export_out=plist(
+                "<dict><key>Accounts</key><array><dict><key>Blob</key>"
+                "<data>AAEC</data></dict></array></dict>")),
+            "Accounts of type string": dict(export_out=plist(
+                "<dict><key>Accounts</key><string>x</string></dict>")),
+            "Accounts of type dictionary": dict(export_out=plist(
+                "<dict><key>Accounts</key><dict/></dict>")),
+            "non-empty domain without Accounts": dict(export_out=plist(
+                "<dict><key>Other</key><string>x</string></dict>")),
+            "top-level array": dict(export_out=plist("<array/>")),
+            "malformed text": dict(export_out="this is not a property list\n"),
+            "warning line before valid text": dict(export_out="warning: something\n" + EMPTY_ARRAY),
+            "empty array with standard error": dict(export_out=EMPTY_ARRAY, export_err="a warning\n"),
+            "nonzero status with empty dictionary": dict(export_out=EMPTY_DICT, export_code=1),
+            "nonzero status with does-not-exist message": dict(
+                export_out="", export_err="Domain MobileMeAccounts does not exist\n", export_code=1),
+            "empty output with status zero": dict(export_out=""),
+        }
+        for name, export in cases.items():
+            with self.subTest(case=name):
+                shutil.rmtree(self.temporary)
+                Path(self.temporary).mkdir()
+                self.assertAccountRejected(**export)
+
+    def test_absent_account_domain_is_accepted(self):
+        bundle = self.bundle(export_out=EMPTY_DICT)
+        result = bundle.run()
+        self.assertCompleted(bundle, result, "PASS")
+
+    def test_empty_accounts_array_is_accepted(self):
+        bundle = self.bundle(export_out=EMPTY_ARRAY)
+        result = bundle.run()
+        self.assertCompleted(bundle, result, "PASS")
 
     def test_unchanged_success_passes(self):
         bundle = self.bundle()

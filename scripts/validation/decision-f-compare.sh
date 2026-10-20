@@ -26,26 +26,46 @@ esac
 user=$(id -un)
 [[ $user == ilibrarytest* || $user == ilibrary-test* ]] || stop "the user $user is not the separate test user"
 [[ $(id -u) != 0 ]] || stop 'the command runs as root'
-account=$(/usr/bin/defaults export MobileMeAccounts - 2>&1)
+# The account check below is a defensive safeguard only; the maintainer's visual confirmation that no Apple
+# Account is signed in remains mandatory. Absence is never inferred from a message or from empty output: only
+# an empty preference domain or an explicitly empty Accounts array is accepted, and every other case stops.
+export_error_file=$(mktemp) || stop 'a temporary file for the account export could not be created'
+account=$(/usr/bin/defaults export MobileMeAccounts - 2>"$export_error_file")
 account_status=$?
-if (( account_status == 0 )); then
-    accounts=$(print -r -- "$account" | /usr/bin/plutil -extract Accounts json -o - - 2>/dev/null)
-    [[ -z $accounts || $accounts == '[]' ]] || stop 'an Apple Account is signed in'
-elif [[ $account != *"does not exist"* && $account != *"not found"* ]]; then
-    stop 'the account preference could not be read'
+if [[ -s $export_error_file ]]; then export_error_size=1; else export_error_size=0; fi
+rm -f "$export_error_file"
+(( account_status == 0 )) || stop "the account preference export exited with status $account_status"
+(( export_error_size == 0 )) || stop 'the account preference export wrote to standard error'
+[[ -n ${account//[[:space:]]/} ]] || stop 'the account preference export is empty'
+print -r -- "$account" | /usr/bin/plutil -lint - >/dev/null 2>&1 \
+    || stop 'the account preference export is not a valid property list'
+account_xml=$(print -r -- "$account" | /usr/bin/plutil -convert xml1 -o - - 2>/dev/null)
+account_xml_status=$?
+(( account_xml_status == 0 )) || stop 'the account preference export could not be converted'
+account_flat=${account_xml//[[:space:]]/}
+if [[ $account_flat != *'<plistversion="1.0"><dict/></plist>' ]]; then
+    account_type=$(print -r -- "$account" | /usr/bin/plutil -type Accounts - 2>/dev/null)
+    account_type_status=$?
+    (( account_type_status == 0 )) || stop 'the account preference has no readable Accounts value'
+    [[ $account_type == array ]] || stop "the account preference Accounts value has type $account_type, expected array"
+    accounts_xml=$(print -r -- "$account" | /usr/bin/plutil -extract Accounts xml1 -o - - 2>/dev/null)
+    accounts_xml_status=$?
+    (( accounts_xml_status == 0 )) || stop 'the Accounts value could not be extracted'
+    accounts_flat=${accounts_xml//[[:space:]]/}
+    [[ $accounts_flat == *'<plistversion="1.0"><array/></plist>' ]] || stop 'an Apple Account is signed in'
 fi
 
 # The executables, scripts, and procedure must match the bundle checksums; the staging files may have moved.
 cd "$bundle" || stop 'the bundle folder is not accessible'
 grep -v '  staging/' SHA256SUMS | shasum -a 256 -c --quiet - || stop 'a bundle file differs from SHA256SUMS'
 
-# The library must be the new DecisionF-comparison-v3 library, and the target its media Music folder.
+# The library must be the new DecisionF-comparison-v4 library, and the target its media Music folder.
 doctor=$(bin/reference/ilibrary doctor 2>&1)
 doctor_status=$?
 (( doctor_status == 0 )) || stop "doctor exited with status $doctor_status"
 media=$(print -r -- "$doctor" | sed -n 's/^ok  *media folder: //p' | head -n 1)
 [[ -n $media && -d $media ]] || stop 'doctor did not report an existing media folder'
-[[ $media == */DecisionF-comparison-v3/* ]] || stop "the media folder $media is not inside the DecisionF-comparison-v3 library"
+[[ $media == */DecisionF-comparison-v4/* ]] || stop "the media folder $media is not inside the DecisionF-comparison-v4 library"
 [[ ${target:A} == ${media:A}/Music ]] || stop "the target must be exactly $media/Music"
 [[ -d $target ]] || stop "the target $target does not exist"
 
