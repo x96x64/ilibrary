@@ -125,7 +125,8 @@ public struct FileInventory: Equatable, Sendable {
             let nfc = normalize(path)
             if let earlier = normalized[nfc] { return (path, earlier, .normalization) }
             normalized[nfc] = path
-            let key = normalize(nfc.lowercased())
+            // The same folding as location comparison, so both checks agree on which paths collide.
+            let key = PathKey.key(nfc)
             if let earlier = folded[key] { return (path, earlier, .caseFolding) }
             folded[key] = path
         }
