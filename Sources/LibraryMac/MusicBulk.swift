@@ -6,6 +6,14 @@
 // (0.482 s against 40.092 s for 300 tracks) was measured in the M10 qualification with one bulk reference per
 // property; the behaviour of every property listed below under bulk reads, and the text produced by
 // coercing a bulk-read cloud status outside the `tell` block, are unmeasured.
+//
+// Date conversion: AppleScript integers are limited to about plus or minus 536870911, so the difference
+// between a date and the base date is a real for dates after early January 2017, and coercing it to text
+// yields a rounded exponent string. The script therefore never coerces that difference to text. It splits
+// the difference `x` into whole days `d = x div 86400` and the remainder `r = (x - d * 86400) as integer`,
+// each small enough to be an integer, and emits "d r" (two plain integers separated by one space). The
+// reader recombines `d * 86400 + r` with overflow checking. The live behaviour of this conversion with
+// Music remains unmeasured; the arithmetic was checked only on constructed dates without Music.
 #if os(macOS)
     import Foundation
 
@@ -126,9 +134,7 @@
             let offsets = try items(sections[bulkSectionCount + 1], count: tracks.count)
             var dates: [String: Int] = [:]
             for (track, offset) in zip(tracks, offsets) {
-                guard let seconds = Int(offset) else {
-                    throw MusicAppError.unexpectedResult("a date added is not a number")
-                }
+                let seconds = try dateOffset(offset)
                 guard
                     dates.updateValue(
                         unixSeconds(offsetFromYear2000: seconds, timeZone: timeZone), forKey: track.persistentID) == nil
@@ -136,6 +142,36 @@
             }
             return MusicLibrarySnapshot(
                 tracks: tracks, trackCount: total, fileTrackCount: tracks.count, dateAddedSeconds: dates)
+        }
+
+        /// The largest magnitude of a date offset accepted, in seconds (about 12,700 years). AppleScript dates
+        /// span years 1 through 9999, so no genuine offset reaches it (inferred, not measured).
+        static let maximumDateOffset = 400_000_000_000
+
+        /// Parses one date item of the form "d r": two plain decimal integers (an optional minus sign and
+        /// ASCII digits, no exponent, decimal point, plus sign, or other whitespace) separated by exactly one
+        /// space. The offset is `d * 86400 + r`, where `d` is the whole days toward zero and `r` the remainder
+        /// rounded to an integer, so that `-86400 <= r <= 86400`. Overflow and unreasonable values are refused.
+        static func dateOffset(_ item: String) throws -> Int {
+            let parts = item.split(separator: " ", omittingEmptySubsequences: false)
+            guard parts.count == 2, let days = plainInteger(parts[0]), let remainder = plainInteger(parts[1])
+            else { throw MusicAppError.unexpectedResult("a date added is not two plain integers") }
+            guard (-86400...86400).contains(remainder) else {
+                throw MusicAppError.unexpectedResult("a date added has a remainder outside one day")
+            }
+            let product = days.multipliedReportingOverflow(by: 86400)
+            guard !product.overflow else { throw MusicAppError.unexpectedResult("a date added overflows") }
+            let sum = product.partialValue.addingReportingOverflow(remainder)
+            guard !sum.overflow, abs(sum.partialValue) <= maximumDateOffset else {
+                throw MusicAppError.unexpectedResult("a date added is out of range")
+            }
+            return sum.partialValue
+        }
+
+        private static func plainInteger(_ text: Substring) -> Int? {
+            let digits = text.hasPrefix("-") ? text.dropFirst() : text
+            guard !digits.isEmpty, digits.utf8.allSatisfy({ $0 >= 0x30 && $0 <= 0x39 }) else { return nil }
+            return Int(text)
         }
 
         /// Converts a date added to whole seconds since 1970. The script, like the probe's `stamp` handler,
@@ -167,7 +203,10 @@
                 set time of base to 0
                 set dateText to {}
                 repeat with v in dateList
-                    set end of dateText to (((contents of v) - base) as integer) as text
+                    set x to (contents of v) - base
+                    set d to x div 86400
+                    set r to (x - d * 86400) as integer
+                    set end of dateText to (d as text) & " " & (r as text)
                 end repeat
                 """ : ""
             let tail = includeDates ? ", (totalCount as text), my joinText(dateText, rs)" : ""
