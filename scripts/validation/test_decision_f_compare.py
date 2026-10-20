@@ -33,7 +33,7 @@ EMPTY_ARRAY = plist("<dict><key>Accounts</key><array/></dict>")
 STRING_ACCOUNT = "<dict><key>AccountID</key><string>synthetic@example.invalid</string></dict>"
 DEFAULTS_STUB = """#!/bin/sh
 d=$(dirname "$0")
-echo "$0 $*" >> "@LOG@"
+echo "$0 $*" >> "$d/defaults.log"
 cat "$d/defaults.out"
 cat "$d/defaults.err" >&2
 exit "$(cat "$d/defaults.code")"
@@ -178,9 +178,11 @@ class CompareScriptTests(unittest.TestCase):
         bundle = self.bundle(**export)
         result = bundle.run()
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("STOP", result.stderr)
+        self.assertRegex(result.stderr, r"STOP: .*[Aa]ccount")
         self.assertFalse((bundle.bundle / "results" / "unchanged").exists())
         self.assertEqual(bundle.log.read_text(), "")
+        export_log = next(bundle.root.rglob("defaults.log"))
+        self.assertEqual(len(export_log.read_text().splitlines()), 1)
         return result
 
     def test_account_export_rejections_stop_before_any_executable_runs(self):
