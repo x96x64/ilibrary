@@ -84,3 +84,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-20 — [M10 Separated Addition Qualification Results](reports/m10-separated-addition-qualification-results.md)
 - 2026-10-20 — [M11 Implementation and Qualification Preparation](reports/m11-implementation-and-qualification-preparation.md)
 - 2026-10-20 — [M11 Qualification Results, First Run](reports/m11-qualification-results.md)
+- 2026-10-20 — [M11 Date Correction and Version 2 Qualification Preparation](reports/m11-date-correction-and-qualification-v2-preparation.md)
