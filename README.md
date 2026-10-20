@@ -63,7 +63,7 @@ The package declares macOS 14 as its deployment target; the current local verifi
 
 ## Installation
 
-The following commands install version 0.2.0, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version, such as 0.1.0, is installed with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+The following commands install version 0.2.0, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version, such as 0.1.0, is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
 
 ### Homebrew
 
