@@ -52,7 +52,7 @@ jobs:
       - name: Report toolchain
         run: swift --version
       - name: Run Core and command tests
-        run: swift test --disable-xctest --filter 'MP4CoreTests|FLACCoreTests|CatalogCoreTests|ilibraryTests'
+        run: swift test --disable-xctest --filter 'MP4CoreTests|FLACCoreTests|CatalogCoreTests|RebuildCoreTests|ilibraryTests'
       - name: Test publication guards
         run: python3 -m unittest discover -s packaging -p 'test_*.py'
       - name: Test rebuild probe guards without Music

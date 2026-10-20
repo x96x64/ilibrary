@@ -148,11 +148,15 @@ ilibrary validate CATALOG.json [PATH...]
 ilibrary apply CATALOG.json PATH... [--dry-run] [--rename] [--timestamps]
 ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]
 ilibrary add PATH... [--order release|artist|artist-desc|artist-release] [--dry-run]
+ilibrary rebuild prepare CATALOG.json SOURCE --workspace DIR --backup DIR --restore-test DIR --staging DIR [--dry-run]
+ilibrary rebuild status --workspace DIR
 ilibrary timestamps CATALOG.json PATH... [--dry-run] [--script FILE]
 ilibrary check [PATH...] [--library]
 ilibrary doctor
 ilibrary help [COMMAND] | --help | --version
 ```
+
+`rebuild prepare` and `rebuild status` are the 0.2.0 development state and are not released; the other `rebuild` subcommands are planned. See [Command-Line Interface](docs/command-line-interface.md#rebuild).
 
 Exit status is 0 on success, 1 on a failure or a finding from `check` or `doctor`, and 2 on a usage error. `check` requires at least one path or `--library`.
 

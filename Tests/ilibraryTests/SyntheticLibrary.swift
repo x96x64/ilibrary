@@ -176,6 +176,11 @@ extension Environment {
         // Tests never reach the real Music app; each test that needs a library supplies a substitute.
         environment.music = nil
         environment.musicStatus = nil
+        // Nor do they reach real storage, copying, date setting, or mount state.
+        environment.describeStorage = nil
+        environment.restoreCopy = nil
+        environment.setPreciseDates = nil
+        environment.waitUntilUnmounted = nil
         return environment
     }
 }

@@ -4,6 +4,8 @@
 
 This document is the plan for milestone M11 (target version 0.2.0) of the [Plan for the Stable Release](stable-release-plan.md). Under Decision 40 (October 20, 2026), the maintainer accepted M10 as passed and authorized M11 planning. Under Decision 41 (October 20, 2026), the maintainer approved this plan, as proposed in commit `235bd79`, with the recommended answers to Decisions A to G and the safeguards recorded in [Approved Decisions and Safeguards](#approved-decisions-and-safeguards). Implementation begins on a new milestone branch only after the M10 branch has been integrated into `main`; opening the M10 pull request does not authorize merging it. Live Music qualification, operations on the maintainer's physical backup device, publication of 0.2.0, tags, and registry releases require separate approval.
 
+Under Decision 45 (October 20, 2026), the maintainer accepted M11 as passed on the version 2 qualification recorded in [M11 Qualification Results, Version 2](reports/m11-qualification-v2-results.md), within the evidence limits recorded there. The conditional change under Decision F has not been implemented and requires separate authorization.
+
 The evidence on which this plan relies is classified as in the rest of the repository. Statements about the existing source are established by a read-only survey of the M10 branch at `ebea671`. Statements about Music, filesystems, and storage devices that have not been measured are marked as inferred or unknown.
 
 ## Scope

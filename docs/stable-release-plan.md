@@ -99,6 +99,8 @@ Use milestone branches, atomic Conventional Commits, supported attribution trail
 
 Under Decision 40 of the roadmap, M10 passed on October 20, 2026, on the four-case version 2 separated-addition qualification; see [M10 Separated Addition Qualification Results](reports/m10-separated-addition-qualification-results.md). Product `rebuild` remains unimplemented. M11 planning is authorized, and the proposed [M11 plan](m11-plan.md) awaits approval before implementation. Personal-library operations and publication require separate authorization.
 
+Under Decision 45 of the roadmap, M11 passed on October 20, 2026, on the version 2 backup and inventory qualification and its supplementary `rebuild status` observation, for one synthetic library, one Mac, and one external HFS+ drive; see [M11 Qualification Results, Version 2](reports/m11-qualification-v2-results.md). The conditional `check --library` change under Decision F of the M11 plan requires separate authorization. Product `rebuild` implements only `prepare` and `status`.
+
 ## Recommended Models and Effort
 
 For M10 and the destructive-operation and recovery work in M12–M13, use Claude Opus 5.5 with xhigh in Claude Code or GPT-6-Astra with xhigh in Codex, following the existing M5 rationale. Use high for documentation and distribution checkpoints. Do not use ultra.

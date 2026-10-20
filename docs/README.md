@@ -14,7 +14,9 @@
 
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
-- [Plan for M11](m11-plan.md): proposed backup, inventory, strict export, and recovery-record work for 0.2.0, with the decisions required before implementation
+- [Plan for M11](m11-plan.md): backup, inventory, strict export, and recovery-record work for 0.2.0, approved under Decision 41 with its Decisions A to G and safeguards; M11 passed under Decision 45
+- [M11 Backup and Inventory Qualification, Version 2](m11-qualification-v2.md): completed English procedure for the maintainer-operated bulk-reader, external-drive backup, restoration, and disconnection measurements of M11 with the library `M11-qualification-v2`; M11 passed on its report and supplementary `rebuild status` observation under Decision 45; retained for the record and not to be repeated
+- [M11 Backup and Inventory Qualification](m11-qualification.md): completed first-run procedure; the run stopped at Step 6 on the snapshot date conversion; retained for the record and not to be continued
 - [Separated Addition Qualification, Version 2](rebuild-qualification-v2-validation.md): Japanese procedure for the scale and three artist-order cases under Decision 36 with new libraries `M10-separated-v2-<case>`
 - [Separated Addition Qualification, First Run](rebuild-qualification-validation.md): completed Japanese first-run procedure; the scale case stopped in registration removal; retained for the record and not to be continued
 - [Rebuilding Addition Timing Validation](rebuild-timing-validation.md): completed Japanese version 2 timing procedure; its small case passed; retained for the record
@@ -80,3 +82,10 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-19 — [Removal Performance Revision](reports/removal-performance-revision.md)
 - 2026-10-19 — [Separated Addition Qualification, Version 2 Results](reports/separated-addition-qualification-v2-results.md)
 - 2026-10-20 — [M10 Separated Addition Qualification Results](reports/m10-separated-addition-qualification-results.md)
+- 2026-10-20 — [M11 Implementation and Qualification Preparation](reports/m11-implementation-and-qualification-preparation.md)
+- 2026-10-20 — [M11 Qualification Results, First Run](reports/m11-qualification-results.md)
+- 2026-10-20 — [M11 Date Correction and Version 2 Qualification Preparation](reports/m11-date-correction-and-qualification-v2-preparation.md)
+- 2026-10-20 — [M11 Qualification Results, Version 2](reports/m11-qualification-v2-results.md)
+- 2026-10-20 — [M11 Unpublished History Correction](reports/m11-history-correction.md)
+- 2026-10-20 — [M11 Pull Request Review Corrections](reports/m11-review-corrections.md)
+- 2026-10-20 — [M11 Residual Risk Corrections](reports/m11-residual-risk-corrections.md)

@@ -21,6 +21,10 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
     func mediaFolder() -> URL? { media }
     func allTracks() throws -> [LibraryTrack] { library }
     func tracks(album: String) throws -> [LibraryTrack] { library.filter { $0.album == album } }
+    func librarySnapshot() throws -> LibrarySnapshot {
+        LibrarySnapshot(
+            tracks: library, trackCount: library.count, fileTrackCount: library.count, dateAddedSeconds: [:])
+    }
     func track(persistentID: String) throws -> LibraryTrack? { library.first { $0.persistentID == persistentID } }
 
     func add(_ files: [URL]) throws -> [LibraryTrack] {
