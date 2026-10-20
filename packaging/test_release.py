@@ -138,6 +138,13 @@ class ReleaseGuardTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unsafe original manifest entry"):
                 repackage.reviewed_files(directory, hashlib.sha256(manifest).hexdigest())
 
+    def test_npm_publishes_the_downloaded_file(self):
+        # npm reads an unprefixed "dist/NAME.tgz" as the GitHub repository shorthand "dist/NAME.tgz".
+        workflow = (Path(__file__).resolve().parent.parent / ".github/workflows/release.yml").read_text()
+        commands = [line.strip() for line in workflow.splitlines() if line.strip().startswith("npm publish ")]
+        self.assertEqual(len(commands), 1)
+        self.assertTrue(commands[0].startswith('npm publish "./dist/'), commands[0])
+
 
 if __name__ == "__main__":
     unittest.main()

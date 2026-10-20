@@ -75,7 +75,7 @@ jobs:
           python3 packaging/check_release.py "$TAG" "$COMMIT"
           gh release download "$TAG" --dir dist
           python3 packaging/verify.py dist --version "${TAG#v}" --commit "$COMMIT" --manifest-sha256 "$MANIFEST"
-          npm publish "dist/x96_64-ilibrary-${TAG#v}.tgz" --access public --provenance --tag latest
+          npm publish "./dist/x96_64-ilibrary-${TAG#v}.tgz" --access public --provenance --tag latest
 
   pypi:
     if: inputs.publish == 'pypi' || inputs.publish == 'both'
