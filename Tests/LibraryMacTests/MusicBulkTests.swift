@@ -233,8 +233,18 @@
 
         static func text(_ sections: [String]) -> String { sections.joined(separator: MusicApp.sectionSeparator) }
 
-        @Test func aConsistentBulkOutputIsReturnedWithoutThePerTrackReader() throws {
-            for rows in [Self.samples, []] {
+        /// The varied samples with the one cloud status that the selection accepts from the bulk reader.
+        static let unknownSamples: [Fields] = samples.map { sample in
+            var row = sample
+            row[11] = "unknown"
+            return row
+        }
+
+        @Test func aConsistentBulkOutputWithOnlyUnknownStatusesIsReturnedWithoutThePerTrackReader() throws {
+            #expect(MusicApp.bulkAcceptedCloudStatus == "unknown")
+            #expect(Self.unknownSamples.count == 12)
+            #expect(Set(Self.unknownSamples.map { $0[11] }) == ["unknown"])
+            for rows in [Self.unknownSamples, [], [Self.unknownSamples[0]]] {
                 let expected = try MusicApp.parse(Self.perTrack(rows))
                 let actual = try Self.select(
                     bulk: { Self.text(Self.bulk(rows)) },
@@ -244,11 +254,57 @@
                     })
                 #expect(actual == expected)
                 #expect(actual.count == rows.count)
+                #expect(actual.allSatisfy { $0.cloudStatus == "unknown" })
+            }
+        }
+
+        @Test func anyOtherCloudStatusSelectsThePerTrackResultExactlyOnce() throws {
+            let sentinel = try MusicApp.parse(Self.perTrack([Self.row("PER-TRACK", status: "unknown")]))
+            for status in [
+                "", "matched", "subscription", "uploaded", "kUnk", "Unknown", "unknown ", " unknown", "UNKNOWN",
+            ] {
+                for position in [0, 5, 11] {
+                    var rows = Self.unknownSamples
+                    rows[position][11] = status
+                    var calls = 0
+                    let actual = try Self.select(
+                        bulk: { Self.text(Self.bulk(rows)) },
+                        perTrack: {
+                            calls += 1
+                            return sentinel
+                        })
+                    #expect(actual == sentinel, "status \(status.debugDescription) at \(position)")
+                    #expect(calls == 1, "status \(status.debugDescription) at \(position)")
+                }
+            }
+            // A library of only one rejected status, and the mixed varied samples.
+            for rows in [Self.samples, [Self.row("ID-1", status: "matched")]] {
+                var calls = 0
+                let actual = try Self.select(
+                    bulk: { Self.text(Self.bulk(rows)) },
+                    perTrack: {
+                        calls += 1
+                        return sentinel
+                    })
+                #expect(actual == sentinel && calls == 1)
+            }
+        }
+
+        @Test func whenTheGuardRejectsTheBulkResultAPerTrackErrorPropagatesUnchanged() {
+            let perTrackError = MusicAppError.scriptFailed("per-track")
+            var rows = Self.unknownSamples
+            rows[3][11] = "matched"
+            #expect(throws: perTrackError) {
+                try Self.select(bulk: { Self.text(Self.bulk(rows)) }, perTrack: { throw perTrackError })
+            }
+            #expect(throws: Marker.self) {
+                try Self.select(bulk: { Self.text(Self.bulk(rows)) }, perTrack: { throw Marker() })
             }
         }
 
         @Test func everyFailureOfTheBulkReadYieldsThePerTrackResult() throws {
-            let rows = Array(Self.samples.prefix(3))
+            // Valid bulk content with accepted statuses, so that only the structural failure selects the fallback.
+            let rows = Array(Self.unknownSamples.prefix(3))
             let expected = try MusicApp.parse(Self.perTrack(rows))
             var shortList = Self.bulk(rows)
             shortList[2] = "Song\u{1E}Song"

@@ -60,18 +60,31 @@
         /// exactly as `allTracks()` does. Any failure of the bulk read, including a thrown error, the
         /// unavailable marker, a wrong section count, an item count mismatch, a first and last identifier
         /// mismatch, or a parse error, selects the per-track reader, so that every error that this function
-        /// throws is an error of `allTracks()`.
+        /// throws is an error of `allTracks()`. The bulk result is also accepted only when the cloud status
+        /// text of every track is exactly `unknown` (see `bulkAcceptedCloudStatus`); a library with any other
+        /// status keeps the per-track reader and its speed. This guard examines only the parsed status text
+        /// and does not prove that the underlying status in Music is represented correctly.
         public static func allTracksPreferringBulk() throws -> [MusicTrackInfo] {
             try allTracksPreferringBulk(bulk: { try run(bulkScript(includeDates: false)) }, perTrack: allTracks)
         }
 
-        /// The selection of `allTracksPreferringBulk()` with both readers supplied. Errors thrown by
-        /// `perTrack` propagate unchanged.
+        /// The only cloud status text observed from the bulk read in the M11 live comparison (12 synthetic
+        /// tracks). The rendering of every other status by the bulk read is unmeasured.
+        static let bulkAcceptedCloudStatus = "unknown"
+
+        /// The selection of `allTracksPreferringBulk()` with both readers supplied. After a successful
+        /// assembly, the bulk tracks are accepted only if every track's `cloudStatus` equals
+        /// `bulkAcceptedCloudStatus` byte for byte, without case folding or trimming; an empty library is
+        /// accepted. In every other case `perTrack` supplies the result. The guard examines only the parsed
+        /// status text and does not prove that Music's underlying status is represented correctly; the value
+        /// is the only status observed in the M11 live comparison, so libraries with other statuses keep the
+        /// per-track reader and its speed. Errors thrown by `perTrack` propagate unchanged.
         static func allTracksPreferringBulk(
             bulk: () throws -> String, perTrack: () throws -> [MusicTrackInfo]
         ) throws -> [MusicTrackInfo] {
             if let text = try? bulk(), text != bulkUnavailable,
-                let tracks = try? assembleBulk(splitSections(text, expected: bulkSectionCount))
+                let tracks = try? assembleBulk(splitSections(text, expected: bulkSectionCount)),
+                tracks.allSatisfy({ $0.cloudStatus.utf8.elementsEqual(bulkAcceptedCloudStatus.utf8) })
             {
                 return tracks
             }

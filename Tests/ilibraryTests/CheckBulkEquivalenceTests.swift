@@ -108,10 +108,32 @@
             get throws { try MusicApp.parse(Self.perTrackText(rows)).map(SystemMusicLibrary.convert) }
         }
 
-        func optimizedTracks(bulk: @escaping () throws -> String) throws -> [LibraryTrack] {
+        /// The same state with the cloud status of every registration replaced, so that the selection function
+        /// can accept the bulk result.
+        func withEveryCloudStatus(_ status: String) -> BulkEquivalenceFixture {
+            var copy = self
+            for index in copy.rows.indices { copy.rows[index][11] = status }
+            return copy
+        }
+
+        /// The optimized read and the number of times that it called the per-track reader.
+        func optimizedRead(
+            bulk: @escaping () throws -> String
+        ) throws -> (tracks: [LibraryTrack], perTrackCalls: Int) {
             let text = Self.perTrackText(rows)
-            return try MusicApp.allTracksPreferringBulk(bulk: bulk, perTrack: { try MusicApp.parse(text) })
-                .map(SystemMusicLibrary.convert)
+            var calls = 0
+            let tracks = try MusicApp.allTracksPreferringBulk(
+                bulk: bulk,
+                perTrack: {
+                    calls += 1
+                    return try MusicApp.parse(text)
+                }
+            ).map(SystemMusicLibrary.convert)
+            return (tracks, calls)
+        }
+
+        func optimizedTracks(bulk: @escaping () throws -> String) throws -> [LibraryTrack] {
+            try optimizedRead(bulk: bulk).tracks
         }
 
         func runs(_ arguments: [String], original: [LibraryTrack], optimized: [LibraryTrack]) -> (Run, Run) {
@@ -149,7 +171,10 @@
             let fixture = try BulkEquivalenceFixture()
             defer { fixture.library.remove() }
             let original = try fixture.originalTracks
-            let optimized = try fixture.optimizedTracks(bulk: { BulkEquivalenceFixture.bulkText(fixture.rows) })
+            let (optimized, perTrackCalls) = try fixture.optimizedRead(bulk: {
+                BulkEquivalenceFixture.bulkText(fixture.rows)
+            })
+            #expect(perTrackCalls == 1, "mixed cloud statuses must select the per-track reader exactly once")
             #expect(optimized == original)
             #expect(original.count == 12)
             #expect(original.contains { $0.location == nil })
@@ -170,11 +195,53 @@
             let fixture = try BulkEquivalenceFixture()
             defer { fixture.library.remove() }
             let original = try fixture.originalTracks
-            let optimized = try fixture.optimizedTracks(bulk: { BulkEquivalenceFixture.bulkText(fixture.rows) })
+            let (optimized, perTrackCalls) = try fixture.optimizedRead(bulk: {
+                BulkEquivalenceFixture.bulkText(fixture.rows)
+            })
+            #expect(perTrackCalls == 1, "mixed cloud statuses must select the per-track reader exactly once")
             let arguments = ["check", fixture.library.root.path, "--library"]
             let (first, second) = fixture.runs(arguments, original: original, optimized: optimized)
             expectIdentical(first, second)
             expectFindings(first, fixture)
+        }
+
+        @Test func bulkReadIsUsedAndEquivalentWhenEveryCloudStatusIsUnknown() throws {
+            let fixture = try BulkEquivalenceFixture().withEveryCloudStatus("unknown")
+            defer { fixture.library.remove() }
+            #expect(Set(fixture.rows.map { $0[11] }) == ["unknown"])
+            let original = try fixture.originalTracks
+            #expect(original.count == 12)
+            #expect(original.allSatisfy { $0.cloudStatus == "unknown" })
+            var perTrackCalls = 0
+            let text = BulkEquivalenceFixture.perTrackText(fixture.rows)
+            let optimized = try MusicApp.allTracksPreferringBulk(
+                bulk: { BulkEquivalenceFixture.bulkText(fixture.rows) },
+                perTrack: {
+                    perTrackCalls += 1
+                    Issue.record("the per-track reader was called although every status is unknown")
+                    return try MusicApp.parse(text)
+                }
+            ).map(SystemMusicLibrary.convert)
+            #expect(perTrackCalls == 0)
+            #expect(optimized == original)
+            for arguments in [["check", "--library"], ["check", fixture.library.root.path, "--library"]] {
+                let (first, second) = fixture.runs(arguments, original: original, optimized: optimized)
+                expectIdentical(first, second)
+                let text = first.text
+                #expect(first.status == 1, "\(text)")
+                #expect(first.errors.isEmpty)
+                #expect(!text.contains("cloud status is matched"))
+                #expect(!text.contains("cloud status is subscription"))
+                #expect(text.contains("composer differs: file \"Example Writer\", library \"\""))
+                #expect(text.contains("in the library 2 times"))
+                #expect(text.contains("a library track whose file is missing"))
+                if arguments.count == 2 {
+                    #expect(text.contains("2 library file(s) use other formats"))
+                    #expect(text.contains("a library track without a file"))
+                } else {
+                    #expect(text.contains("not in the library"))
+                }
+            }
         }
 
         @Test func aFailedBulkReadFallsBackToTheIdenticalPerTrackResult() throws {
