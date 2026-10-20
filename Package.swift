@@ -18,7 +18,7 @@ let package = Package(
         .executableTarget(
             name: "ilibrary",
             dependencies: [
-                "MP4Core", "FLACCore", "CatalogCore",
+                "MP4Core", "FLACCore", "CatalogCore", "RebuildCore",
                 .target(name: "LibraryMac", condition: .when(platforms: [.macOS])),
                 .target(name: "ConversionMac", condition: .when(platforms: [.macOS])),
             ]),
@@ -37,7 +37,7 @@ let package = Package(
         .testTarget(
             name: "ilibraryTests",
             dependencies: [
-                "ilibrary", "MP4Core", "FLACCore", "CatalogCore", "SyntheticMedia",
+                "ilibrary", "MP4Core", "FLACCore", "CatalogCore", "RebuildCore", "SyntheticMedia",
                 .target(name: "SyntheticMediaMac", condition: .when(platforms: [.macOS])),
                 .target(name: "ConversionMac", condition: .when(platforms: [.macOS])),
             ]),

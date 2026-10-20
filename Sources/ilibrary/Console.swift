@@ -1,4 +1,5 @@
 import Foundation
+import RebuildCore
 
 #if canImport(LibraryMac)
     import LibraryMac
@@ -28,6 +29,16 @@ struct MusicAppStatus: Sendable {
     var isRunning: @Sendable () -> Bool
     /// One of `permitted`, `denied`, `not determined`, `Music not running`, and `unknown`.
     var permission: @Sendable () -> String
+}
+
+/// The storage that holds a path, as `rebuild prepare` records and judges it. Physical disk names are not stored.
+struct StorageReport: Equatable, Sendable {
+    /// Where the volume is mounted, which names it in the instruction to eject it.
+    var mountPoint: String
+    var volumeUUID: String?
+    var filesystemType: String
+    var isReadOnly: Bool
+    var facts: StorageFacts
 }
 
 /// Lossless conversion, available where AudioToolbox is (macOS).
@@ -81,6 +92,24 @@ struct Environment: Sendable {
     var music: (any MusicLibrary)? = Environment.systemMusic
     /// The state of the Music app, read without launching it or prompting; nil where Music is unavailable.
     var musicStatus: MusicAppStatus? = Environment.systemMusicStatus
+    /// Describes the storage of an existing path; nil where storage cannot be examined.
+    var describeStorage: (@Sendable (String) throws -> StorageReport)? = Environment.systemStorageDescription
+    /// The timestamp policy of the volume that holds a path, or nil when it is neither APFS nor HFS+.
+    var timestampPolicy: @Sendable (String) -> TimestampPolicy? = { TimestampPolicy.forVolume(containing: $0) }
+    /// Copies a regular file (source, destination, restoration root) exclusively and without its dates; nil where
+    /// unavailable.
+    var restoreCopy: (@Sendable (URL, URL, URL) throws -> Void)? = Environment.systemRestoreCopy
+    /// Sets the modification and creation times (path, modification, creation) of an existing file with
+    /// nanosecond precision and returns the stored values; nil where unavailable.
+    var setPreciseDates:
+        (
+            @Sendable (String, FileTimestamp, FileTimestamp) throws -> (
+                modification: FileTimestamp, creation: FileTimestamp?
+            )
+        )? = Environment.systemPreciseDates
+    /// Waits until the volume with a UUID is no longer mounted, for at most the given seconds, and returns whether it
+    /// is unmounted. It never unmounts anything; nil where unavailable.
+    var waitUntilUnmounted: (@Sendable (String, TimeInterval) -> Bool)? = Environment.systemUnmountWait
 
     static var system: Environment {
         #if canImport(LibraryMac) && os(macOS)
@@ -133,6 +162,53 @@ struct Environment: Sendable {
                 permission: { MusicStatus.permission().rawValue })
         #else
             nil
+        #endif
+    }
+
+    static var systemStorageDescription: (@Sendable (String) throws -> StorageReport)? {
+        #if canImport(LibraryMac) && os(macOS)
+            return { path in
+                let description = try StorageDevice.describe(path: path)
+                return StorageReport(
+                    mountPoint: description.mountPoint, volumeUUID: description.volumeUUID,
+                    filesystemType: description.filesystemType, isReadOnly: description.isReadOnly,
+                    facts: description.facts)
+            }
+        #else
+            return nil
+        #endif
+    }
+
+    static var systemRestoreCopy: (@Sendable (URL, URL, URL) throws -> Void)? {
+        #if canImport(LibraryMac) && os(macOS)
+            return { source, destination, root in _ = try RestoreCopy.copy(from: source, to: destination, below: root) }
+        #else
+            return nil
+        #endif
+    }
+
+    static var systemPreciseDates:
+        (
+            @Sendable (String, FileTimestamp, FileTimestamp) throws -> (
+                modification: FileTimestamp, creation: FileTimestamp?
+            )
+        )?
+    {
+        #if canImport(LibraryMac) && os(macOS)
+            return { path, modification, creation in
+                let stored = try PreciseFileDates.set(path: path, modification: modification, creation: creation)
+                return (stored.modification, stored.creation)
+            }
+        #else
+            return nil
+        #endif
+    }
+
+    static var systemUnmountWait: (@Sendable (String, TimeInterval) -> Bool)? {
+        #if canImport(LibraryMac) && os(macOS)
+            return { MountState.waitUntilUnmounted(volumeUUID: $0, timeout: $1) }
+        #else
+            return nil
         #endif
     }
 

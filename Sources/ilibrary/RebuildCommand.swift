@@ -1,0 +1,257 @@
+import CatalogCore
+import Foundation
+import RebuildCore
+
+/// The `rebuild` command group. Only `prepare` and `status` exist in this version; the other planned subcommands
+/// are reserved and refuse to run.
+enum RebuildCommand {
+    static let reserved = ["stage", "clear", "apply", "add"]
+
+    static let syntax = CommandSyntax(
+        name: "rebuild",
+        usage: """
+            Usage: ilibrary rebuild SUBCOMMAND [OPTIONS] [ARGUMENTS]
+
+            Prepares the rebuilding of a Music library from its files: it inventories the files and the
+            registrations, verifies a backup on separate storage, tests the restoration of the backup, and
+            records the verified plan. It does not change Music, the source files, or the backup.
+
+            Subcommands:
+              prepare   inventory, verify the backup, test restoration, and write a recovery record
+              status    report a recovery record
+              stage     planned; not implemented in this version
+              clear     planned; not implemented in this version
+              apply     planned; not implemented in this version
+              add       planned; not implemented in this version
+
+            Run 'ilibrary rebuild SUBCOMMAND --help' for the options of a subcommand.
+            """, positionals: 0...Int.max)
+
+    static let prepareSyntax = CommandSyntax(
+        name: "rebuild prepare",
+        usage: """
+            Usage: ilibrary rebuild prepare CATALOG.json SOURCE --workspace DIR --backup DIR --restore-test DIR
+                                            --staging DIR [--order release|artist|artist-desc|artist-release]
+                                            [--confirm-separate-device] [--disconnect-timeout SECONDS] [--dry-run]
+
+            Verifies that the library under SOURCE can be rebuilt, in this order, and stops at the first step
+            that fails, listing every reason of that step.
+              1. The catalog is validated against the .m4a files under SOURCE, which are inventoried (size,
+                 SHA-256, and dates). Every file must match the catalog and every catalog track a file.
+              2. The whole Music library is read. Every registration must be a file track of the inventory with
+                 an admitted cloud status, and every file must be registered once.
+              3. The locations must not overlap or pass through symbolic links, and every volume must have
+                 the capacity that the plan needs.
+              4. The backup must be on separate physical storage (APFS or HFS+, not a disk image, with a known
+                 volume UUID) and must hold every file with equal bytes and dates.
+              5. The backup is restored into the restoration-test directory, which must exist and be empty, and
+                 the result is verified. Restored files are kept and never deleted by iLibrary.
+              6. You are asked to eject the backup volume, and its disappearance is confirmed.
+              7. A recovery record is written to the workspace and read back.
+            Only one SOURCE directory is supported in this version; multiple sources are not supported yet.
+            Source files, the backup, and Music are never modified, and no registration is added or removed.
+            Requires macOS and the Automation permission for Music.
+
+            Options:
+              --workspace DIR              existing directory that receives the recovery record (private)
+              --backup DIR                 existing directory that mirrors the relative paths of SOURCE
+              --restore-test DIR           existing empty directory for the restoration test
+              --staging DIR                directory outside Music's media folder planned for evacuation
+              --order ORDER                release (default), artist, artist-desc, or artist-release
+              --confirm-separate-device    state that the backup is on a separate physical device
+              --disconnect-timeout SECONDS wait for the ejection at most this long (default 600)
+              --dry-run                    perform steps 1 to 4, print the plan, and change nothing
+            """,
+        valued: [
+            "--workspace": [], "--backup": [], "--restore-test": [], "--staging": [], "--order": [],
+            "--disconnect-timeout": [],
+        ], flags: ["--confirm-separate-device", "--dry-run"], positionals: 2...Int.max)
+
+    static let statusSyntax = CommandSyntax(
+        name: "rebuild status",
+        usage: """
+            Usage: ilibrary rebuild status --workspace DIR
+
+            Reads the recovery record in the workspace and reports its creation time, locations, counts, backup
+            and restoration results, stage, and the next required action. It does not access Music or the
+            backup and changes nothing. The record is private: it contains machine-specific paths and Music
+            persistent IDs. Exit status is 0 for a valid record and 1 for a missing or invalid one.
+
+            Options:
+              --workspace DIR   the directory that holds the recovery record
+            """, valued: ["--workspace": []], positionals: 0...0)
+
+    /// The help text of a subcommand, or of the group when the subcommand is nil or unknown.
+    static func usage(for subcommand: String?) -> String {
+        switch subcommand {
+        case "prepare": return prepareSyntax.usage
+        case "status": return statusSyntax.usage
+        default: return syntax.usage
+        }
+    }
+
+    static func run(_ arguments: [String], console: Console, environment: Environment) throws -> Int32 {
+        guard let subcommand = arguments.first else {
+            throw CommandError.usage("rebuild: a subcommand is required\n\n\(syntax.usage)")
+        }
+        let rest = Array(arguments.dropFirst())
+        if subcommand == "--help" || subcommand == "-h" {
+            console.print(syntax.usage)
+            return 0
+        }
+        if rest.contains("--help") || rest.contains("-h"), subcommand == "prepare" || subcommand == "status" {
+            console.print(usage(for: subcommand))
+            return 0
+        }
+        switch subcommand {
+        case "prepare": return try RebuildPrepare.run(rest, console: console, environment: environment)
+        case "status": return try RebuildStatus.run(rest, console: console)
+        default:
+            if reserved.contains(subcommand) {
+                if rest.contains("--help") || rest.contains("-h") {
+                    console.print(syntax.usage)
+                    return 0
+                }
+                throw CommandError.usage("rebuild \(subcommand) is planned and not implemented in version \(version)")
+            }
+            throw CommandError.usage("rebuild: unknown subcommand \(subcommand)\n\n\(syntax.usage)")
+        }
+    }
+
+    // MARK: Paths
+
+    /// Resolves a path to an absolute one in which every symbolic link in the existing part is resolved. Relative
+    /// paths are taken from the working directory. A ".." component removes the resolved component before it, as
+    /// the system does. Components that do not exist are appended unchanged. Nothing is created.
+    static func resolve(_ path: String) -> String {
+        let base = path.hasPrefix("/") ? path : FileManager.default.currentDirectoryPath + "/" + path
+        var current = "/"
+        for part in base.split(separator: "/", omittingEmptySubsequences: true) {
+            switch part {
+            case ".": continue
+            case "..":
+                let real = realPath(current) ?? current
+                current = real == "/" ? "/" : parent(of: real)
+            default:
+                let candidate = (current == "/" ? "" : current) + "/" + part
+                current = realPath(candidate) ?? candidate
+            }
+        }
+        return current
+    }
+
+    private static func realPath(_ path: String) -> String? {
+        guard let resolved = realpath(path, nil) else { return nil }
+        defer { free(resolved) }
+        return String(cString: resolved)
+    }
+
+    private static func parent(of path: String) -> String {
+        guard let slash = path.lastIndex(of: "/"), slash != path.startIndex else { return "/" }
+        return String(path[..<slash])
+    }
+
+    /// The path itself when it exists, and otherwise its nearest existing ancestor.
+    static func nearestExisting(_ path: String) -> String {
+        var current = path
+        while current != "/", pathKind(URL(fileURLWithPath: current)) == .missing { current = parent(of: current) }
+        return current
+    }
+
+    // MARK: Descriptions of record errors
+
+    static func describe(_ problem: RecoveryRecordProblem) -> String {
+        switch problem {
+        case .malformedPersistentID(let id): "malformed persistent ID '\(id)'"
+        case .duplicatePersistentID(let id): "persistent ID \(id) occurs more than once"
+        case .invalidInventoryPath(let path): "invalid inventory path '\(path)'"
+        case .escapingInventoryPath(let path): "inventory path '\(path)' leaves its source root"
+        case .collidingInventoryPaths(let first, let second): "inventory paths '\(first)' and '\(second)' collide"
+        case .inventoryUnsorted: "the inventory is not sorted"
+        case .unknownSourceRoot(let root): "an inventory file names the unknown source root '\(root)'"
+        case .mappingNotOneToOne(let detail): "the registration mapping is not one-to-one: \(detail)"
+        case .evacuationOutsideStaging(let path): "the evacuation target '\(path)' is outside the staging directory"
+        case .evacuationNotUnique(let path): "the evacuation target '\(path)' occurs more than once"
+        case .evacuationSourcesDiffer(let detail): "the evacuation plan differs from the inventory: \(detail)"
+        case .displayListNotReverse: "the expected display list is not the reverse of the addition list"
+        case .backupDisconnectedWithoutVerification:
+            "the backup is recorded as disconnected without a successful verification and confirmation"
+        case .inconsistent(let detail): detail
+        case .locationsInvalid(let refusals):
+            "the locations are invalid: " + refusals.map(\.description).joined(separator: "; ")
+        }
+    }
+
+    static func describe(_ error: RecoveryRecordError) -> [String] {
+        switch error {
+        case .alreadyExists(let path): ["a recovery record already exists at \(path)"]
+        case .notADirectory(let path): ["\(path) is not a directory"]
+        case .notARegularFile(let path): ["\(path) is not a regular file"]
+        case .unreadable(let path, let reason): ["\(path) cannot be read: \(reason)"]
+        case .wrongFormat(let format): ["the record has the unsupported format '\(format)'"]
+        case .malformed(let detail): ["the record is not well formed: \(detail)"]
+        case .checksumMismatch: ["the record's checksum does not match its content (it is damaged or was edited)"]
+        case .invalid(let problems): problems.map(describe)
+        case .writeFailed(let detail): ["the record could not be written: \(detail)"]
+        case .readBackMismatch: ["the record read back differs from the record written"]
+        }
+    }
+}
+
+enum RebuildStatus {
+    static func run(_ arguments: [String], console: Console) throws -> Int32 {
+        let parsed = try RebuildCommand.statusSyntax.parse(arguments)
+        guard let workspaceOption = parsed.value("--workspace") else {
+            throw CommandError.usage("rebuild status: --workspace DIR is required")
+        }
+        let workspace = RebuildCommand.resolve(workspaceOption)
+        let recordPath = workspace + "/" + RecoveryRecord.fileName
+        console.print("Workspace: \(workspace)")
+        guard pathKind(URL(fileURLWithPath: recordPath)) != .missing else {
+            console.error("there is no recovery record at \(recordPath)")
+            throw CommandError.failure("rebuild status: no valid recovery record; nothing was changed")
+        }
+        let record: RecoveryRecord
+        do {
+            record = try RecoveryRecord.load(from: URL(fileURLWithPath: workspace))
+        } catch let error as RecoveryRecordError {
+            for reason in RebuildCommand.describe(error) { console.error(reason) }
+            throw CommandError.failure(
+                "rebuild status: the recovery record is invalid and is not trusted; nothing was changed")
+        }
+        let bytes = record.inventory.reduce(UInt64(0)) { $0 &+ $1.record.size }
+        console.print("Recovery record: \(recordPath) (format \(record.format), private)")
+        console.print("Created: \(record.createdAt) by ilibrary \(record.ilibraryVersion)")
+        console.print("Catalog: \(record.catalogPath) (SHA-256 \(record.catalogSHA256))")
+        console.print("Locations:")
+        for (index, source) in record.locations.sources.enumerated() {
+            console.print("  source \(index + 1): \(source)")
+        }
+        console.print("  media folder: \(record.locations.mediaFolder)")
+        console.print("  backup: \(record.locations.backupRoot)")
+        console.print("  restoration-test directory: \(record.locations.restorationDirectory)")
+        console.print("  staging directory: \(record.locations.stagingDirectory)")
+        console.print("  workspace: \(record.locations.workspaceDirectory)")
+        console.print(
+            "Counts: \(record.inventory.count) files (\(bytes) bytes), \(record.registrations.count) registrations, "
+                + "\(record.additionList.count) albums")
+        let backup = record.backup
+        console.print(
+            "Backup: \(backup.verification.map { $0.success ? "verified \($0.checkedCount) files" : "verification failed" } ?? "not verified")"
+                + (backup.verifiedAt.map { " at \($0)" } ?? "")
+                + "; filesystem \(backup.filesystemType ?? "unknown"), timestamp policy \(backup.timestampPolicy.rawValue), "
+                + "volume UUID \(backup.volumeUUID ?? "unknown"); separate device confirmed by the maintainer: "
+                + (backup.maintainerConfirmed ? "yes" : "no"))
+        console.print(
+            "Backup disconnected: \(backup.disconnectedAt.map { "yes, confirmed at \($0)" } ?? "not confirmed")")
+        let restoration = record.restoration
+        console.print(
+            "Restoration test: \(restoration.verification.map { $0.success ? "verified \($0.checkedCount) files" : "verification failed" } ?? "not verified")"
+                + (restoration.verifiedAt.map { " at \($0)" } ?? "") + "; directory \(restoration.directory) (kept)")
+        console.print("Stage: \(record.stage.rawValue)")
+        console.print(
+            "Next required action: keep the recovery record and the backup. The later stages (rebuild stage, clear, "
+                + "apply, and add) are planned and not implemented in version \(version).")
+        return 0
+    }
+}

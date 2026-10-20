@@ -2,13 +2,17 @@
 
 ## Status
 
-`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in version 0.1.0. The implemented `add` and `check --library` passed [separate-user validation](reports/library-command-validation.md); use the separate-user procedure before operating a personal library.
+`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in version 0.1.0 and, marked as the 0.2.0 development state and not released, `rebuild prepare` and `rebuild status`. The implemented `add` and `check --library` passed [separate-user validation](reports/library-command-validation.md); use the separate-user procedure before operating a personal library.
 
 ## Synopsis
 
 ```
 ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]
 ilibrary add PATH... [--order release|artist|artist-desc|artist-release] [--dry-run]
+ilibrary rebuild prepare CATALOG.json SOURCE --workspace DIR --backup DIR --restore-test DIR --staging DIR
+                         [--order release|artist|artist-desc|artist-release] [--confirm-separate-device]
+                         [--disconnect-timeout SECONDS] [--dry-run]
+ilibrary rebuild status --workspace DIR
 ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--strict] [--dry-run]
 ilibrary prompt CATALOG.json
 ilibrary schema
@@ -20,15 +24,15 @@ ilibrary doctor
 ilibrary help [COMMAND] | --help | --version
 ```
 
-`ilibrary help COMMAND` and `ilibrary COMMAND --help` print the options of a command. Options take their value as the next argument or after `=`, as in `--output=catalog.json`; `--` ends the options.
+`ilibrary help COMMAND` and `ilibrary COMMAND --help` print the options of a command; `ilibrary help rebuild`, `ilibrary rebuild --help`, and `ilibrary rebuild prepare --help` print the group and subcommand help. Options take their value as the next argument or after `=`, as in `--output=catalog.json`; `--` ends the options.
 
 ## Exit Status
 
 | Status | Meaning |
 | --- | --- |
 | 0 | Success |
-| 1 | A runtime failure, an invalid catalog, a refusal, or a problem reported by `check` or `doctor` |
-| 2 | A usage error: an unknown command or option, or a missing argument |
+| 1 | A runtime failure, an invalid catalog, a refusal, a problem reported by `check` or `doctor`, a step of `rebuild prepare` that did not pass, or a missing or invalid recovery record reported by `rebuild status` |
+| 2 | A usage error: an unknown command or option, a missing argument, or a reserved `rebuild` subcommand (`stage`, `clear`, `apply`, `add`) |
 
 Reports are written to standard output, and errors and warnings to standard error with the prefixes `ilibrary: error:` and `ilibrary: warning:`.
 
@@ -83,6 +87,49 @@ Progress is recorded in `.ilibrary-add.json` in the first staging folder, with t
 
 - `--order ORDER` selects the order.
 - `--dry-run` lists the order, every move, and any track that would stop the run, and changes nothing. It reads the library.
+
+### rebuild
+
+```bash
+ilibrary rebuild prepare catalog.json ~/Music/Media.localized/Music --workspace ~/ilibrary-work \
+    --backup /Volumes/Backup/Music --restore-test ~/ilibrary-restore --staging ~/ilibrary-staging \
+    --confirm-separate-device --dry-run
+ilibrary rebuild status --workspace ~/ilibrary-work
+```
+
+The `rebuild` group prepares the rebuilding of a Music library from its files. In the 0.2.0 development state, which is not released, only `prepare` and `status` exist. They never change Music, the source files, or the backup, and they add or remove no Music registration. The subcommands `stage`, `clear`, `apply`, and `add` are reserved: each prints that it is planned and not implemented in this version and ends with status 2. The behavior of Music and iCloud Music Library under these procedures has not been fully measured; `prepare` documents conditions that reduce cloud matching and refuses what it detects, and it does not claim to prevent it.
+
+#### rebuild prepare
+
+`prepare` takes exactly one `SOURCE` directory in this version; multiple sources are not supported yet. There are no prompts. Every path option is resolved to an absolute path in which symbolic links of the existing part of the path are resolved, and the resolved paths are printed and used. `--workspace`, `--backup`, and `--restore-test` must name existing directories. A recovery record that already exists in the workspace is never overwritten, and the command refuses before any other work. Platform operations require macOS.
+
+Each step runs only if the preceding steps passed. A failing step ends the command with status 1, one line on standard error per reason found in that step, and a final line that states what was changed: nothing, or only the files restored so far in the restoration directory, which are kept.
+
+1. **Catalog and inventory.** The catalog is validated, and the `.m4a` files under `SOURCE` are inventoried by size, SHA-256, modification date, and creation date. Symbolic links, non-regular files, and colliding names are refused. Every file must match the catalog and every catalog track must have a file, by the rules of `validate`. The addition list is the catalog's album order for `--order` (`release` by default), and the expected display list is its reverse.
+2. **Library registrations.** The whole library is read in a fixed number of requests. Every registration must be a file track whose location is a file of the inventory, with the cloud status empty or `unknown`, and every file must have exactly one registration. Non-file tracks, protected audio, duplicate locations, and registrations outside `SOURCE` are refused. Music's media folder must be known. Requires the Automation permission for Music.
+3. **Plan validation.** The source, Music's media folder, the backup, the restoration-test directory, the staging directory, and the workspace must not overlap or pass through symbolic links; the source may lie inside the media folder. The restoration-test directory must be empty and on an APFS or HFS+ volume. Capacity is checked per volume with the plain available capacity: the restoration test needs the full inventory size, a staging directory on another volume needs a full copy, and the workspace needs 64 MiB. Unknown capacity is a refusal.
+4. **Backup verification.** The backup must be on a local APFS or HFS+ volume that is not a disk image, must not share a physical disk with any other location, and must have a known volume UUID, without which its disconnection cannot be confirmed. `--confirm-separate-device` records the maintainer's statement that the medium is separate; without it, the backup is refused. Automatic device information refuses unsafe cases and never establishes independence alone. Every inventoried file must exist at the same relative path below the backup with equal size, bytes, and dates under the timestamp policy of the volume (APFS: exact nanoseconds; HFS+: the source time truncated to whole seconds); an additional `.m4a` file in the backup is also refused.
+5. **Restoration test.** Every file is copied from the backup to the same relative path below the restoration-test directory, its dates are set, and the directory is verified against the inventory. If either volume is HFS+, the HFS+ policy applies. Restored files are kept and never deleted by iLibrary, including after a failure.
+6. **Disconnection.** The command names the backup volume, asks you to eject it, and waits for at most `--disconnect-timeout` seconds (600 by default). It never unmounts anything. A volume that is still mounted is a refusal.
+7. **Recovery record.** The record is written to the workspace, synchronized, and read back.
+
+With `--dry-run`, steps 1 to 4 run, the complete plan is printed, and the command ends with status 0 and the statement that nothing was changed. The plan lists the resolved locations, the counts and total bytes, the capacity accounting for each volume, the addition and expected display lists, the evacuation plan summary, the backup facts, the timestamp policy, and the verification result. Without it, the same plan is printed before the restoration test, followed by the statement of the files that will be written.
+
+- `--workspace DIR` names the directory that receives the recovery record.
+- `--backup DIR` names the backup tree, which mirrors the relative paths below `SOURCE`. iLibrary never writes to it.
+- `--restore-test DIR` names the empty directory that receives the restoration test.
+- `--staging DIR` names the planned evacuation directory, outside Music's media folder. Nothing is written to it in this version.
+- `--order ORDER` selects `release` (default), `artist`, `artist-desc`, or `artist-release`.
+- `--confirm-separate-device` states that the backup is on a separate physical device.
+- `--disconnect-timeout SECONDS` sets the wait for the ejection, from 0 to 86400.
+
+#### rebuild status
+
+`status` loads and validates the recovery record in `--workspace` and prints its creation time, locations, counts, the backup and restoration results, the stage, and the next required action. It accesses neither Music nor the backup and changes nothing. A missing or invalid record, including a wrong format, a damaged checksum, or inconsistent content, is reported with its reasons and ends with status 1. Because the later stages are not implemented in this version, the next required action is to keep the record and the backup.
+
+#### Recovery Record
+
+The record, `rebuild-record.json` in the workspace, has the format `ilibrary-rebuild-record-1`, distinct from the catalog format. It holds the inventory, the registrations and their mapping to files, the addition and expected display lists, the evacuation plan, the backup and restoration results, and the stage, which is `prepared` in this version. It is private: it contains machine-specific paths, the volume UUID of the backup, and Music persistent IDs. Never share, publish, or commit it. Its checksum detects accidental damage and does not authenticate it. Any change to the catalog, the files, the library, or the backup after preparation invalidates the record and requires a new `prepare` in a new workspace.
 
 ### export
 

@@ -13,6 +13,7 @@ enum CommandLineInterface {
         ("timestamps", "set file and folder dates to release dates", true),
         ("import", "convert or copy downloads into a staging folder without loss", true),
         ("add", "add albums to Music one at a time, in order", true),
+        ("rebuild", "prepare and verify the rebuilding of a library (prepare and status only)", true),
         ("check", "report problems of files and compare them with the library", true),
         ("doctor", "report the environment and how to fix its problems", true),
     ]
@@ -37,6 +38,7 @@ enum CommandLineInterface {
         "validate": ValidateCommand.syntax, "apply": ApplyCommand.syntax, "timestamps": TimestampsCommand.syntax,
         "import": ImportCommand.syntax, "add": AddCommand.syntax, "check": CheckCommand.syntax,
         "doctor": DoctorCommand.syntax,
+        "rebuild": RebuildCommand.syntax,
     ]
 
     static func run(_ arguments: [String], console: Console, environment: Environment) -> Int32 {
@@ -70,11 +72,12 @@ enum CommandLineInterface {
                 return 0
             }
             guard let syntax = syntaxes[topic] else { throw CommandError.usage("no help for \(topic)") }
-            console.print(syntax.usage)
+            console.print(topic == "rebuild" ? RebuildCommand.usage(for: rest.dropFirst().first) : syntax.usage)
             return 0
         default:
             break
         }
+        if command == "rebuild" { return try RebuildCommand.run(rest, console: console, environment: environment) }
         if rest.contains("--help") || rest.contains("-h"), let syntax = syntaxes[command] {
             console.print(syntax.usage)
             return 0
