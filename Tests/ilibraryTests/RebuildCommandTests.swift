@@ -168,8 +168,10 @@ import Testing
             "Example Artist - Synthetic Album", "Example Artist - Double Album", "Various Artists - Tribute Collection",
         ]
 
-        init(truncateBackupDates: Bool = false) throws {
-            library = try SyntheticLibrary()
+        init(truncateBackupDates: Bool = false, albums: [SyntheticLibrary.AlbumSpec] = SyntheticLibrary.standardAlbums)
+            throws
+        {
+            library = try SyntheticLibrary(albums: albums)
             base = URL(
                 fileURLWithPath: RebuildCommand.resolve(
                     FileManager.default.temporaryDirectory.appendingPathComponent(
@@ -488,6 +490,36 @@ import Testing
                 run, step: 1, title: "catalog and file inventory", reasons: ["no file for album 1, disc 1, track 1"],
                 before: before)
             #expect(fixture.music.snapshotReads == 0)
+        }
+
+        @Test func aCatalogAlbumWithoutAnyFileIsRefusedAtStepOne() throws {
+            let albums = Array(SyntheticLibrary.standardAlbums.prefix(2))
+            let fixture = try RebuildFixture(albums: albums)
+            defer { fixture.remove() }
+            // The album is absent from the source, the library, and the backup alike, so no later step refuses it.
+            let absentFolder = fixture.source + "/" + albums[1].folder
+            try FileManager.default.removeItem(atPath: absentFolder)
+            try FileManager.default.removeItem(atPath: fixture.backup + "/" + albums[1].folder)
+            fixture.music.snapshot.tracks.removeAll { ($0.location ?? "").hasPrefix(absentFolder + "/") }
+            fixture.music.snapshot.trackCount = fixture.music.snapshot.tracks.count
+            fixture.music.snapshot.fileTrackCount = fixture.music.snapshot.tracks.count
+            #expect(fixture.music.snapshot.tracks.count == 3)
+            let before = try fixture.state()
+            let titles = [
+                "album 2, disc 1, track 1 \"Opening\"", "album 2, disc 1, track 2 \"Middle\"",
+                "album 2, disc 2, track 1 \"Return\"", "album 2, disc 2, track 2 \"Closing\"",
+            ]
+            for extra in [[], ["--dry-run"]] {
+                let run = fixture.prepare(extra)
+                try fixture.expectRefusal(
+                    run, step: 1, title: "catalog and file inventory", reasons: titles.map { "no file for " + $0 },
+                    before: before)
+                #expect(!run.errorText.contains("no file for album 1"))
+                #expect(fixture.fakes.copyCalls == 0)
+                #expect(fixture.fakes.waitCalls.isEmpty)
+                #expect(
+                    !FileManager.default.fileExists(atPath: fixture.workspace + "/" + RecoveryRecord.fileName))
+            }
         }
 
         @Test func aFileThatTheCatalogDoesNotMatchIsRefusedAtStepOne() throws {

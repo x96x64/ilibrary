@@ -315,7 +315,19 @@ enum RebuildPrepare {
                     for refusal in correspondence.refused {
                         reasons.append("refused \(refusal.path): \(refusal.reason)")
                     }
-                    for reference in correspondence.report.missing {
+                    // The matcher reports missing tracks only for albums with at least one match, so every
+                    // track of the catalog is enumerated here and a wholly absent album is reported as well.
+                    var absent = Set<TrackReference>()
+                    for (albumIndex, album) in catalog.albums.enumerated() {
+                        for (discIndex, disc) in album.discs.enumerated() {
+                            for trackIndex in disc.tracks.indices {
+                                absent.insert(
+                                    TrackReference(album: albumIndex, disc: discIndex + 1, track: trackIndex + 1))
+                            }
+                        }
+                    }
+                    absent.subtract(correspondence.report.matches.map(\.reference))
+                    for reference in absent.sorted() {
                         reasons.append("no file for \(reference) \"\(catalog.track(reference).title)\"")
                     }
                     if let inventory {
