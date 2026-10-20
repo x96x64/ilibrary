@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-iLibrary 0.1.0 is experimental. Read [Current Status](docs/roadmap-to-stable.md), the [Command-Line Interface](docs/command-line-interface.md), and [Library Operations and Recovery](docs/library-operations.md). The Music commands passed [separate-user validation](docs/reports/library-command-validation.md); other system versions and cloud behavior remain unverified.
+iLibrary is experimental; the published version is 0.1.0 until version 0.2.0 is released. Read [Current Status](docs/roadmap-to-stable.md), the [Command-Line Interface](docs/command-line-interface.md), and [Library Operations and Recovery](docs/library-operations.md). The Music commands passed [separate-user validation](docs/reports/library-command-validation.md); other system versions and cloud behavior remain unverified.
 
 Report the installed version and, where possible, reproduce the problem with the current release. The interface remains experimental; review the [changelog](CHANGELOG.md) before updating.
 
