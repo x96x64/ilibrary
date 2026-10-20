@@ -15,6 +15,7 @@
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
 - [Plan for M11](m11-plan.md): proposed backup, inventory, strict export, and recovery-record work for 0.2.0, with the decisions required before implementation
+- [M11 Backup and Inventory Qualification](m11-qualification.md): English procedure for the maintainer-operated bulk-reader, external-drive backup, restoration, and disconnection measurements of M11; M11 has not passed until its report is assessed
 - [Separated Addition Qualification, Version 2](rebuild-qualification-v2-validation.md): Japanese procedure for the scale and three artist-order cases under Decision 36 with new libraries `M10-separated-v2-<case>`
 - [Separated Addition Qualification, First Run](rebuild-qualification-validation.md): completed Japanese first-run procedure; the scale case stopped in registration removal; retained for the record and not to be continued
 - [Rebuilding Addition Timing Validation](rebuild-timing-validation.md): completed Japanese version 2 timing procedure; its small case passed; retained for the record
