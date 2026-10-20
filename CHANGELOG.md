@@ -9,6 +9,10 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 - `rebuild prepare` and `rebuild status` (0.2.0 development state, not released): inventory of the selected files, classification of every Music registration, plan validation with per-volume capacity, verification of a backup on separate APFS or HFS+ storage, a restoration test that keeps its files, confirmation that the backup volume is ejected, and a versioned private recovery record in the workspace. The subcommands `stage`, `clear`, `apply`, and `add` are reserved and end with status 2. Source files, the backup, and Music are not modified.
 - `export --strict`: refuses, without writing, an export that is not a complete inventory, namely skipped paths, files dropped for a missing album tag or track number, repeated or non-consecutive disc and track numbers, declared disc and track totals that disagree with the exported counts or with each other, and release dates that are present but not a full `YYYY-MM-DD` date. The non-strict export is unchanged.
 
+### Changed
+
+- `check --library` reads the Music library with bulk property requests instead of one request per track and property, and uses the previous per-track read whenever the bulk read fails or is inconsistent. Its findings, output, exit status, and errors are unchanged in synthetic tests; its live behavior has not yet been verified.
+
 ## [0.1.0] - 2026-10-17
 
 ### Added

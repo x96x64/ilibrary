@@ -6,6 +6,8 @@ This document is the plan for milestone M11 (target version 0.2.0) of the [Plan 
 
 Under Decision 45 (October 20, 2026), the maintainer accepted M11 as passed on the version 2 qualification recorded in [M11 Qualification Results, Version 2](reports/m11-qualification-v2-results.md), within the evidence limits recorded there. The conditional change under Decision F has not been implemented and requires separate authorization.
 
+Under Decision 47 (October 20, 2026), after M11 was integrated into `main`, the Decision F change was implemented on the branch `decision-f-check-library` with synthetic equivalence tests; its live behavior is unverified. See [Decision F: Bulk Library Read for check --library](reports/decision-f-check-library.md).
+
 The evidence on which this plan relies is classified as in the rest of the repository. Statements about the existing source are established by a read-only survey of the M10 branch at `ebea671`. Statements about Music, filesystems, and storage devices that have not been measured are marked as inferred or unknown.
 
 ## Scope

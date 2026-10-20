@@ -89,3 +89,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-20 — [M11 Unpublished History Correction](reports/m11-history-correction.md)
 - 2026-10-20 — [M11 Pull Request Review Corrections](reports/m11-review-corrections.md)
 - 2026-10-20 — [M11 Residual Risk Corrections](reports/m11-residual-risk-corrections.md)
+- 2026-10-20 — [Decision F: Bulk Library Read for check --library](reports/decision-f-check-library.md)
