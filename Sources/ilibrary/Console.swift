@@ -70,6 +70,13 @@ final class Console: @unchecked Sendable {
     func warning(_ message: String) { writeError("ilibrary: warning: \(message)") }
 }
 
+/// The result of waiting for a volume to be disconnected. Only a confirmed disconnection counts as one.
+enum DisconnectionCheck: Equatable, Sendable {
+    case confirmed
+    case stillMounted
+    case unknown(String)
+}
+
 /// Platform services that commands use and tests replace.
 struct Environment: Sendable {
     var timeZone: TimeZone
@@ -107,9 +114,9 @@ struct Environment: Sendable {
                 modification: FileTimestamp, creation: FileTimestamp?
             )
         )? = Environment.systemPreciseDates
-    /// Waits until the volume with a UUID is no longer mounted, for at most the given seconds, and returns whether it
-    /// is unmounted. It never unmounts anything; nil where unavailable.
-    var waitUntilUnmounted: (@Sendable (String, TimeInterval) -> Bool)? = Environment.systemUnmountWait
+    /// Waits until the volume with a UUID is confirmed to be no longer mounted, for at most the given seconds. It
+    /// never unmounts anything; nil where unavailable.
+    var waitUntilUnmounted: (@Sendable (String, TimeInterval) -> DisconnectionCheck)? = Environment.systemUnmountWait
 
     static var system: Environment {
         #if canImport(LibraryMac) && os(macOS)
@@ -204,9 +211,15 @@ struct Environment: Sendable {
         #endif
     }
 
-    static var systemUnmountWait: (@Sendable (String, TimeInterval) -> Bool)? {
+    static var systemUnmountWait: (@Sendable (String, TimeInterval) -> DisconnectionCheck)? {
         #if canImport(LibraryMac) && os(macOS)
-            return { MountState.waitUntilUnmounted(volumeUUID: $0, timeout: $1) }
+            return {
+                switch MountState.waitUntilUnmounted(volumeUUID: $0, timeout: $1) {
+                case .unmounted: .confirmed
+                case .stillMounted: .stillMounted
+                case .unknown(let reason): .unknown(reason)
+                }
+            }
         #else
             return nil
         #endif

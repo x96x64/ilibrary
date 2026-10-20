@@ -174,12 +174,22 @@ enum RebuildPrepare {
         console.print(
             "Eject the backup volume now: \(backup.report.mountPoint) (volume UUID \(uuid)). iLibrary does not unmount it. "
                 + "Waiting up to \(inputs.timeout) seconds for the volume to disappear.")
-        guard let wait = environment.waitUntilUnmounted, wait(uuid, TimeInterval(inputs.timeout)) else {
+        let disconnection = environment.waitUntilUnmounted?(uuid, TimeInterval(inputs.timeout)) ?? .stillMounted
+        switch disconnection {
+        case .confirmed: break
+        case .stillMounted:
             throw PrepareFailure(
                 step: 6, title: "disconnecting the backup",
                 reasons: [
                     "the backup volume \(backup.report.mountPoint) is still mounted after \(inputs.timeout) seconds; "
                         + "eject it and run the command again"
+                ])
+        case .unknown(let reason):
+            throw PrepareFailure(
+                step: 6, title: "disconnecting the backup",
+                reasons: [
+                    "the disconnection of the backup volume \(backup.report.mountPoint) could not be confirmed: "
+                        + "\(reason); nothing was recorded as disconnected"
                 ])
         }
         let disconnectedAt = RecoveryRecord.timestampString(Date())

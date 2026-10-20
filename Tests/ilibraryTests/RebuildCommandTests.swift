@@ -139,7 +139,7 @@ import Testing
         var backupUUID: String? = "11111111-2222-3333-4444-555555555555"
         var backupPolicy: TimestampPolicy? = .apfs
         var restorePolicy: TimestampPolicy? = .apfs
-        var unmounts = true
+        var disconnection = DisconnectionCheck.confirmed
         var capacity: Int? = 1 << 40
         var afterCopy: ((URL) throws -> Void)?
         var copyCalls = 0
@@ -253,7 +253,7 @@ import Testing
             }
             environment.waitUntilUnmounted = { uuid, timeout in
                 fakes.waitCalls.append((uuid, timeout))
-                return fakes.unmounts
+                return fakes.disconnection
             }
             self.environment = environment
         }
@@ -875,7 +875,7 @@ import Testing
         @Test func aBackupThatStaysMountedIsRefusedAtStepSixWithoutARecord() throws {
             let fixture = try RebuildFixture()
             defer { fixture.remove() }
-            fixture.fakes.unmounts = false
+            fixture.fakes.disconnection = .stillMounted
             let before = try fixture.state()
             let run = fixture.prepare(["--disconnect-timeout", "3"])
             #expect(run.status == 1)
@@ -887,6 +887,32 @@ import Testing
             #expect(fixture.fakes.waitCalls.count == 1)
             let after = try fixture.state()
             #expect(after.workspace.isEmpty)
+            #expect(after.source == before.source)
+            #expect(after.backup == before.backup)
+            #expect(after.restoration.filter { $0.hasSuffix(".m4a") }.count == 9)
+        }
+
+        @Test func aDisconnectionThatCannotBeConfirmedIsRefusedAtStepSixWithoutARecord() throws {
+            let fixture = try RebuildFixture()
+            defer { fixture.remove() }
+            fixture.fakes.disconnection = .unknown("the mount table could not be read: synthetic failure")
+            let before = try fixture.state()
+            let run = fixture.prepare()
+            #expect(run.status == 1)
+            #expect(run.text.contains("Eject the backup volume now: \(fixture.backup)"))
+            #expect(!run.text.contains("Step 6 passed"))
+            #expect(
+                run.errorText.contains(
+                    "the disconnection of the backup volume \(fixture.backup) could not be confirmed"))
+            #expect(run.errorText.contains("the mount table could not be read: synthetic failure"))
+            #expect(run.errorText.contains("nothing was recorded as disconnected"))
+            #expect(
+                run.errorText.contains(
+                    "stopped at step 6 (disconnecting the backup); only the 9 file(s) restored so far"))
+            #expect(fixture.fakes.waitCalls.count == 1)
+            let after = try fixture.state()
+            #expect(after.workspace.isEmpty)
+            #expect(!FileManager.default.fileExists(atPath: fixture.workspace + "/" + RecoveryRecord.fileName))
             #expect(after.source == before.source)
             #expect(after.backup == before.backup)
             #expect(after.restoration.filter { $0.hasSuffix(".m4a") }.count == 9)
