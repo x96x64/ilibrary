@@ -22,7 +22,7 @@ def section(title, text):
 
 def main(arguments):
     if len(arguments) != 1:
-        print("Usage: python3 df_collect.py /Users/Shared/ilibrary-decision-f-comparison-v2-report.txt", file=sys.stderr)
+        print("Usage: python3 df_collect.py /Users/Shared/ilibrary-decision-f-comparison-v3-report.txt", file=sys.stderr)
         return 2
     output = Path(arguments[0])
     homes = {str(Path.home()), os.path.realpath(str(Path.home()))}

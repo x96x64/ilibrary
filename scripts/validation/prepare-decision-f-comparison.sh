@@ -7,10 +7,10 @@ mode=${1:---dry-run}
 case "$mode" in --dry-run|--prepare) ;; *) echo 'Usage: prepare-decision-f-comparison.sh [--dry-run|--prepare]'; exit 2 ;; esac
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
-name=ilibrary-decision-f-comparison-v2
+name=ilibrary-decision-f-comparison-v3
 reference_commit=9821e686d169b7aee2448ceecf1f9cbe8654026f
 candidate_commit=$(git rev-parse HEAD)
-work="$root/artifacts/decision-f-comparison-v2-preparation"
+work="$root/artifacts/decision-f-comparison-v3-preparation"
 echo "Plan: create $work with the bundle $name, its ZIP archive, and the SHA-256 file."
 echo "Reference: $reference_commit (M11 merge). Candidate: $candidate_commit (the current commit)."
 echo 'The bundle holds both release executables, 12 original synthetic tracks (3 albums by 2 artists), the comparison'
