@@ -6,6 +6,8 @@ Use `iLibrary` as the canonical product name and `ilibrary` for the executable, 
 
 Use MLA headline-style title case permanently for all English documentation titles, section headings, and subsection headings, including README, contributor guidance, architecture documents, command references, and future documentation. Preserve literal capitalization of iLibrary, iLyrics, Apple product names, APIs, frameworks, languages, commands, filenames, options, packages, and code identifiers.
 
+Title every GitHub release exactly `iLibrary: vX.Y.Z, Catalog-Driven Music Libraries for Apple Music on macOS`, replacing only `X.Y.Z` with the released version number (Decision 51). Use the same text as the first heading of `docs/releases/X.Y.Z.md`, in every pre-publication preview, and as the release-creation title, and verify it against this template in every release review. Do not invent a milestone-specific or feature-describing subtitle; describe new capabilities in the release body and changelog. An alternative title requires the maintainer's explicit approval before it is written or published. See [Release Titles](docs/distribution.md#release-titles).
+
 Model the README and command-line interface on established, widely used tools such as ripgrep, fd, bat, GitHub CLI, Git, FFmpeg, and yt-dlp, and on the sibling project iLyrics. The interface is a command-based CLI with verb subcommands; do not introduce an interactive text user interface. Keep commits atomic and conventional so that history remains reviewable; perform broad cleanup through ordinary commits in a dedicated milestone.
 
 ## Evidence and Architecture
