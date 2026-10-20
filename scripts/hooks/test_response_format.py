@@ -22,6 +22,26 @@ Follow the procedure in `docs/m11-qualification.md` exactly.
 2. In Steps 1 to 6, verify and extract the bundle, restore the synthetic dates, and create a new library.
 """
 
+# A shortened fragment of the noncompliant CLI report of October 20, 2026 on the version 2 bundle, which the hook
+# blocked, with its original lead-in lines, list syntax, and Markdown table.
+V2_REPORT_FRAGMENT = """\
+Tests at `e842f45`, which has the same sources as the bundle commit, all passed in my own runs:
+
+- `swift format lint --strict` reported nothing.
+- The 11 collection tests passed.
+
+The replacement bundle details:
+
+| Item | Value |
+| --- | --- |
+| Source commit | `1de954cb96abd20f66fe58ae46c297b338615dee` |
+| Archive size | 1,291,744 bytes |
+
+Still unmeasured:
+
+- Which cloud status values Music reports.
+"""
+
 COMPLIANT = """\
 The branch `m11-backup-inventory` is clean at `c8649fe`, with fourteen unpublished commits above `main`. The \
 bundle in `/Users/Shared` matches its recorded SHA-256, and its procedure is byte-identical to the repository \
@@ -99,6 +119,45 @@ class RejectionTests(unittest.TestCase):
     def test_unterminated_fence(self):
         self.assertEqual(rules("Text.\n\n```sh\nls\n"), ["unterminated code fence"])
 
+    def test_actual_v2_report_fragment(self):
+        found = rules(V2_REPORT_FRAGMENT)
+        self.assertEqual(found.count("bullet list item"), 3)
+        self.assertEqual(found.count("Markdown table"), 1)
+
+    def test_single_column_table(self):
+        self.assertIn("Markdown table", rules("| Gate |\n| --- |\n| restoration |"))
+
+    def test_html_tables(self):
+        self.assertIn("HTML table", rules(
+            "The results follow.\n\n<table><tr><td>a</td><td>b</td></tr></table>\n\nThe end of the report."))
+        found = rules("The results follow.\n\n<TABLE border=\"1\">\n<tr><th>Gate</th></tr>\n</TABLE>\n\nThe end.")
+        self.assertEqual(found.count("HTML table"), 6)
+
+    def test_html_lists_headings_rules_and_bold(self):
+        self.assertEqual(set(rules("Items follow.\n\n<ul>\n<li>one</li>\n</ul>\n\nThe end of it.")), {"HTML list"})
+        self.assertIn("HTML heading", rules("<h2>Summary</h2>\n\nThe tests passed in a sentence."))
+        self.assertIn("decorative separator (HTML)", rules("Text here.\n\n<hr/>\n\nMore text here."))
+        self.assertEqual(rules("This is <strong>important</strong> text."), ["bold emphasis (HTML)"] * 2)
+        self.assertEqual(rules("This is <b>important</b> text."), ["bold emphasis (HTML)"] * 2)
+        self.assertIn("bold emphasis (HTML)", rules("The <strong>status\nof the run</strong> is unknown."))
+
+    def test_glyph_bullets(self):
+        for glyph in ("•", "◦", "▪", "·", "→", "–", "—"):
+            self.assertEqual(rules(f"Findings follow.\n{glyph} first finding.\n{glyph} second finding."),
+                             ["bullet list item (glyph)"] * 2, glyph)
+        self.assertEqual(rules("• a finding that stands alone in its own paragraph."),
+                         ["bullet list item (glyph)"])
+
+    def test_label_and_value_paragraphs(self):
+        text = "Branch: m11-backup-inventory at 2095194.\n\nTests: 40 passed.\n\nReport: absent."
+        self.assertEqual(rules(text), ["label-and-value list"] * 3)
+        self.assertEqual(rules("Branch: clean.\nHEAD: 2095194.\nNext action: none."), ["label-and-value list"] * 3)
+
+    def test_lettered_items(self):
+        self.assertEqual(rules("(1) first item.\n(2) second item."), ["lettered list item"] * 2)
+        self.assertEqual(rules("a. first item.\n\nb. second item."), ["lettered list item"] * 2)
+        self.assertEqual(rules("i) first item.\nii) second item."), ["lettered list item"] * 2)
+
 
 class AcceptanceTests(unittest.TestCase):
     def test_compliant_prose_with_italic_code_and_fence(self):
@@ -124,6 +183,30 @@ class AcceptanceTests(unittest.TestCase):
 
     def test_tilde_fence_and_longer_fence(self):
         text = "Output follows.\n\n~~~\n## literal\n~~~\n\n````\n```\n- inner\n```\n````\n\nThe end of the report."
+        self.assertEqual(hook.find_violations(text), [])
+
+    def test_angle_brackets_and_html_in_code(self):
+        text = (
+            "Values where a < b and c > d are compared, a<b and b>c are expressions, <path> is a placeholder, "
+            "and <table of contents> is not markup. The tags `<table>` and `<b>` are named in inline code.\n\n"
+            "```html\n<table><tr><td>literal</td></tr></table>\n<ul><li>literal</li></ul>\n<b>literal</b>\n```\n\n"
+            "The fenced block above is literal output."
+        )
+        self.assertEqual(hook.find_violations(text), [])
+
+    def test_single_labels_times_and_dashes(self):
+        text = (
+            "Measured: the probe compared 16 fields of 12 tracks and found no difference, which establishes the "
+            "live equivalence of the two readers for this synthetic library on this Mac, and no other library or "
+            "version of Music is described by that observation.\n\n"
+            "The report was written at 12:15, and the prepared plan, see https://example.com/a:b, was unchanged. "
+            "The restoration — a full copy — passed, and the range 1998–2005 covers the dates.\n\n"
+            "Note: the hook judges only the final message."
+        )
+        self.assertEqual(hook.find_violations(text), [])
+
+    def test_lead_in_colon_before_fence(self):
+        text = "The command is shown below:\n\n```bash\nls\n```\n\nIt reads nothing outside the repository."
         self.assertEqual(hook.find_violations(text), [])
 
     def test_multiline_paragraphs(self):

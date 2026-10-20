@@ -3,7 +3,10 @@
 
 The hook reads the documented Stop input from standard input and inspects only `last_assistant_message`.
 A response that contains a Markdown heading, a list item, a table, bold emphasis, a decorative separator,
-an emoji, a standalone title, or an unterminated code fence is blocked once with a corrective reason.
+an emoji, a standalone title, or an unterminated code fence is blocked once with a corrective reason. The same
+applies to HTML table, list, heading, bold, and rule tags, to lines that begin with a bullet glyph such as U+2022,
+and to two or more successive lines or short paragraphs that begin with a label and a colon or with a lettered
+or parenthesized enumerator, which present a list without Markdown list syntax.
 Content inside fenced code blocks and inline code spans is not inspected. The message is treated as untrusted
 text: it is never executed, written to disk, or echoed in full.
 
@@ -34,6 +37,21 @@ BULLET_ITEM = re.compile(r"^ {0,3}[-*+](?:[ \t]+(\S)|[ \t]*$)")
 ORDERED_ITEM = re.compile(r"^ {0,3}(\d{1,9})[.)](?:[ \t]+\S|[ \t]*$)")
 TASK_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]+\[[ xX]\]")
 TABLE_DELIMITER = re.compile(r"^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)+\|?[ \t]*$")
+SINGLE_COLUMN_DELIMITER = re.compile(r"^ {0,3}\|[ \t]*:?-+:?[ \t]*\|[ \t]*$")
+GLYPH_BULLET = re.compile("^ {0,3}[•◦‣⁃∙·▪▫●○■□"
+                          "►▸▹▶➤→⇒–—][ \t]+\\S")
+LABEL_LINE = re.compile(r"^ {0,3}[A-Z][^\s:]*(?:[ \t]+[^\s:]+){0,3}:[ \t]+\S")
+LABEL_LINE_MAX_WORDS = 40
+LETTERED_ITEM = re.compile(r"^ {0,3}(?:\(\d{1,2}\)|\([a-z]\)|[a-z][.)]|[ivx]{1,4}[.)])[ \t]+\S")
+HTML_ATTRIBUTES = r"""(?:\s+[A-Za-z][\w:-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))*\s*/?>"""
+HTML_TAGS = (
+    (re.compile(r"</?(?:table|thead|tbody|tfoot|tr|th|td|caption|colgroup|col)" + HTML_ATTRIBUTES, re.I),
+     "HTML table"),
+    (re.compile(r"</?(?:ul|ol|li|dl|dt|dd)" + HTML_ATTRIBUTES, re.I), "HTML list"),
+    (re.compile(r"</?h[1-6]" + HTML_ATTRIBUTES, re.I), "HTML heading"),
+    (re.compile(r"</?(?:b|strong)" + HTML_ATTRIBUTES, re.I), "bold emphasis (HTML)"),
+    (re.compile(r"<hr" + HTML_ATTRIBUTES, re.I), "decorative separator (HTML)"),
+)
 BLOCKQUOTE = re.compile(r"^ {0,3}>[ \t]?")
 INLINE_CODE = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.DOTALL)
 BOLD_STARS = re.compile(r"\*\*(?=\S)(?:.*?\S)?\*\*")
@@ -103,8 +121,19 @@ def find_violations(message):
     paragraph = []
     paragraphs = []
     structural = set()
+    run = []  # successive label or lettered lines, separated at most by blank lines
+
+    def flush_run():
+        if len(run) >= 2:
+            for run_number, run_rule, run_line in run:
+                violations.append((run_number, run_rule, excerpt(run_line)))
+                structural.add(run_number)
+        run.clear()
+
     for number, line in prose:
         if line is None or line.strip() == "":
+            if line is None:
+                flush_run()
             if paragraph:
                 paragraphs.append(paragraph)
             paragraph = []
@@ -123,8 +152,12 @@ def find_violations(message):
             rule = "decorative separator"
         elif TABLE_DELIMITER.match(line) and previous is not None and "|" in previous:
             rule = "Markdown table"
+        elif SINGLE_COLUMN_DELIMITER.match(line) and previous is not None and previous.lstrip().startswith("|"):
+            rule = "Markdown table"
         elif TASK_ITEM.match(line):
             rule = "checklist item"
+        elif GLYPH_BULLET.match(line):
+            rule = "bullet list item (glyph)"
         else:
             bullet = BULLET_ITEM.match(line)
             ordered = ORDERED_ITEM.match(line)
@@ -132,13 +165,23 @@ def find_violations(message):
                 rule = "bullet list item"
             elif ordered and (not interrupts or ordered.group(1) == "1"):
                 rule = "numbered list item"
-        if rule in ("bullet list item", "numbered list item", "checklist item"):
+        if rule in ("bullet list item", "bullet list item (glyph)", "numbered list item", "checklist item"):
             in_list = True
         if rule:
             violations.append((number, rule, excerpt(line)))
             structural.add(number)
+        candidate = None
+        if rule is None and LABEL_LINE.match(line) and len(line.split()) < LABEL_LINE_MAX_WORDS:
+            candidate = "label-and-value list"
+        elif rule is None and LETTERED_ITEM.match(line):
+            candidate = "lettered list item"
+        if candidate is None or (run and run[-1][1] != candidate):
+            flush_run()
+        if candidate is not None:
+            run.append((number, candidate, line))
         paragraph.append((number, line))
         previous = line
+    flush_run()
     if paragraph:
         paragraphs.append(paragraph)
 
@@ -149,6 +192,10 @@ def find_violations(message):
             for match in pattern.finditer(bare):
                 offset = bare.count("\n", 0, match.start())
                 violations.append((block[min(offset, len(block) - 1)][0], "bold emphasis", excerpt(match.group(0))))
+        for pattern, tag_rule in HTML_TAGS:
+            for match in pattern.finditer(bare):
+                offset = bare.count("\n", 0, match.start())
+                violations.append((block[min(offset, len(block) - 1)][0], tag_rule, excerpt(match.group(0))))
         for number, line in block:
             spans = INLINE_CODE.sub(" ", line)
             emoji = next((character for character in spans if is_emoji(character)), None)
@@ -171,7 +218,8 @@ CORRECTION = (
     "The response violates the maintainer-facing response policy of AGENTS.md (Agent Responses, Decision 44). "
     "Rewrite the complete response in formal English as continuous prose in developed paragraphs, without "
     "headings, standalone titles, bullet or numbered lists, checklists, tables, decorative separators, emojis, "
-    "or bold formatting; italic text, inline code, and fenced code blocks for literal commands or output remain "
+    "or bold formatting, whether written in Markdown or HTML, and without presenting a list as successive "
+    "label-and-value lines or paragraphs; italic text, inline code, and fenced code blocks for literal commands or output remain "
     "permitted. Retain all substantive content, including the closing paragraph on the current milestone, the "
     "next action, and its authorization. The noncompliant text has already been displayed, so deliver the "
     "corrected response in full rather than a description of the correction. Violations found: "
