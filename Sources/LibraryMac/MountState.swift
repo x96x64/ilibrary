@@ -70,19 +70,40 @@
             var description: String
         }
 
+        /// Reads a table whose size can change between the count and the fill. A snapshot that fills the whole
+        /// buffer may omit entries, so it is accepted only when it leaves room to spare; otherwise the read is
+        /// repeated with more headroom, and a table that is still full after the last attempt is a failure.
+        static func completeTable<Entry>(
+            count: () -> Int32, fill: (Int) -> (filled: Int32, entries: [Entry]), attempts: Int = 4
+        ) throws -> [Entry] {
+            var headroom = 8
+            for _ in 0..<attempts {
+                let reported = count()
+                guard reported > 0 else { throw ReadFailure(description: "getfsstat reported no mounts") }
+                let capacity = Int(reported) + headroom
+                let result = fill(capacity)
+                guard result.filled >= 0 else { throw ReadFailure(description: "getfsstat failed") }
+                // A full buffer cannot be told from a truncated one; only a snapshot with room to spare is complete.
+                if Int(result.filled) < capacity { return Array(result.entries.prefix(Int(result.filled))) }
+                headroom *= 2
+            }
+            throw ReadFailure(description: "a complete mount table could not be obtained")
+        }
+
         static func systemEntries() throws -> [MountEntry] {
             guard let session = DASessionCreate(kCFAllocatorDefault) else {
                 throw ReadFailure(description: "a DiskArbitration session could not be created")
             }
-            let count = getfsstat(nil, 0, MNT_NOWAIT)
-            guard count > 0 else { throw ReadFailure(description: "getfsstat reported no mounts") }
-            var table = Array(repeating: statfs(), count: Int(count))
-            let bytes = Int32(MemoryLayout<statfs>.size * table.count)
-            let filled = getfsstat(&table, bytes, MNT_NOWAIT)
-            guard filled > 0 else { throw ReadFailure(description: "getfsstat failed") }
+            let table = try completeTable(
+                count: { getfsstat(nil, 0, MNT_NOWAIT) },
+                fill: { capacity in
+                    var buffer = Array(repeating: statfs(), count: capacity)
+                    let bytes = Int32(MemoryLayout<statfs>.size * capacity)
+                    let filled = getfsstat(&buffer, bytes, MNT_NOWAIT)
+                    return (filled, buffer)
+                })
             var entries: [MountEntry] = []
-            for index in 0..<Int(filled) {
-                var entry = table[index]
+            for var entry in table {
                 let source = withUnsafePointer(to: &entry.f_mntfromname) {
                     $0.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) { String(cString: $0) }
                 }
