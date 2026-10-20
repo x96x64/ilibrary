@@ -221,5 +221,83 @@
                 #expect(throws: MusicAppError.self, "\(item)") { try self.snapshotDate(item) }
             }
         }
+
+        struct Marker: Error {}
+
+        /// Selects between the readers with closures that send no Apple Event.
+        static func select(
+            bulk: @escaping () throws -> String, perTrack: @escaping () throws -> [MusicTrackInfo]
+        ) throws -> [MusicTrackInfo] {
+            try MusicApp.allTracksPreferringBulk(bulk: bulk, perTrack: perTrack)
+        }
+
+        static func text(_ sections: [String]) -> String { sections.joined(separator: MusicApp.sectionSeparator) }
+
+        @Test func aConsistentBulkOutputIsReturnedWithoutThePerTrackReader() throws {
+            for rows in [Self.samples, []] {
+                let expected = try MusicApp.parse(Self.perTrack(rows))
+                let actual = try Self.select(
+                    bulk: { Self.text(Self.bulk(rows)) },
+                    perTrack: {
+                        Issue.record("the per-track reader was called")
+                        throw Marker()
+                    })
+                #expect(actual == expected)
+                #expect(actual.count == rows.count)
+            }
+        }
+
+        @Test func everyFailureOfTheBulkReadYieldsThePerTrackResult() throws {
+            let rows = Array(Self.samples.prefix(3))
+            let expected = try MusicApp.parse(Self.perTrack(rows))
+            var shortList = Self.bulk(rows)
+            shortList[2] = "Song\u{1E}Song"
+            let outputs: [String] = [
+                MusicApp.bulkUnavailable,
+                Self.text(Array(Self.bulk(rows).dropLast())),
+                Self.text(Self.bulk(rows) + ["extra"]),
+                Self.text(shortList),
+                Self.text(Self.bulk(rows, count: 4)),
+                Self.text(Self.bulk(rows, lastIDs: ["ID-1", "ID-3", "ID-2"])),
+                Self.text(Self.bulk(rows, lastIDs: ["ID-1", "ID-2"])),
+                "",
+                "garbage",
+            ]
+            for output in outputs {
+                var calls = 0
+                let actual = try Self.select(
+                    bulk: { output },
+                    perTrack: {
+                        calls += 1
+                        return expected
+                    })
+                #expect(actual == expected, "\(output.debugDescription)")
+                #expect(calls == 1)
+            }
+            var calls = 0
+            let thrown = try Self.select(
+                bulk: { throw MusicAppError.scriptFailed("bulk") },
+                perTrack: {
+                    calls += 1
+                    return expected
+                })
+            #expect(thrown == expected && calls == 1)
+            let foreign = try Self.select(bulk: { throw Marker() }, perTrack: { expected })
+            #expect(foreign == expected)
+        }
+
+        @Test func whenBothReadsFailThePerTrackErrorIsThrown() {
+            let perTrackError = MusicAppError.scriptFailed("per-track")
+            #expect(throws: perTrackError) {
+                try Self.select(bulk: { throw MusicAppError.scriptFailed("bulk") }, perTrack: { throw perTrackError })
+            }
+            #expect(throws: perTrackError) {
+                try Self.select(bulk: { MusicApp.bulkUnavailable }, perTrack: { throw perTrackError })
+            }
+            #expect(throws: perTrackError) {
+                try Self.select(bulk: { "garbage" }, perTrack: { throw perTrackError })
+            }
+            #expect(throws: Marker.self) { try Self.select(bulk: { throw Marker() }, perTrack: { throw Marker() }) }
+        }
     }
 #endif
