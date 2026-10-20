@@ -28,7 +28,7 @@
 - [Rebuilding Feasibility Validation](rebuild-feasibility-validation.md): retained version 2 instructions; do not resume this superseded experiment
 - [Saved Addition-Date Verification](rebuild-feasibility-date-check.md): completed read-only extraction of the stopped M10 run's saved timestamps
 - [Contributing](../CONTRIBUTING.md): development and verification requirements
-- [Distribution](distribution.md): package construction, installation verification, and publication
+- [Distribution](distribution.md): package construction, installation verification, publication, and the permanent release-title template
 - [Package Publication Setup](package-publishing.md): Japanese Web setup and result reporting for npm and PyPI
 - [Agent Handoff](agent-handoff.md): resuming work from repository records
 - [Live Music Measurements](live-music-measurements.md): measuring Music in a separate macOS user
@@ -93,3 +93,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-20 — [M11 Residual Risk Corrections](reports/m11-residual-risk-corrections.md)
 - 2026-10-20 — [Decision F: Bulk Library Read for check --library](reports/decision-f-check-library.md)
 - 2026-10-20 — [Decision F Live Comparison Results](reports/decision-f-live-comparison-results.md)
+- 2026-10-20 — [Version 0.2.0 Publication](reports/release-publication-0.2.0.md)
