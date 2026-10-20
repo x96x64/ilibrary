@@ -88,3 +88,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-20 — [M11 Qualification Results, Version 2](reports/m11-qualification-v2-results.md)
 - 2026-10-20 — [M11 Unpublished History Correction](reports/m11-history-correction.md)
 - 2026-10-20 — [M11 Pull Request Review Corrections](reports/m11-review-corrections.md)
+- 2026-10-20 — [M11 Residual Risk Corrections](reports/m11-residual-risk-corrections.md)
