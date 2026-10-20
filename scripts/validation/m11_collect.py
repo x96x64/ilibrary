@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Combine the saved logs of the M11 qualification into one redacted report.
+"""Combine the saved logs of the M11 qualification, version 2, into one redacted report.
 
 The script reads only files inside its own bundle directory and, optionally, the transferred archive checksum
 in /Users/Shared. It never addresses Music. It writes exactly one new file, the report path given as the
@@ -16,9 +16,9 @@ import re
 import sys
 from pathlib import Path
 
-FORMAT = "ilibrary-m11-qualification-1"
+FORMAT = "ilibrary-m11-qualification-2"
 ARCHIVE_DIRECTORY = Path("/Users/Shared")
-ARCHIVE = "ilibrary-m11-qualification.zip"
+ARCHIVE = "ilibrary-m11-qualification-v2.zip"
 EXPECTED_RESULTS = (
     "bundle-check.log", "staging-dates.log", "validate-staging.log", "doctor.log", "add-dry-run.log", "add.log",
     "readers.log", "readers.json", "catalog-strict.log", "catalog-strict.json", "validate-library.log",
@@ -88,7 +88,7 @@ def build_report(bundle, homes, archive_directory=ARCHIVE_DIRECTORY):
     manifest = load_manifest(bundle)
     lines = [
         f"source commit: {manifest['commit']}",
-        "iLibrary M11 backup and inventory qualification report",
+        "iLibrary M11 backup and inventory qualification report, version 2",
         f"manifest format: {manifest['format']}",
         f"bundle SHA-256 check: {check_bundle(bundle, manifest)}",
         f"archive SHA-256 check: {check_archive(archive_directory)}",

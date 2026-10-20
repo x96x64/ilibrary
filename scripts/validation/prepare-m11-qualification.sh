@@ -1,24 +1,24 @@
 #!/bin/sh
-# Build the transferable M11 backup and inventory qualification bundle from synthetic audio.
+# Build the transferable M11 backup and inventory qualification bundle, version 2, from synthetic audio.
 # Never address Music, and stop before any separate-user operation.
 set -eu
 mode=${1:---dry-run}
 case "$mode" in --dry-run|--prepare) ;; *) echo 'Usage: prepare-m11-qualification.sh [--dry-run|--prepare]'; exit 2 ;; esac
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
-name=ilibrary-m11-qualification
-echo "Plan: create artifacts/m11-qualification-preparation with the bundle $name, its ZIP archive, and the SHA-256 file."
+name=ilibrary-m11-qualification-v2
+echo "Plan: create artifacts/m11-qualification-v2-preparation with the bundle $name, its ZIP archive, and the SHA-256 file."
 echo 'The bundle holds the release builds of ilibrary and M11Probe and a synthetic staging tree of 12 original tracks (3 albums by 2 artists, 4 tracks each, distinct release dates).'
-echo 'Music, the maintainer library, and every earlier bundle are not touched.'
+echo 'Music, the maintainer library, and every earlier bundle, including the first M11 bundle, are not touched.'
 [ "$mode" != --dry-run ] || { echo 'Dry run: nothing was created.'; exit 0; }
 [ "$(uname -s)" = Darwin ] || { echo 'Preparation requires macOS.'; exit 1; }
 [ -z "$(git status --porcelain -- Sources Package.swift scripts/spikes/SynthAudio.swift \
     scripts/validation/prepare-m11-qualification.sh scripts/validation/m11-collect.sh \
     scripts/validation/m11_collect.py scripts/validation/synth_flac.py scripts/validation/test_m11_collect.py \
-    docs/m11-qualification.md)" ] || {
+    docs/m11-qualification-v2.md)" ] || {
     echo 'Commit the sources of the qualification bundle before preparing it.'; exit 1;
 }
-work="$root/artifacts/m11-qualification-preparation"
+work="$root/artifacts/m11-qualification-v2-preparation"
 [ ! -e "$work" ] || { echo "$work already exists; it is not overwritten."; exit 1; }
 mkdir -p "$work/tools"
 commit=$(git rev-parse HEAD)
@@ -85,7 +85,7 @@ dates = {album["releaseDate"] for album in albums}
 assert len(albums) == 3 and sum(len(d["tracks"]) for a in albums for d in a["discs"]) == 12, "unexpected staging size"
 assert len(dates) == 3 and all(len(date) == 10 for date in dates), "release dates are not distinct full dates"
 PY
-cp "$root/docs/m11-qualification.md" "$bundle/PROCEDURE.md"
+cp "$root/docs/m11-qualification-v2.md" "$bundle/PROCEDURE.md"
 cp "$root/scripts/validation/m11-collect.sh" "$bundle/collect.sh"
 cp "$root/scripts/validation/m11_collect.py" "$bundle/m11_collect.py"
 chmod +x "$bundle/bin/ilibrary" "$bundle/bin/M11Probe" "$bundle/collect.sh"
@@ -101,7 +101,7 @@ files = {
     for path in sorted(bundle.rglob("*")) if path.is_file()
 }
 assert "manifest.json" not in files and not any(name.endswith(".DS_Store") for name in files)
-manifest = {"format": "ilibrary-m11-qualification-1", "commit": commit, "files": files}
+manifest = {"format": "ilibrary-m11-qualification-2", "commit": commit, "files": files}
 (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 PY
 
