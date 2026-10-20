@@ -13,7 +13,7 @@ let package = Package(
         // Backup inventory, integrity hashing, and rebuild planning; Foundation-only so that it tests on Linux.
         .target(name: "RebuildCore"),
         // macOS-only file operations; the sources are empty on other platforms.
-        .target(name: "LibraryMac"),
+        .target(name: "LibraryMac", dependencies: ["RebuildCore"]),
         .target(name: "ConversionMac"),
         .executableTarget(
             name: "ilibrary",
