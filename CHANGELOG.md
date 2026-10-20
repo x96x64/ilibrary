@@ -11,7 +11,7 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ### Changed
 
-- `check --library` reads the Music library with bulk property requests instead of one request per track and property, and uses the previous per-track read whenever the bulk read fails or is inconsistent. Its findings, output, exit status, and errors are unchanged in synthetic tests; its live behavior has not yet been verified.
+- `check --library` reads the Music library with bulk property requests instead of one request per track and property, and uses the previous per-track read whenever the bulk read fails or is inconsistent. Its findings, output, exit status, and errors are unchanged in synthetic tests; its live behavior, including the reporting of cloud statuses other than unknown, has not yet been verified.
 
 ## [0.1.0] - 2026-10-17
 

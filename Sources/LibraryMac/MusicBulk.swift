@@ -2,10 +2,11 @@
 //
 // Equivalence status: the bulk reader is designed to return, field for field, what the per-track reader
 // (`describeHandler`, `MusicApp.parse`) returns. Live field-level equivalence was measured for 12 synthetic
-// tracks in the M11 version 2 qualification (docs/reports/m11-qualification-v2-results.md). The use of the
-// bulk reader in `check --library` through `allTracksPreferringBulk()` is verified only by synthetic tests
-// that send no Apple Event; its live behaviour is not measured. The speed of the bulk read (0.482 s against
-// 40.092 s for 300 tracks) was measured in the M10 qualification.
+// tracks in the M11 version 2 qualification (docs/reports/m11-qualification-v2-results.md), all of whose cloud
+// statuses were `unknown`; the text produced by coercing other bulk-read cloud statuses outside the `tell`
+// block is unmeasured. The use of the bulk reader in `check --library` through `allTracksPreferringBulk()`
+// is verified only by synthetic tests that send no Apple Event; its live behaviour is not measured. The
+// speed of the bulk read (0.482 s against 40.092 s for 300 tracks) was measured in the M10 qualification.
 //
 // Date conversion: AppleScript integers are limited to about plus or minus 536870911, so the difference
 // between a date and the base date is a real for dates after early January 2017, and coercing it to text

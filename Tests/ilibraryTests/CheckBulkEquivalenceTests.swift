@@ -53,7 +53,7 @@
             return ([String(rows.count)] + columns + [last]).joined(separator: MusicApp.sectionSeparator)
         }
 
-        /// Ten registrations over nine synthetic files, covering the cases that `check --library` classifies.
+        /// Twelve registrations over nine synthetic files, covering the cases that `check --library` classifies.
         init() throws {
             library = try SyntheticLibrary()
             files = try library.m4aFiles()
