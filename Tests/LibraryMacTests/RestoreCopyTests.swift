@@ -50,6 +50,19 @@
             #expect(leftovers(f.root).isEmpty)
         }
 
+        @Test func aRootUnderPrivateAndANewDestinationShareAPrefix() throws {
+            let f = try fixture(bytes: 10)
+            defer { try? FileManager.default.removeItem(at: f.base) }
+            // /var and /tmp are links to /private/var and /private/tmp; both spellings name the same directory.
+            guard f.root.path.hasPrefix("/var/") else { return }
+            let root = URL(fileURLWithPath: "/private" + f.root.path)
+            let destination = root.appendingPathComponent("Artist/./Album/../Album/01 Song.bin")
+            #expect(try RestoreCopy.copy(from: f.source, to: destination, below: root) == 10)
+            #expect(
+                FileManager.default.contents(atPath: f.root.appendingPathComponent("Artist/Album/01 Song.bin").path)
+                    == FileManager.default.contents(atPath: f.source.path))
+        }
+
         @Test func existingDestinationIsRefusedAndKept() throws {
             let f = try fixture(bytes: 10)
             defer { try? FileManager.default.removeItem(at: f.base) }

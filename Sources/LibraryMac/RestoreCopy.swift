@@ -34,6 +34,23 @@
     public enum RestoreCopy {
         public static let defaultChunkSize = 1 << 20
 
+        /// The absolute path of a URL without "." components, empty components, or ".." components, computed
+        /// without the file system. `standardizedFileURL` is not used, because it removes a leading "/private"
+        /// from a path that exists and not from one that does not, so a root and a new destination below it
+        /// would no longer share a prefix.
+        static func lexicalPath(_ url: URL) -> String {
+            var parts: [Substring] = []
+            for part in url.path.split(separator: "/", omittingEmptySubsequences: true) {
+                if part == "." { continue }
+                if part == ".." {
+                    if !parts.isEmpty { parts.removeLast() }
+                    continue
+                }
+                parts.append(part)
+            }
+            return "/" + parts.joined(separator: "/")
+        }
+
         /// Copies a regular file to a new name below an existing restoration root and returns the bytes copied.
         ///
         /// The final component of the source must be a regular file (opened with `O_NOFOLLOW`); checking the
@@ -53,8 +70,8 @@
         ) throws -> Int {
             precondition(chunkSize > 0)
             let sourcePath = source.path
-            let destinationPath = destination.standardizedFileURL.path
-            var rootPath = root.standardizedFileURL.path
+            let destinationPath = lexicalPath(destination)
+            var rootPath = lexicalPath(root)
             if rootPath.count > 1, rootPath.hasSuffix("/") { rootPath.removeLast() }
 
             let input = open(sourcePath, O_RDONLY | O_NOFOLLOW)
