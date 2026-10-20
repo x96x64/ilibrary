@@ -51,6 +51,7 @@ ilibrary apply catalog.json ./staging --dry-run
 - **Removal of iTunes Store purchase metadata.** The purchaser's account, name, purchase date, store identifiers, and purchase information are removed, padding is zeroed, and the gapless information is kept. Encrypted files (`.m4p` and `drms` sample entries) are refused.
 - **FLAC metadata.** `FLACCore` reads stream information, Vorbis comments, and pictures without decoding audio, and rejects truncated metadata.
 - **Catalogs.** `CatalogCore` validates the `ilibrary-catalog-1` format with located diagnostics, and provides matching of files to catalog tracks, Music-style naming, four album orders, title rules, and release-date handling.
+- **Backup verification and recovery records.** `rebuild prepare` inventories the selected files and Music registrations, verifies a backup on separate storage, performs a restoration test, confirms that the backup volume is ejected, and writes a private recovery record that `rebuild status` reports. Neither subcommand changes Music, the source files, or the backup; the staged rebuilding of a Music library is not implemented.
 - **Checks and diagnostics.** `check` reports missing tags, duplicate tracks, and incorrect dates; `check --library` compares files with Music by location and reports stale metadata, missing files, and notable cloud statuses. `doctor` reports environment problems and recovery steps without launching Music or reading its library.
 
 ## Requirements
@@ -79,7 +80,7 @@ Homebrew builds from source and requires Swift 6.
 npm install -g @x96_64/ilibrary@0.2.0
 ```
 
-### pip
+### PyPI (pip)
 
 ```bash
 python3 -m venv .venv-ilibrary
