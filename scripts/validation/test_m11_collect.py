@@ -50,6 +50,26 @@ class RedactionTests(unittest.TestCase):
         self.assertEqual(self.redact("0123456789abcdef0"), "0123456789abcdef0")
         self.assertEqual(self.redact("0123456789abcde"), "0123456789abcde")
 
+    def test_volume_uuid_in_either_case_becomes_placeholder(self):
+        upper = "01234567-89AB-CDEF-0123-456789ABCDEF"
+        self.assertEqual(self.redact(f"volume UUID {upper}; free"), "volume UUID <uuid>; free")
+        self.assertEqual(self.redact(f"volume UUID {upper.lower()}; free"), "volume UUID <uuid>; free")
+
+    def test_volume_uuid_next_to_punctuation_and_in_json(self):
+        uuid = "0a1b2c3d-4e5f-6A7B-8c9d-0E1F2A3B4C5D"
+        self.assertEqual(self.redact(f"({uuid})"), "(<uuid>)")
+        self.assertEqual(self.redact(f"id={uuid},"), "id=<uuid>,")
+        self.assertEqual(self.redact(f'{{"volume": "{uuid}", "n": 1}}'), '{"volume": "<uuid>", "n": 1}')
+        self.assertEqual(self.redact(r"{\"v\": \"" + uuid + r"\"}"), r"{\"v\": \"<uuid>\"}")
+
+    def test_uuid_near_misses_are_kept(self):
+        for text in ("01234567-89AB-CDEF-0123-456789ABCDE", "01234567-89AB-CDEF-0123-456789ABCDEF0",
+                     "1234567-89AB-CDEF-0123-456789ABCDEF", "01234567-89AB-CDEF-0123-456789ABCDEF-0123",
+                     "0123-01234567-89AB-CDEF-0123-456789ABCDEF", "01234567-89AB-CDEF-0123",
+                     "01234567-89AB-CDEG-0123-456789ABCDEF", sha(b"x")):
+            self.assertEqual(self.redact(text), text)
+        self.assertEqual(self.redact("id 0123456789abcdef"), "id <id>")
+
     def test_redaction_is_idempotent(self):
         text = f"{HOME}/a /Volumes/X/b A1B2C3D4E5F60718"
         once = self.redact(text)
@@ -83,6 +103,17 @@ class ReportTests(unittest.TestCase):
             self.assertIn("backup /Volumes/BACKUP/M11", text)
             self.assertNotIn("Big Drive", text)
             self.assertIn("== results/doctor.log ==\nNOT RUN", text)
+
+    def test_report_omits_volume_uuid(self):
+        uuid = "89ABCDEF-0123-4567-89AB-CDEF01234567"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "bundle"
+            root.mkdir()
+            self.make_bundle(root, {"status.log": f"backup volume UUID {uuid};\nvolume {uuid.lower()}\n"})
+            text = collect.build_report(root, {HOME}, Path(directory) / "none")
+            self.assertIn("backup volume UUID <uuid>;", text)
+            self.assertNotIn(uuid, text)
+            self.assertNotIn(uuid.lower(), text)
 
     def test_moved_staging_is_expected_but_changed_binary_fails(self):
         with tempfile.TemporaryDirectory() as directory:

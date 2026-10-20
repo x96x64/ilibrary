@@ -25,6 +25,8 @@ EXPECTED_RESULTS = (
     "backup-method.txt", "prepare-dry-run.log", "negative-internal.log", "prepare.log", "status.log",
 )
 ID_PATTERN = re.compile(r"(?<![0-9A-Fa-f])[0-9A-Fa-f]{16}(?![0-9A-Fa-f])")
+UUID_PATTERN = re.compile(
+    r"(?<![0-9A-Fa-f-])[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}(?![0-9A-Fa-f-])")
 VOLUME_PATTERN = re.compile(r"(?<![A-Za-z0-9_])(\\?/)Volumes\\?/[^/\\\"'\n]+")
 
 
@@ -35,11 +37,14 @@ def home_pattern(home):
 
 
 def redact(text, homes):
-    """Replaces the home directories, volume names, and persistent IDs. Home paths are replaced first so that
-    a volume name inside a home path cannot survive."""
+    """Replaces the home directories, volume names, volume UUIDs, and persistent IDs. Home paths are replaced
+    first so that a volume name inside a home path cannot survive. A UUID is a canonical 8-4-4-4-12
+    hexadecimal group in either letter case, not adjacent to another hexadecimal digit or hyphen, and becomes
+    "<uuid>"."""
     for home in sorted({h for h in homes if h and h != "/"}, key=len, reverse=True):
         text = home_pattern(home).sub("~", text)
     text = VOLUME_PATTERN.sub(lambda match: match.group(1) + "Volumes" + match.group(1) + "BACKUP", text)
+    text = UUID_PATTERN.sub("<uuid>", text)
     return ID_PATTERN.sub("<id>", text)
 
 
