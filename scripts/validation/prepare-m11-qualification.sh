@@ -22,8 +22,16 @@ work="$root/artifacts/m11-qualification-v2-preparation"
 [ ! -e "$work" ] || { echo "$work already exists; it is not overwritten."; exit 1; }
 mkdir -p "$work/tools"
 commit=$(git rev-parse HEAD)
-swift build -c release --product ilibrary --product M11Probe >"$work/build.log" 2>&1
+# SwiftPM builds only the last of several --product options, so each product is built separately, and an
+# executable older than the start of the preparation is refused.
+touch "$work/build-started"
+for product in ilibrary M11Probe; do
+    swift build -c release --product "$product" >>"$work/build.log" 2>&1
+done
 bin=$(swift build -c release --show-bin-path)
+for product in ilibrary M11Probe; do
+    [ "$bin/$product" -nt "$work/build-started" ] || { echo "$bin/$product was not rebuilt; it is not bundled."; exit 1; }
+done
 swiftc -O -swift-version 5 scripts/spikes/SynthAudio.swift -o "$work/tools/SynthAudio"
 
 # Synthetic audio and tags. The product reads tags only from FLAC files, so each WAV is wrapped by synth_flac.py,
