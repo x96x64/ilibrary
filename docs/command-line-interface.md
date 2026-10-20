@@ -2,7 +2,7 @@
 
 ## Status
 
-`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands implemented in version 0.1.0 and, marked as the 0.2.0 development state and not released, `rebuild prepare` and `rebuild status`. The implemented `add` and `check --library` passed [separate-user validation](reports/library-command-validation.md); use the separate-user procedure before operating a personal library.
+`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands of version 0.2.0. The implemented `add` and `check --library` passed [separate-user validation](reports/library-command-validation.md); use the separate-user procedure before operating a personal library.
 
 ## Synopsis
 
@@ -97,7 +97,7 @@ ilibrary rebuild prepare catalog.json ~/Music/Media.localized/Music --workspace 
 ilibrary rebuild status --workspace ~/ilibrary-work
 ```
 
-The `rebuild` group prepares the rebuilding of a Music library from its files. In the 0.2.0 development state, which is not released, only `prepare` and `status` exist. They never change Music, the source files, or the backup, and they add or remove no Music registration. The subcommands `stage`, `clear`, `apply`, and `add` are reserved: each prints that it is planned and not implemented in this version and ends with status 2. The behavior of Music and iCloud Music Library under these procedures has not been fully measured; `prepare` documents conditions that reduce cloud matching and refuses what it detects, and it does not claim to prevent it.
+The `rebuild` group prepares the rebuilding of a Music library from its files. In version 0.2.0, only `prepare` and `status` exist. They never change Music, the source files, or the backup, and they add or remove no Music registration. The subcommands `stage`, `clear`, `apply`, and `add` are reserved: each prints that it is planned and not implemented in this version and ends with status 2. The behavior of Music and iCloud Music Library under these procedures has not been fully measured; `prepare` documents conditions that reduce cloud matching and refuses what it detects, and it does not claim to prevent it.
 
 #### rebuild prepare
 

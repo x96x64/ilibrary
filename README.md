@@ -18,7 +18,9 @@ ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary 0.1.0 is experimental. See [Current Status](docs/roadmap-to-stable.md) for publication and verification results. All ten commands are implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary 0.2.0 is experimental. See [Current Status](docs/roadmap-to-stable.md) for publication and verification results. Eleven top-level commands are implemented; within `rebuild`, only `prepare` and `status` are implemented, and the staged rebuilding of a Music library is not implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+>
+> `rebuild prepare` was qualified once by the maintainer, on a synthetic library of 12 tracks on one Mac with macOS 27.0.1 and Music 1.7 and one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests, not by that live run. A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a personal library or backup medium can be recovered. Keep independent backups and complete the separate-user validation before any personal-library use; iLibrary does not prevent Apple Music cloud matching.
 
 ## Contents
 
@@ -43,7 +45,7 @@ ilibrary apply catalog.json ./staging --dry-run
 
 - **Ordered addition to Music.** `add` moves each album into the Music media folder, adds it there in place, and confirms one track per file before the next album, in release or artist order. It stops when the library already holds a matching track, never changes a track in Music, and resumes an interrupted run.
 - **Lossless import.** `import` converts FLAC, WAV, and AIFF downloads to Apple Lossless through AudioToolbox, verified by decoded PCM equality, and copies iTunes Store files without re-encoding while removing purchase metadata. Standard FLAC tags and the front cover are carried; with `--delete-originals`, originals are moved to the Trash only after every output has been verified.
-- **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files. Every planned change is listed first; `--dry-run` stops there, and every written file is read back and compared with the plan.
+- **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files. `export --strict` refuses, without writing, an export that is not a complete inventory. Every planned change is listed first; `--dry-run` stops there, and every written file is read back and compared with the plan.
 - **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Song.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
 - **MP4 metadata without re-encoding.** `MP4Core` reads and writes the item list of M4A files, rebuilds only the movie box, copies the audio data unchanged, relocates chunk offsets, and replaces items in place, so that repeated application yields identical bytes. Every rewrite goes through a hidden partial file that is parsed again and compared with the source before it replaces the destination.
 - **Removal of iTunes Store purchase metadata.** The purchaser's account, name, purchase date, store identifiers, and purchase information are removed, padding is zeroed, and the gapless information is kept. Encrypted files (`.m4p` and `drms` sample entries) are refused.
@@ -61,7 +63,7 @@ The package declares macOS 14 as its deployment target; the current local verifi
 
 ## Installation
 
-The following commands install version 0.1.0. Check [Current Status](docs/roadmap-to-stable.md) for actual availability. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+Version 0.2.0 is prepared in this source tree but is not yet published. Until its release is announced in [Current Status](docs/roadmap-to-stable.md), the public channels provide version 0.1.0, which is installed with the same commands using `0.1.0` in place of `0.2.0`. The following commands install version 0.2.0. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
 
 ### Homebrew
 
@@ -74,14 +76,14 @@ Homebrew builds from source and requires Swift 6.
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@0.1.0
+npm install -g @x96_64/ilibrary@0.2.0
 ```
 
 ### pip
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.1.0
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.2.0
 source .venv-ilibrary/bin/activate
 ```
 
@@ -156,7 +158,7 @@ ilibrary doctor
 ilibrary help [COMMAND] | --help | --version
 ```
 
-`rebuild prepare` and `rebuild status` are the 0.2.0 development state and are not released; the other `rebuild` subcommands are planned. See [Command-Line Interface](docs/command-line-interface.md#rebuild).
+`rebuild prepare` and `rebuild status` are new in version 0.2.0. The subcommands `rebuild stage`, `rebuild clear`, `rebuild apply`, and `rebuild add` are reserved: each reports that it is planned and exits with status 2. They are distinct from the implemented top-level `ilibrary add` and `ilibrary apply`. See [Command-Line Interface](docs/command-line-interface.md#rebuild).
 
 Exit status is 0 on success, 1 on a failure or a finding from `check` or `doctor`, and 2 on a usage error. `check` requires at least one path or `--library`.
 
@@ -244,6 +246,8 @@ Use audio and artwork that you are entitled to process. The repository contains 
 - Library comparison covers the file tracks and thirteen fields exposed by the adapter. Artwork, copyright, full release dates, and cloud-only entries not exposed as file tracks are not compared.
 - Mutating batches are not transactions: a later failure can leave earlier files or albums completed. Keep backups and the addition journal; no automatic library rollback is attempted.
 - Real Trash operations remain untested; public tests use a substitute Trash.
+- `rebuild prepare` was qualified once by the maintainer, on a synthetic library of 12 tracks on one Mac with macOS 27.0.1 and Music 1.7 and one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests, not by that live run. A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a personal library or backup medium can be recovered. Keep independent backups and complete the separate-user validation before any personal-library use; iLibrary does not prevent Apple Music cloud matching.
+- `check --library` uses the faster bulk read only when its result is consistent and every track's cloud status is `unknown`, and otherwise uses the previous per-track read. In one maintainer-run comparison on a synthetic library of 12 tracks with macOS 27.0.1 and Music 1.7, its results matched those of the per-track read. Which read was used, its speed with larger libraries, and its behavior with other cloud statuses were not measured; libraries with other statuses keep the per-track read and its speed.
 
 ## Documentation
 

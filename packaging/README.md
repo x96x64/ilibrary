@@ -9,7 +9,7 @@
 
 iLibrary prepares downloaded music for a local Apple Music library. It converts lossless downloads to Apple Lossless, applies a JSON catalog without re-encoding, arranges filenames and dates, and adds albums in a controlled order.
 
-> **Note:** Version 0.1.0 is experimental. Start with copies and a separate test library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> **Note:** Version 0.2.0 is experimental. Start with copies and a separate test library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Features
 
@@ -27,6 +27,12 @@ iLibrary prepares downloaded music for a local Apple Music library. It converts 
 
 The minimum OS is the deployment target; local qualification used macOS 27.0.1. Packaged binaries are ad hoc-signed, without Developer ID signing or notarization.
 
+## Qualification Limits
+
+`rebuild prepare` was qualified once by the maintainer, on a synthetic library of 12 tracks on one Mac with macOS 27.0.1 and Music 1.7 and one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests, not by that live run. A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a personal library or backup medium can be recovered. Keep independent backups and complete the separate-user validation before any personal-library use; iLibrary does not prevent Apple Music cloud matching.
+
+`check --library` uses the faster bulk read only when its result is consistent and every track's cloud status is `unknown`, and otherwise uses the previous per-track read. In one maintainer-run comparison on a synthetic library of 12 tracks with macOS 27.0.1 and Music 1.7, its results matched those of the per-track read. Which read was used, its speed with larger libraries, and its behavior with other cloud statuses were not measured; libraries with other statuses keep the per-track read and its speed.
+
 ## Installation
 
 Choose one channel; all install the same command, `ilibrary`.
@@ -34,7 +40,7 @@ Choose one channel; all install the same command, `ilibrary`.
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@0.1.0
+npm install -g @x96_64/ilibrary@0.2.0
 ilibrary --version
 ```
 
@@ -44,7 +50,7 @@ Install in an isolated environment to avoid changing system Python:
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.1.0
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.2.0
 .venv-ilibrary/bin/ilibrary --version
 source .venv-ilibrary/bin/activate
 ```
