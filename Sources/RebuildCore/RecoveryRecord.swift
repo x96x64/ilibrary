@@ -128,7 +128,8 @@ public struct RecordFileOperations: Sendable {
     public var fileExists: @Sendable (String) -> Bool
     /// Creates the file exclusively with mode 0600, writes all data, and synchronizes it.
     public var writeTemporary: @Sendable (String, Data) throws -> Void
-    public var rename: @Sendable (String, String) throws -> Void
+    /// Publishes the first path as the second without replacing an existing file; the first path remains.
+    public var publish: @Sendable (String, String) throws -> Void
     public var synchronizeDirectory: @Sendable (String) throws -> Void
     public var read: @Sendable (String) throws -> Data
     public var remove: @Sendable (String) -> Void
@@ -136,13 +137,13 @@ public struct RecordFileOperations: Sendable {
     public init(
         fileExists: @escaping @Sendable (String) -> Bool,
         writeTemporary: @escaping @Sendable (String, Data) throws -> Void,
-        rename: @escaping @Sendable (String, String) throws -> Void,
+        publish: @escaping @Sendable (String, String) throws -> Void,
         synchronizeDirectory: @escaping @Sendable (String) throws -> Void,
         read: @escaping @Sendable (String) throws -> Data, remove: @escaping @Sendable (String) -> Void
     ) {
         self.fileExists = fileExists
         self.writeTemporary = writeTemporary
-        self.rename = rename
+        self.publish = publish
         self.synchronizeDirectory = synchronizeDirectory
         self.read = read
         self.remove = remove
@@ -167,9 +168,11 @@ public struct RecordFileOperations: Sendable {
             }
             try flush(descriptor, path)
         },
-        rename: { from, to in
-            guard Foundation.rename(from, to) == 0 else {
-                throw RecoveryRecordError.writeFailed("rename \(from): errno \(errno)")
+        publish: { from, to in
+            // link(2) fails with EEXIST instead of replacing the destination, unlike rename(2).
+            guard link(from, to) == 0 else {
+                if errno == EEXIST { throw RecoveryRecordError.alreadyExists(path: to) }
+                throw RecoveryRecordError.writeFailed("link \(from): errno \(errno)")
             }
         },
         synchronizeDirectory: { path in
@@ -504,11 +507,12 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
     /// Writes the record as `rebuild-record.json` in `directory`.
     ///
     /// It refuses an existing record file and an invalid record. The data are written to a temporary file in the
-    /// same directory, synchronized, renamed into place, and the directory is synchronized; the file is then read
-    /// back, decoded, and compared with the sealed record. A failure before the rename removes the temporary file.
-    /// A failure after the rename removes the record file that this call created, since it cannot be trusted. There
-    /// is a narrow window between the existence check and the rename in which a concurrent writer could be
-    /// replaced; the workspace is private to one process at a time.
+    /// same directory and synchronized. The file is then published under its final name with a hard link, which
+    /// fails instead of replacing a file that another actor created after the existence check; the temporary name is
+    /// removed, the directory is synchronized, and the file is read back, decoded, and compared with the sealed
+    /// record. A filesystem without hard links therefore causes a refusal. A failure before or during publication
+    /// removes only the temporary file and never the destination. A failure after publication removes the record
+    /// file that this call created, since it cannot be trusted.
     @discardableResult
     public func write(to directory: URL, operations: RecordFileOperations = .system) throws -> RecoveryRecord {
         let directoryPath = directory.path
@@ -525,18 +529,18 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
 
         do {
             try operations.writeTemporary(temporaryPath, data)
-            try operations.rename(temporaryPath, finalPath)
+            try operations.publish(temporaryPath, finalPath)
         } catch {
             operations.remove(temporaryPath)
             throw error
         }
+        operations.remove(temporaryPath)
         do {
             try operations.synchronizeDirectory(directoryPath)
             let readBack = try RecoveryRecord.parse(try operations.read(finalPath))
             guard readBack == sealedRecord else { throw RecoveryRecordError.readBackMismatch }
         } catch {
             operations.remove(finalPath)
-            operations.remove(temporaryPath)
             throw error
         }
         return sealedRecord

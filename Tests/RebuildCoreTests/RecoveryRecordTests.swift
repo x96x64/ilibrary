@@ -125,7 +125,7 @@ import Testing
 
     @Test func failuresLeaveNoTemporaryFileBehind() throws {
         let steps = [
-            "writeTemporary", "writeTemporaryAfterCreate", "rename", "synchronizeDirectory", "read", "readBack",
+            "writeTemporary", "writeTemporaryAfterCreate", "publish", "synchronizeDirectory", "read", "readBack",
         ]
         for step in steps {
             let directory = try temporaryDirectory()
@@ -139,7 +139,7 @@ import Testing
                     try real.writeTemporary(path, data)
                     throw Injected()
                 }
-            case "rename": operations.rename = { _, _ in throw Injected() }
+            case "publish": operations.publish = { _, _ in throw Injected() }
             case "synchronizeDirectory": operations.synchronizeDirectory = { _ in throw Injected() }
             case "read": operations.read = { _ in throw Injected() }
             default: operations.read = { path in try real.read(path).dropLast() }
@@ -147,6 +147,53 @@ import Testing
             #expect(throws: (any Error).self) { try Self.sample().write(to: directory, operations: operations) }
             #expect(names(directory).isEmpty, "\(step) left \(names(directory))")
         }
+    }
+
+    @Test func aRecordCreatedByAnotherActorBeforePublicationIsNeverReplaced() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let finalURL = directory.appendingPathComponent(RecoveryRecord.fileName)
+        let foreign = Data("foreign record".utf8)
+        var operations = RecordFileOperations.system
+        let real = RecordFileOperations.system
+        // Models another actor that creates the record between the existence check and the publication.
+        operations.writeTemporary = { path, data in
+            try real.writeTemporary(path, data)
+            try foreign.write(to: finalURL)
+        }
+        #expect(throws: RecoveryRecordError.alreadyExists(path: finalURL.path)) {
+            try Self.sample().write(to: directory, operations: operations)
+        }
+        #expect(try Data(contentsOf: finalURL) == foreign)
+        #expect(names(directory) == [RecoveryRecord.fileName])
+    }
+
+    @Test func aFailedPublicationRemovesOnlyTheTemporaryFile() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let finalURL = directory.appendingPathComponent(RecoveryRecord.fileName)
+        let foreign = Data("foreign record".utf8)
+        var operations = RecordFileOperations.system
+        let real = RecordFileOperations.system
+        operations.writeTemporary = { path, data in
+            try real.writeTemporary(path, data)
+            try foreign.write(to: finalURL)
+        }
+        operations.publish = { _, _ in throw RecoveryRecordError.writeFailed("link: injected") }
+        #expect(throws: RecoveryRecordError.writeFailed("link: injected")) {
+            try Self.sample().write(to: directory, operations: operations)
+        }
+        #expect(try Data(contentsOf: finalURL) == foreign)
+        #expect(names(directory) == [RecoveryRecord.fileName])
+    }
+
+    @Test func aReadBackFailureAfterPublicationRemovesThePublishedRecord() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var operations = RecordFileOperations.system
+        operations.read = { _ in throw Injected() }
+        #expect(throws: (any Error).self) { try Self.sample().write(to: directory, operations: operations) }
+        #expect(names(directory).isEmpty)
     }
 
     @Test func readBackDetectsADifferentFile() throws {
