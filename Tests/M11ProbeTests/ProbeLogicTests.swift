@@ -93,6 +93,31 @@
             #expect(!ProbeAnalysis.everyTrackHasDateAdded(snapshot([track("A")], dates: false)))
         }
 
+        @Test func dateAddedAgesAreMeasuredFromTheReference() {
+            var dated = snapshot([track("A"), track("B"), track("C")])
+            dated.dateAddedSeconds = ["A": 1_792_499_000, "B": 1_792_499_600, "C": 1_792_499_600]
+            let ages = ProbeAnalysis.dateAddedAges(dated, reference: 1_792_500_000)
+            #expect(ages == .init(minimumSeconds: 400, maximumSeconds: 1000, distinctCount: 2))
+            #expect(ProbeAnalysis.dateAddedAges(snapshot([track("A")], dates: false), reference: 0) == nil)
+            #expect(ProbeAnalysis.dateAddedAges(snapshot([]), reference: 0) == nil)
+        }
+
+        @Test func reportRecordsDateAddedAgesOnlyWithAReference() throws {
+            let tracks = [track("A")]
+            let durations = ProbeReport.Durations(perTrackSeconds: 1, bulkSeconds: 1, snapshotSeconds: 1)
+            let without = ProbeReportBuilder.build(
+                macOSVersion: "15.1.0", musicVersion: "1.5", perTrack: tracks, bulk: tracks, bulkFallbackUsed: false,
+                snapshot: snapshot(tracks), durations: durations)
+            #expect(without.snapshotDateAddedAges == nil)
+            let with = ProbeReportBuilder.build(
+                macOSVersion: "15.1.0", musicVersion: "1.5", perTrack: tracks, bulk: tracks, bulkFallbackUsed: false,
+                snapshot: snapshot(tracks), durations: durations, referenceSeconds: 61)
+            #expect(with.snapshotDateAddedAges == .init(minimumSeconds: 60, maximumSeconds: 60, distinctCount: 1))
+            #expect(with.format == "ilibrary-m11-readers-report-2")
+            let decoded = try JSONDecoder().decode(ProbeReport.self, from: with.json())
+            #expect(decoded == with)
+        }
+
         @Test func reportRecordsCountsFallbackAndDurations() throws {
             let tracks = [track("A"), track("B")]
             let report = ProbeReportBuilder.build(

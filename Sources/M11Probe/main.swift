@@ -89,12 +89,14 @@
         let bulkTime = try clock.measure { bulk = try MusicApp.allTracksBulkReportingFallback() }
         var snapshot = MusicLibrarySnapshot(tracks: [], trackCount: 0, fileTrackCount: 0, dateAddedSeconds: [:])
         let snapshotTime = try clock.measure { snapshot = try MusicApp.librarySnapshot() }
+        let referenceSeconds = Int(Date().timeIntervalSince1970)
         report = ProbeReportBuilder.build(
             macOSVersion: report.macOSVersion, musicVersion: report.musicVersion, perTrack: perTrack,
             bulk: bulk.tracks, bulkFallbackUsed: bulk.usedFallback, snapshot: snapshot,
             durations: ProbeReport.Durations(
                 perTrackSeconds: seconds(perTrackTime), bulkSeconds: seconds(bulkTime),
-                snapshotSeconds: seconds(snapshotTime)))
+                snapshotSeconds: seconds(snapshotTime)),
+            referenceSeconds: referenceSeconds)
     } catch {
         report.error = "\(error)"
         status = 1

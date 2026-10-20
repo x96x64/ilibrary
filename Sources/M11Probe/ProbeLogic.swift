@@ -172,10 +172,19 @@
         static func sameIdentitySet(_ a: [MusicTrackInfo], _ b: [MusicTrackInfo]) -> Bool {
             Set(a.map(\.persistentID)) == Set(b.map(\.persistentID))
         }
+
+        /// The smallest and largest age, in whole seconds before `reference`, of the snapshot's dates added, and
+        /// the number of distinct values; nil when the snapshot holds no date added.
+        static func dateAddedAges(_ snapshot: MusicLibrarySnapshot, reference: Int) -> ProbeReport.DateAddedAges? {
+            let ages = snapshot.tracks.compactMap { snapshot.dateAddedSeconds[$0.persistentID] }.map { reference - $0 }
+            guard let minimum = ages.min(), let maximum = ages.max() else { return nil }
+            return ProbeReport.DateAddedAges(
+                minimumSeconds: minimum, maximumSeconds: maximum, distinctCount: Set(ages).count)
+        }
     }
 
-    /// The sanitized report. It holds counts, durations, versions, enumeration names, and file extensions,
-    /// and never a name, a path, a persistent ID, or an account detail.
+    /// The sanitized report. It holds counts, durations, versions, enumeration names, file extensions, and the
+    /// range of the ages of the dates added, and never a name, a path, a persistent ID, or an account detail.
     struct ProbeReport: Codable, Equatable {
         struct Readers: Codable, Equatable {
             var perTrackCount: Int
@@ -196,8 +205,15 @@
             var duplicateIDsInBulk: Int
             var snapshotAndPerTrackIDSetsEqual: Bool
         }
+        /// The ages of the snapshot's dates added relative to the probe's clock. For tracks added shortly before
+        /// the probe, plausible values are small and positive; they reveal no identity.
+        struct DateAddedAges: Codable, Equatable {
+            var minimumSeconds: Int
+            var maximumSeconds: Int
+            var distinctCount: Int
+        }
 
-        var format = "ilibrary-m11-readers-report-1"
+        var format = "ilibrary-m11-readers-report-2"
         var userNameCheckPassed: Bool
         var macOSVersion: String
         var musicVersion: String
@@ -209,6 +225,7 @@
         var missingLocationCount: Int?
         var locationExtensionCounts: [String: Int]?
         var everySnapshotTrackHasDateAdded: Bool?
+        var snapshotDateAddedAges: DateAddedAges?
         /// The message of the error that stopped the probe, when one did.
         var error: String?
 
@@ -220,10 +237,12 @@
     }
 
     enum ProbeReportBuilder {
-        /// Builds the complete report from the three reads. Pure.
+        /// Builds the complete report from the three reads. `referenceSeconds`, the probe's clock in whole seconds
+        /// since 1970, dates the ages of the dates added; without it they are not reported. Pure.
         static func build(
             macOSVersion: String, musicVersion: String, perTrack: [MusicTrackInfo], bulk: [MusicTrackInfo],
-            bulkFallbackUsed: Bool, snapshot: MusicLibrarySnapshot, durations: ProbeReport.Durations
+            bulkFallbackUsed: Bool, snapshot: MusicLibrarySnapshot, durations: ProbeReport.Durations,
+            referenceSeconds: Int? = nil
         ) -> ProbeReport {
             let comparison = ProbeAnalysis.compare(perTrack, bulk)
             var report = ProbeReport(userNameCheckPassed: true, macOSVersion: macOSVersion, musicVersion: musicVersion)
@@ -242,6 +261,9 @@
             report.missingLocationCount = ProbeAnalysis.missingLocationCount(snapshot.tracks)
             report.locationExtensionCounts = ProbeAnalysis.extensionCounts(snapshot.tracks)
             report.everySnapshotTrackHasDateAdded = ProbeAnalysis.everyTrackHasDateAdded(snapshot)
+            if let referenceSeconds {
+                report.snapshotDateAddedAges = ProbeAnalysis.dateAddedAges(snapshot, reference: referenceSeconds)
+            }
             return report
         }
     }
