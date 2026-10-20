@@ -3,7 +3,7 @@
 ## User Documentation
 
 - [Version 0.1.0 Release Notes](releases/0.1.0.md): experimental release description
-- [Version 0.2.0 Release Notes](releases/0.2.0.md): draft for the unreleased version 0.2.0
+- [Version 0.2.0 Release Notes](releases/0.2.0.md): experimental release description
 - [Command-Line Interface](command-line-interface.md): commands, options, and exit status
 - [Completing Catalogs with AI Agents](catalog-for-agents.md): the authoring workflow for agents and chats
 - [Library Operations and Recovery](library-operations.md): previews, resumption, diagnostics, and private reports

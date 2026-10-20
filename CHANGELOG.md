@@ -4,7 +4,7 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
-These changes are prepared for version 0.2.0, which has not been released. A release-finalization change turns this section into `[0.2.0]` with the release date in the commit that is built, verified, and tagged `v0.2.0`.
+## [0.2.0] - 2026-10-20
 
 ### Added
 
