@@ -44,9 +44,22 @@
         /// When a bulk read of a property other than location and cloud status raises an error, the result
         /// is that of `allTracks()`. Live equivalence with the per-track reader has not been measured.
         public static func allTracksBulk() throws -> [MusicTrackInfo] {
+            try allTracksBulkReportingFallback().tracks
+        }
+
+        /// The same read as `allTracksBulk()`, also reporting whether the per-track fallback produced the
+        /// result because a bulk read was unavailable.
+        public static func allTracksBulkReportingFallback() throws -> (
+            tracks: [MusicTrackInfo], usedFallback: Bool
+        ) {
             let text = try run(bulkScript(includeDates: false))
-            if text == bulkUnavailable { return try allTracks() }
-            return try assembleBulk(splitSections(text, expected: bulkSectionCount))
+            if text == bulkUnavailable { return (try allTracks(), true) }
+            return (try assembleBulk(splitSections(text, expected: bulkSectionCount)), false)
+        }
+
+        /// The version string of the Music application, read with `tell application "Music" to return version`.
+        public static func musicVersion() throws -> String {
+            try run("tell application \"Music\" to return version")
         }
 
         /// Reads the file tracks, both track counts, and the date added of each file track. Throws when a
