@@ -15,6 +15,7 @@
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
 - [Plan for M11](m11-plan.md): backup, inventory, strict export, and recovery-record work for 0.2.0, approved under Decision 41 with its Decisions A to G and safeguards; M11 passed under Decision 45
+- [Decision F Live Comparison of check --library](decision-f-live-comparison.md): English procedure for the maintainer-operated comparison of `check --library` between the M11 merge and the Decision F commit on a new synthetic library `DecisionF-comparison-v4`; its unchanged-library phase was performed once and accepted under Decision 49
 - [M11 Backup and Inventory Qualification, Version 2](m11-qualification-v2.md): completed English procedure for the maintainer-operated bulk-reader, external-drive backup, restoration, and disconnection measurements of M11 with the library `M11-qualification-v2`; M11 passed on its report and supplementary `rebuild status` observation under Decision 45; retained for the record and not to be repeated
 - [M11 Backup and Inventory Qualification](m11-qualification.md): completed first-run procedure; the run stopped at Step 6 on the snapshot date conversion; retained for the record and not to be continued
 - [Separated Addition Qualification, Version 2](rebuild-qualification-v2-validation.md): Japanese procedure for the scale and three artist-order cases under Decision 36 with new libraries `M10-separated-v2-<case>`
@@ -89,3 +90,5 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-20 — [M11 Unpublished History Correction](reports/m11-history-correction.md)
 - 2026-10-20 — [M11 Pull Request Review Corrections](reports/m11-review-corrections.md)
 - 2026-10-20 — [M11 Residual Risk Corrections](reports/m11-residual-risk-corrections.md)
+- 2026-10-20 — [Decision F: Bulk Library Read for check --library](reports/decision-f-check-library.md)
+- 2026-10-20 — [Decision F Live Comparison Results](reports/decision-f-live-comparison-results.md)

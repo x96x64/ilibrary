@@ -43,6 +43,7 @@ let package = Package(
                 "ilibrary", "MP4Core", "FLACCore", "CatalogCore", "RebuildCore", "SyntheticMedia",
                 .target(name: "SyntheticMediaMac", condition: .when(platforms: [.macOS])),
                 .target(name: "ConversionMac", condition: .when(platforms: [.macOS])),
+                .target(name: "LibraryMac", condition: .when(platforms: [.macOS])),
             ]),
     ]
 )

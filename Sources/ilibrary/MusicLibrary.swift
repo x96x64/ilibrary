@@ -41,7 +41,9 @@ protocol MusicLibrary: Sendable {
     func mediaFolder() -> URL?
     /// The file tracks whose album has the given name. Reads only.
     func tracks(album: String) throws -> [LibraryTrack]
-    /// All file tracks, for a location-based comparison even when cached album tags differ.
+    /// All file tracks, for a location-based comparison even when cached album tags differ. The system
+    /// implementation reads in bulk with a per-track fallback and is designed to return the tracks of the per-track
+    /// reader; their live equivalence was measured only for 12 synthetic tracks in the M11 qualification.
     func allTracks() throws -> [LibraryTrack]
     /// Every file track, both track counts, and the dates added, read with a fixed number of requests. Reads only.
     func librarySnapshot() throws -> LibrarySnapshot
@@ -66,7 +68,7 @@ protocol MusicLibrary: Sendable {
 
         func mediaFolder() -> URL? { MusicApp.mediaFolder() }
         func tracks(album: String) throws -> [LibraryTrack] { try MusicApp.tracks(album: album).map(Self.convert) }
-        func allTracks() throws -> [LibraryTrack] { try MusicApp.allTracks().map(Self.convert) }
+        func allTracks() throws -> [LibraryTrack] { try MusicApp.allTracksPreferringBulk().map(Self.convert) }
         func librarySnapshot() throws -> LibrarySnapshot {
             let snapshot = try MusicApp.librarySnapshot()
             return LibrarySnapshot(

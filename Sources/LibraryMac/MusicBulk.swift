@@ -1,11 +1,12 @@
 // Bulk reading of the Music library. Built only on macOS; on other platforms it is empty.
 //
 // Equivalence status: the bulk reader is designed to return, field for field, what the per-track reader
-// (`describeHandler`, `MusicApp.parse`) returns. Live equivalence with the per-track reader has NOT been
-// measured. It requires the maintainer's verification in a separate macOS user. The speed of the bulk read
-// (0.482 s against 40.092 s for 300 tracks) was measured in the M10 qualification with one bulk reference per
-// property; the behaviour of every property listed below under bulk reads, and the text produced by
-// coercing a bulk-read cloud status outside the `tell` block, are unmeasured.
+// (`describeHandler`, `MusicApp.parse`) returns. Live field-level equivalence was measured for 12 synthetic
+// tracks in the M11 version 2 qualification (docs/reports/m11-qualification-v2-results.md), all of whose cloud
+// statuses were `unknown`; the text produced by coercing other bulk-read cloud statuses outside the `tell`
+// block is unmeasured. The use of the bulk reader in `check --library` through `allTracksPreferringBulk()`
+// is verified only by synthetic tests that send no Apple Event; its live behaviour is not measured. The
+// speed of the bulk read (0.482 s against 40.092 s for 300 tracks) was measured in the M10 qualification.
 //
 // Date conversion: AppleScript integers are limited to about plus or minus 536870911, so the difference
 // between a date and the base date is a real for dates after early January 2017, and coercing it to text
@@ -53,6 +54,41 @@
         /// is that of `allTracks()`. Live equivalence with the per-track reader has not been measured.
         public static func allTracksBulk() throws -> [MusicTrackInfo] {
             try allTracksBulkReportingFallback().tracks
+        }
+
+        /// Reads every file track in bulk when the bulk output is available and consistent, and otherwise
+        /// exactly as `allTracks()` does. Any failure of the bulk read, including a thrown error, the
+        /// unavailable marker, a wrong section count, an item count mismatch, a first and last identifier
+        /// mismatch, or a parse error, selects the per-track reader, so that every error that this function
+        /// throws is an error of `allTracks()`. The bulk result is also accepted only when the cloud status
+        /// text of every track is exactly `unknown` (see `bulkAcceptedCloudStatus`); a library with any other
+        /// status keeps the per-track reader and its speed. This guard examines only the parsed status text
+        /// and does not prove that the underlying status in Music is represented correctly.
+        public static func allTracksPreferringBulk() throws -> [MusicTrackInfo] {
+            try allTracksPreferringBulk(bulk: { try run(bulkScript(includeDates: false)) }, perTrack: allTracks)
+        }
+
+        /// The only cloud status text observed from the bulk read in the M11 live comparison (12 synthetic
+        /// tracks). The rendering of every other status by the bulk read is unmeasured.
+        static let bulkAcceptedCloudStatus = "unknown"
+
+        /// The selection of `allTracksPreferringBulk()` with both readers supplied. After a successful
+        /// assembly, the bulk tracks are accepted only if every track's `cloudStatus` equals
+        /// `bulkAcceptedCloudStatus` byte for byte, without case folding or trimming; an empty library is
+        /// accepted. In every other case `perTrack` supplies the result. The guard examines only the parsed
+        /// status text and does not prove that Music's underlying status is represented correctly; the value
+        /// is the only status observed in the M11 live comparison, so libraries with other statuses keep the
+        /// per-track reader and its speed. Errors thrown by `perTrack` propagate unchanged.
+        static func allTracksPreferringBulk(
+            bulk: () throws -> String, perTrack: () throws -> [MusicTrackInfo]
+        ) throws -> [MusicTrackInfo] {
+            if let text = try? bulk(), text != bulkUnavailable,
+                let tracks = try? assembleBulk(splitSections(text, expected: bulkSectionCount)),
+                tracks.allSatisfy({ $0.cloudStatus.utf8.elementsEqual(bulkAcceptedCloudStatus.utf8) })
+            {
+                return tracks
+            }
+            return try perTrack()
         }
 
         /// The same read as `allTracksBulk()`, also reporting whether the per-track fallback produced the
