@@ -33,7 +33,6 @@
             #expect(description.isLocal)
             #expect(description.mediaBSDName != nil)
             #expect(description.physicalWholeDisk != description.mediaBSDName)
-            #expect(description.interconnect != nil)
         }
 
         @Test func missingPathIsReported() {

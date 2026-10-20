@@ -75,6 +75,25 @@ import Testing
         }
     }
 
+    @Test func verdictDoesNotDependOnTheInterconnect() {
+        func backup(disk: String?, interconnect: String?) -> StorageFacts {
+            StorageFacts(
+                physicalDisk: disk, filesystemType: "apfs", isLocal: true, isDiskImage: false,
+                interconnect: interconnect)
+        }
+        for interconnect in [nil, "USB"] {
+            let separate = BackupIndependence.evaluate(
+                backup: backup(disk: "disk4", interconnect: interconnect), others: [source], maintainerConfirmed: true)
+            #expect(separate.isIndependent)
+            let shared = BackupIndependence.evaluate(
+                backup: backup(disk: "disk0", interconnect: interconnect), others: [source], maintainerConfirmed: true)
+            #expect(reasons(shared) == [.sameDevice(location: "other location 1", disk: "disk0")])
+            let unknown = BackupIndependence.evaluate(
+                backup: backup(disk: nil, interconnect: interconnect), others: [source], maintainerConfirmed: true)
+            #expect(reasons(unknown) == [.unknownDeviceIdentity(location: "backup")])
+        }
+    }
+
     @Test func missingConfirmationIsRefused() {
         let verdict = BackupIndependence.evaluate(backup: facts(), others: [source], maintainerConfirmed: false)
         #expect(reasons(verdict) == [.notConfirmed])
