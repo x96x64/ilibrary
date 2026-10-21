@@ -105,6 +105,15 @@ import Testing
         }
     }
 
+    /// The macOS reader is compiled but cannot run without the accessibility service, so this source check guards
+    /// the merge of the application's windows into its children: a cut windows list must mark the merged list cut.
+    @Test func theReaderKeepsTheTruncationOfTheWindowsList() throws {
+        let files = try Self.swiftFiles()
+        let reader = try #require(files.first { $0.name == "AccessibilityReader.swift" })
+        #expect(reader.text.contains("let windows = elements(element, \"AXWindows\")"))
+        #expect(reader.text.contains("if windows.truncated { result.truncated = true }"))
+    }
+
     @Test func theProbeAddsNoPackageDependency() throws {
         let package = Sources.packageManifest
         // The probe depends only on the repository's portable RebuildCore, for SHA-256; no package dependency.

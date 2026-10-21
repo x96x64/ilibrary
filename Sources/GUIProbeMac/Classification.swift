@@ -78,7 +78,8 @@ enum Reason: Hashable, Sendable {
         case .readingsDisagree: "the readings differ from one another"
         case .inventoryEvidenceMissing: "no registration inventory count was supplied"
         case .inventoryEvidenceInvalid: "the supplied inventory count is not a valid count"
-        case .contradictoryRowTotal: "the empty-state element is present but the complete row list is not empty"
+        case .contradictoryRowTotal:
+            "the profile declares the row list complete, but a reading reported a row total above zero"
         case .rowTotalUnknown: "the profile declares the row list complete, but its total was not reported"
         case .runStopped: "the observation stopped before every requested reading was taken"
         case .inventoryContradictsView(let count):

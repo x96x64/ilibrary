@@ -213,6 +213,10 @@
                         result.nodes.append(window)
                     }
                     if result.error == nil { result.error = windows.error }
+                    // A window omitted from a cut windows list could hold the matching view with content while
+                    // another walked window holds an empty one, so a truncated windows list makes the merged
+                    // list, and with it the walk, incomplete.
+                    if windows.truncated { result.truncated = true }
                 }
                 return result
             }
