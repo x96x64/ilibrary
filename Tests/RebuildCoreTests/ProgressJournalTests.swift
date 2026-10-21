@@ -1134,6 +1134,30 @@ struct JournalBuilder {
         #expect(!mismatch.data.isEmpty)
     }
 
+    @Test func anEmptyJournalThatCannotBeRemovedMakesCreationUncertainWithoutRetry() throws {
+        let workspace = try Workspace()
+        let writes = CallCounter()
+        var failing = ProgressJournalFile.Operations.system
+        failing.write = { _, _ in
+            _ = writes.next()
+            throw Injected()
+        }
+        failing.remove = { _ in }
+        guard case .creationUncertain? = error({ try workspace.create(operations: failing) }) else {
+            Issue.record("expected creationUncertain")
+            return
+        }
+        #expect(writes.next() == 2, "the header write was attempted exactly once")
+        #expect(FileManager.default.fileExists(atPath: workspace.journalPath))
+        #expect(workspace.data.isEmpty)
+        // The empty file left behind is not a journal and is never accepted as one.
+        #expect(
+            error {
+                try ProgressJournalFile.read(in: workspace.url, record: workspace.record, recordBytes: workspace.bytes)
+            }
+                == .empty)
+    }
+
     func evacuationBodies(_ workspace: Workspace) -> [JournalBody] {
         let source = workspace.record.evacuation[0].sourcePath
         let file = ObservedFile(workspace.record.inventory[0].record)
@@ -1231,19 +1255,71 @@ struct JournalBuilder {
         #expect(error { try workspace.create() } == .alreadyExists(path: workspace.journalPath))
     }
 
+    /// Runs `body` on a separate thread and waits at most `seconds` for it. If it has not finished, the test
+    /// records a failure and opens the write end of `fifo`, which releases an open of its read end that blocked,
+    /// so that a regression is reported instead of stalling the suite.
+    static func withinBound<T: Sendable>(
+        seconds: Double, releasing fifo: String, _ body: @escaping @Sendable () -> T
+    ) -> T? {
+        let result = ResultBox<T>()
+        let done = DispatchSemaphore(value: 0)
+        Thread.detachNewThread {
+            result.set(body())
+            done.signal()
+        }
+        if done.wait(timeout: .now() + seconds) == .success { return result.get() }
+        Issue.record("the operation blocked on the named pipe for more than \(seconds) seconds")
+        let writer = open(fifo, O_WRONLY)
+        if writer >= 0 { close(writer) }
+        _ = done.wait(timeout: .now() + seconds)
+        return nil
+    }
+
+    final class ResultBox<T: Sendable>: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value: T?
+        func set(_ newValue: T) {
+            lock.lock()
+            defer { lock.unlock() }
+            value = newValue
+        }
+        func get() -> T? {
+            lock.lock()
+            defer { lock.unlock() }
+            return value
+        }
+    }
+
     @Test func aNamedPipeInPlaceOfTheJournalIsRefusedWithoutBlocking() throws {
         let workspace = try Workspace()
-        #expect(mkfifo(workspace.journalPath, 0o600) == 0)
+        let path = workspace.journalPath
+        #expect(mkfifo(path, 0o600) == 0)
+        let (url, record, bytes) = (workspace.url, workspace.record, workspace.bytes)
+        let read = Self.withinBound(seconds: 10, releasing: path) {
+            error { try ProgressJournalFile.read(in: url, record: record, recordBytes: bytes) }
+        }
+        #expect(read == .some(.notARegularFile(path: path)))
         let head = JournalHead(sequence: 0, checksum: "")
-        #expect(
+        let appended = Self.withinBound(seconds: 10, releasing: path) {
             error {
-                try ProgressJournalFile.read(in: workspace.url, record: workspace.record, recordBytes: workspace.bytes)
+                try ProgressJournalFile.append(
+                    .stageBegan(.evacuation), to: url, expectedHead: head, record: record, recordBytes: bytes)
             }
-                == .notARegularFile(path: workspace.journalPath))
-        #expect(
-            error { try workspace.append(.stageBegan(.evacuation), head: head) }
-                == .notARegularFile(path: workspace.journalPath))
-        #expect(error { try workspace.create() } == .alreadyExists(path: workspace.journalPath))
+        }
+        #expect(appended == .some(.notARegularFile(path: path)))
+        #expect(error { try workspace.create() } == .alreadyExists(path: path))
+    }
+
+    @Test func aNamedPipeInPlaceOfTheRecordIsRefusedWithoutBlocking() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("pj-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let path = url.appendingPathComponent(RecoveryRecord.fileName).path
+        #expect(mkfifo(path, 0o600) == 0)
+        let loaded = Self.withinBound(seconds: 10, releasing: path) {
+            error { _ = try ProgressJournalFile.loadRecord(from: url) }
+        }
+        #expect(loaded == .some(.notARegularFile(path: path)))
     }
 
     @Test func aJournalWithAHardLinkOrUnsafePermissionsIsRefused() throws {

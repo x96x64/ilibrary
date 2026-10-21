@@ -215,7 +215,8 @@ public enum ProgressJournalFile {
         defer { close(descriptor) }
         try requireRegular(descriptor, path: path, strict: true)
         guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
-            if errno == EWOULDBLOCK || errno == EAGAIN { throw ProgressJournalError.locked(path: path) }
+            // EWOULDBLOCK equals EAGAIN on Darwin and Linux; EAGAIN alone avoids depending on the alias.
+            if errno == EAGAIN { throw ProgressJournalError.locked(path: path) }
             throw ProgressJournalError.unreadable(path: path, reason: "flock: errno \(errno)")
         }
 
