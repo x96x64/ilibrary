@@ -118,6 +118,33 @@ import Testing
         #expect(!reader.text.contains("var scratch = NodeFacts()\n                if text(element, \"AXRole\""))
     }
 
+    /// The application's own child count is compared with its children before the windows are merged; the
+    /// reader must keep that number before it reads the windows list.
+    @Test func theReaderKeepsTheChildCountBeforeMergingWindows() throws {
+        let files = try Self.swiftFiles()
+        let reader = try #require(files.first { $0.name == "AccessibilityReader.swift" })
+        let keep = try #require(reader.text.range(of: "result.primaryCount = result.nodes.count"))
+        let windows = try #require(reader.text.range(of: "let windows = elements(element, \"AXWindows\")"))
+        let merge = try #require(reader.text.range(of: "result.nodes.append(window)"))
+        #expect(keep.lowerBound < windows.lowerBound && windows.lowerBound < merge.lowerBound)
+        #expect(reader.text.components(separatedBy: "primaryCount").count == 2)
+    }
+
+    /// The subrole is read with its presence, so that a value that is not text is unreadable rather than absent.
+    @Test func theReaderReadsTheSubroleWithItsPresence() throws {
+        let files = try Self.swiftFiles()
+        let reader = try #require(files.first { $0.name == "AccessibilityReader.swift" })
+        #expect(reader.text.contains("(facts.subrole, facts.hasSubrole) = text(element, \"AXSubrole\", into: &facts)"))
+    }
+
+    /// The extractor never derives that a view cannot scroll.
+    @Test func theExtractorNeverReportsAViewAsNotScrollable() throws {
+        let files = try Self.swiftFiles()
+        let walking = try #require(files.first { $0.name == "TreeWalking.swift" })
+        #expect(!walking.text.contains("scrollable = false"))
+        #expect(walking.text.contains("if scrollable { reading.scrollable = true }"))
+    }
+
     /// Source checks for the macOS count reads, which the synthetic tests cannot execute.
     @Test func theReaderNeverTakesAnUnavailableOrNegativeCountForEmptiness() throws {
         let files = try Self.swiftFiles()

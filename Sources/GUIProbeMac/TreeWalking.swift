@@ -23,6 +23,7 @@ struct NodeFacts: Equatable, Sendable {
     var identifier: String?
     var title: String?
     var description: String?
+    var hasSubrole = false
     var hasIdentifier = false
     var hasTitle = false
     var hasDescription = false
@@ -34,6 +35,12 @@ struct NodeFacts: Equatable, Sendable {
     var scrollValue: Double?
     var busy: Bool?
     var errors: [AttributeError] = []
+
+    /// Whether a text attribute could not be read: its request failed, or it returned a value that is not text.
+    /// An attribute reported as no value or unsupported is absent, which is a definite absence and not unreadable.
+    func isUnreadable(_ attribute: String, value: String?, returned: Bool) -> Bool {
+        (returned && value == nil) || errors.contains { $0.attribute == attribute }
+    }
 }
 
 struct Children<Node> {
@@ -44,6 +51,10 @@ struct Children<Node> {
     /// True when the collection could not be established at all, for example because its count was reported as
     /// no value or unsupported; this is never evidence that the node has no children.
     var unavailable = false
+    /// The number of nodes that the node's own child collection returned before another collection, such as the
+    /// windows of an application, was merged into the list; nil when nothing was merged. The child count read with
+    /// the node's facts describes that collection alone, so it is compared with this number.
+    var primaryCount: Int? = nil
 }
 
 /// The completeness of one bounded read of a collection attribute: the count that the element reported, the
@@ -134,11 +145,13 @@ enum TreeWalker {
                     facts.errors.append(AttributeError(attribute: "AXChildren", code: code))
                 }
                 if kids.truncated { snapshot.truncatedByChildLimit = true }
-                // An unknown child count, an unavailable collection, or fewer children than the earlier count
-                // reported cannot show that nothing is missing. The merged list of an application may hold more
-                // entries than its own child count, never fewer.
+                // An unknown child count, an unavailable collection, or a number of children that differs in either
+                // direction from the earlier count cannot show that nothing is missing. For an application, the
+                // count is compared with its own children before its windows were merged, so that a window added
+                // by the merge cannot stand in for a child that the enumeration omitted.
                 if kids.unavailable || facts.childCount == nil { snapshot.childrenUnavailable = true }
-                if let reported = facts.childCount, !kids.truncated, kids.error == nil, kids.nodes.count < reported {
+                let enumerated = kids.primaryCount ?? kids.nodes.count
+                if let reported = facts.childCount, !kids.truncated, kids.error == nil, enumerated != reported {
                     snapshot.childrenUnavailable = true
                 }
                 for kid in kids.nodes { queue.append((node: kid, depth: item.depth + 1, parent: index)) }
@@ -154,12 +167,53 @@ enum ViewExtractor {
     private static let scrollAreaRole = "AXScrollArea"
     private static let windowRole = "AXWindow"
 
-    private static func matches(_ facts: NodeFacts, _ rule: ElementRule, includeLabel: Bool) -> Bool {
-        guard facts.role == rule.role else { return false }
-        if let subrole = rule.subrole, facts.subrole != subrole { return false }
-        if let identifier = rule.identifier, facts.identifier != identifier { return false }
-        if includeLabel, let label = rule.label, facts.title != label, facts.description != label { return false }
-        return true
+    /// Whether an element satisfies a rule: definitely, definitely not, or possibly, when an attribute that the
+    /// rule requires could not be read and no other requirement definitely fails.
+    enum RuleMatch {
+        case match
+        case mismatch
+        case uncertain
+    }
+
+    private static func condition(_ value: String?, equals expected: String, unreadable: Bool) -> RuleMatch {
+        if value == expected { return .match }
+        return unreadable ? .uncertain : .mismatch
+    }
+
+    static func match(_ facts: NodeFacts, _ rule: ElementRule, includeLabel: Bool) -> RuleMatch {
+        var conditions: [RuleMatch] = [facts.role.map { $0 == rule.role ? .match : .mismatch } ?? .uncertain]
+        if let subrole = rule.subrole {
+            conditions.append(
+                condition(
+                    facts.subrole, equals: subrole,
+                    unreadable: facts.isUnreadable("AXSubrole", value: facts.subrole, returned: facts.hasSubrole)))
+        }
+        if let identifier = rule.identifier {
+            conditions.append(
+                condition(
+                    facts.identifier, equals: identifier,
+                    unreadable: facts.isUnreadable(
+                        "AXIdentifier", value: facts.identifier, returned: facts.hasIdentifier)))
+        }
+        if includeLabel, let label = rule.label {
+            // The label may be carried by the title or by the description, so either one matching satisfies it,
+            // and an unreadable one leaves it possible while the other does not match.
+            let title = condition(
+                facts.title, equals: label,
+                unreadable: facts.isUnreadable("AXTitle", value: facts.title, returned: facts.hasTitle))
+            let description = condition(
+                facts.description, equals: label,
+                unreadable: facts.isUnreadable(
+                    "AXDescription", value: facts.description, returned: facts.hasDescription))
+            if title == .match || description == .match {
+                conditions.append(.match)
+            } else {
+                conditions.append(title == .uncertain || description == .uncertain ? .uncertain : .mismatch)
+            }
+        }
+        if conditions.contains(.mismatch) { return .mismatch }
+        if conditions.contains(.uncertain) { return .uncertain }
+        return .match
     }
 
     private static func isDescendant<Node>(_ index: Int, of ancestor: Int, in entries: [TreeEntry<Node>]) -> Bool {
@@ -182,10 +236,20 @@ enum ViewExtractor {
             elapsed: elapsed, treeStatus: status, viewIdentified: false, containerFound: false, containerRole: nil,
             contentItemCount: nil, totalItemCount: nil, scrollable: nil, busy: nil, placeholderPresent: nil,
             unexpectedStructure: false, unknownLabel: false)
-        let candidates = entries.indices.filter { matches(entries[$0].facts, rule.identification, includeLabel: false) }
-        let matched = candidates.filter { matches(entries[$0].facts, rule.identification, includeLabel: true) }
-        if rule.identification.label != nil && matched.isEmpty && !candidates.isEmpty { reading.unknownLabel = true }
-        guard matched.count == 1, let view = matched.first else {
+        let outcomes = entries.map { match($0.facts, rule.identification, includeLabel: true) }
+        let matched = entries.indices.filter { outcomes[$0] == .match }
+        // A definite match is unique only when every other element is definitely excluded: an element that could
+        // satisfy the rule but has an unreadable attribute could be the view, whether or not it has a container.
+        reading.viewAmbiguous = outcomes.contains(.uncertain)
+        let candidates = entries.indices.filter {
+            match(entries[$0].facts, rule.identification, includeLabel: false) == .match
+        }
+        if rule.identification.label != nil && matched.isEmpty
+            && candidates.contains(where: { outcomes[$0] == .mismatch })
+        {
+            reading.unknownLabel = true
+        }
+        guard matched.count == 1, !reading.viewAmbiguous, let view = matched.first else {
             return reading
         }
         reading.viewIdentified = true
@@ -202,45 +266,48 @@ enum ViewExtractor {
                     isDescendant($0, of: container, in: entries) && entries[$0].facts.role == rule.contentRole
                 }.count
             if rule.rowsComplete { reading.totalItemCount = entries[container].facts.rowCount }
-            // Scrollability is positive only when a scroll area that contains the container, up to the window,
-            // reports no vertical scroll bar. The container's own flag can only show scrollability, and an
-            // unsupported or unreadable attribute stays unknown.
-            var areaFlags: [Bool?] = []
+            // A vertical scroll bar on the container or on a scroll area that contains it, up to the window, shows
+            // that the view can scroll. A scroll bar reported as no value, unsupported, or unreadable shows only
+            // that no scroll-bar element was returned, not that the view cannot scroll, so scrollability is
+            // otherwise unknown. No extracted reading therefore reports a view as not scrollable, and a candidate
+            // for emptiness cannot arise from extracted readings until a reviewed change defines positive evidence.
             var scrollable = entries[container].facts.hasVerticalScrollBar == true
             var cursor = entries[container].parent
             while let ancestor = cursor {
                 let facts = entries[ancestor].facts
-                if facts.role == scrollAreaRole {
-                    areaFlags.append(facts.hasVerticalScrollBar)
-                    if facts.hasVerticalScrollBar == true { scrollable = true }
-                }
+                if facts.role == scrollAreaRole && facts.hasVerticalScrollBar == true { scrollable = true }
                 if facts.role == windowRole { break }
                 cursor = entries[ancestor].parent
             }
-            if scrollable {
-                reading.scrollable = true
-            } else if !areaFlags.isEmpty && areaFlags.allSatisfy({ $0 == false }) {
-                reading.scrollable = false
-            }
+            if scrollable { reading.scrollable = true }
         }
 
         if let placeholder = rule.placeholder {
-            let found = inside.contains { matches(entries[$0].facts, placeholder, includeLabel: true) }
-            reading.placeholderPresent = found ? true : (complete ? false : nil)
+            let found = inside.map { match(entries[$0].facts, placeholder, includeLabel: true) }
+            if found.contains(.match) {
+                reading.placeholderPresent = true
+            } else if complete && !found.contains(.uncertain) {
+                reading.placeholderPresent = false
+            }
         }
         var signals: [Bool] = []
+        var loadingUncertain = false
         if let busy = entries[view].facts.busy { signals.append(busy) }
         if let loading = rule.loading {
-            let found = inside.contains { matches(entries[$0].facts, loading, includeLabel: true) }
-            if found {
+            let found = inside.map { match(entries[$0].facts, loading, includeLabel: true) }
+            if found.contains(.match) {
                 signals.append(true)
+            } else if found.contains(.uncertain) {
+                // An element that could be the loading indicator is not evidence of loading, but it prevents a
+                // reading of not busy, whatever the view's own busy attribute reports.
+                loadingUncertain = true
             } else if complete {
                 signals.append(false)
             }
         }
         if signals.contains(true) {
             reading.busy = true
-        } else if !signals.isEmpty {
+        } else if !signals.isEmpty && !loadingUncertain {
             reading.busy = false
         }
         return reading

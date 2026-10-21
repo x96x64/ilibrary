@@ -41,7 +41,8 @@ enum Fixtures {
             macOSVersionPresent: true, musicVersionPresent: true, profileSupplied: true)
     }
 
-    /// A complete, positively empty reading.
+    /// A complete reading with positive evidence of emptiness. Its `scrollable: false` is hypothetical: the
+    /// extractor never reports a view as not scrollable, so this reading exercises the classifier alone.
     static func empty(at elapsed: Double) -> ViewReading {
         ViewReading(
             elapsed: elapsed, treeStatus: .complete, viewIdentified: true, containerFound: true,
@@ -77,6 +78,10 @@ struct SyntheticTree: TreeSource {
     var unknownChildCounts: Set<Int> = []
     /// Nodes whose child collection cannot be enumerated.
     var unavailableChildren: Set<Int> = []
+    /// Nodes merged into a node's children as the reader merges the windows of the application: a listed node
+    /// that is not already a child is appended, and the number of children before the merge is kept. A merged
+    /// node's parent is nil, so that it counts toward no node's own child count.
+    var mergedWindows: [Int: [Int]] = [:]
 
     @discardableResult
     mutating func add(
@@ -115,7 +120,12 @@ struct SyntheticTree: TreeSource {
 
     func children(of node: Int) -> Children<Int> {
         if unavailableChildren.contains(node) { return Children(nodes: [], error: nil, unavailable: true) }
-        return Children(nodes: parents.indices.filter { parents[$0] == node }, error: childErrors[node])
+        var result = Children(nodes: parents.indices.filter { parents[$0] == node }, error: childErrors[node])
+        if let windows = mergedWindows[node] {
+            result.primaryCount = result.nodes.count
+            for window in windows where !result.nodes.contains(window) { result.nodes.append(window) }
+        }
+        return result
     }
 
     /// An application with one window holding the Songs view: a scroll area, a table with `rows` rows, and

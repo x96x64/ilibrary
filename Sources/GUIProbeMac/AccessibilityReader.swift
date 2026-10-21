@@ -127,7 +127,8 @@
             }
 
             /// Whether a scroll bar element is present: true if present, false only when the element supports the
-            /// attribute and reports no value, and nil when the attribute is unsupported or unreadable.
+            /// attribute and reports no value, and nil when the attribute is unsupported or unreadable. False records
+            /// only that no scroll-bar element was returned; it never establishes that the element cannot scroll.
             private func scrollBar(
                 _ element: AXUIElement, _ attribute: String, into facts: inout NodeFacts
             ) -> (present: Bool?, value: Double?) {
@@ -168,7 +169,7 @@
                 _ = AXUIElementSetMessagingTimeout(element, timeout)
                 var facts = NodeFacts()
                 facts.role = text(element, "AXRole", into: &facts).0
-                facts.subrole = text(element, "AXSubrole", into: &facts).0
+                (facts.subrole, facts.hasSubrole) = text(element, "AXSubrole", into: &facts)
                 (facts.identifier, facts.hasIdentifier) = text(element, "AXIdentifier", into: &facts)
                 (facts.title, facts.hasTitle) = text(element, "AXTitle", into: &facts)
                 (facts.description, facts.hasDescription) = text(element, "AXDescription", into: &facts)
@@ -227,6 +228,9 @@
                 _ = AXUIElementSetMessagingTimeout(element, timeout)
                 var result = elements(element, "AXChildren")
                 if CFEqual(element, application) {
+                    // The child count in the application's facts describes AXChildren alone, so the number of its
+                    // children is kept before the windows are merged, for the walker to compare with that count.
+                    result.primaryCount = result.nodes.count
                     let windows = elements(element, "AXWindows")
                     for window in windows.nodes where !result.nodes.contains(where: { CFEqual($0, window) }) {
                         result.nodes.append(window)

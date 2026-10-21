@@ -29,6 +29,7 @@ enum Reason: Hashable, Sendable {
     case treeIncomplete
     case timedOut
     case viewNotIdentified
+    case viewAmbiguous
     case containerMissing
     case unexpectedStructure
     case unknownLabel
@@ -70,6 +71,7 @@ enum Reason: Hashable, Sendable {
         case .treeIncomplete: "the accessibility tree was not read completely"
         case .timedOut: "an accessibility request timed out"
         case .viewNotIdentified: "the view was not identified exactly once"
+        case .viewAmbiguous: "an element that could satisfy the identification rule could not be excluded"
         case .containerMissing: "the content container was not found"
         case .unexpectedStructure: "the structure of the view differs from the profile"
         case .unknownLabel: "a label required for identification did not match the profile"
@@ -111,7 +113,7 @@ enum Evidence: Hashable, Sendable {
         case .noVisibleContent: "no content item is visible"
         case .placeholderPresent: "the empty-state element of the profile is present"
         case .zeroRowsReportedCompletely: "the row list, declared complete, has zero rows"
-        case .notScrollable: "the view is positively not scrollable"
+        case .notScrollable: "every reading reports positive evidence that the view cannot scroll"
         case .notBusy: "the view positively reports that it is not busy"
         }
     }
@@ -220,6 +222,9 @@ struct ViewReading: Codable, Equatable, Sendable {
     var placeholderPresent: Bool?
     var unexpectedStructure: Bool
     var unknownLabel: Bool
+    /// An element other than the definite match, or beside none, could satisfy the identification rule but could
+    /// not be excluded because an attribute that the rule requires was unreadable.
+    var viewAmbiguous = false
 
     /// The structural fields that all readings of a candidate for emptiness must share; the time is excluded.
     fileprivate var structure: [String] {
@@ -228,6 +233,7 @@ struct ViewReading: Codable, Equatable, Sendable {
             contentItemCount.map(String.init) ?? "-", totalItemCount.map(String.init) ?? "-",
             scrollable.map(String.init) ?? "-", busy.map(String.init) ?? "-",
             placeholderPresent.map(String.init) ?? "-", "\(unexpectedStructure)", "\(unknownLabel)",
+            "\(viewAmbiguous)",
         ]
     }
 }
@@ -273,6 +279,7 @@ enum Classifier {
             reasons.append(.treeIncomplete)
         }
         if readings.contains(where: { !$0.viewIdentified }) { reasons.append(.viewNotIdentified) }
+        if readings.contains(where: \.viewAmbiguous) { reasons.append(.viewAmbiguous) }
         if readings.contains(where: { !$0.containerFound }) { reasons.append(.containerMissing) }
         if readings.contains(where: \.unexpectedStructure) { reasons.append(.unexpectedStructure) }
         if readings.contains(where: \.unknownLabel) { reasons.append(.unknownLabel) }
