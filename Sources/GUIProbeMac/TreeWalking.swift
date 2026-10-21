@@ -8,6 +8,9 @@ let accessibilityCannotComplete: Int32 = -25204
 /// The accessibility error code for an element that no longer exists.
 let accessibilityInvalidElement: Int32 = -25202
 
+/// A probe-defined code, outside the accessibility error range, for a successful count that is negative.
+let invalidCountCode: Int32 = -1
+
 struct AttributeError: Codable, Equatable, Sendable {
     var attribute: String
     var code: Int32
@@ -38,6 +41,9 @@ struct Children<Node> {
     var error: Int32?
     /// True when the node reported more children than were returned, so that the walk is incomplete.
     var truncated = false
+    /// True when the collection could not be established at all, for example because its count was reported as
+    /// no value or unsupported; this is never evidence that the node has no children.
+    var unavailable = false
 }
 
 /// The completeness of one bounded read of a collection attribute: the count that the element reported, the
@@ -76,6 +82,10 @@ struct TreeSnapshot<Node> {
     var truncatedByNodeLimit = false
     var truncatedByDepthLimit = false
     var truncatedByChildLimit = false
+    /// A child collection or count that could not be established, or that disagreed between two reads.
+    var childrenUnavailable = false
+    /// A node whose role could not be read as a string.
+    var roleUnknown = false
     var errorCountsByCode: [Int32: Int] = [:]
 
     /// Whether the root element itself reported that it is invalid, as after the application has quit.
@@ -89,6 +99,7 @@ struct TreeSnapshot<Node> {
         if entries.isEmpty { return .notFound }
         if timedOut { return .timedOut }
         if truncatedByNodeLimit || truncatedByDepthLimit || truncatedByChildLimit { return .truncatedByLimit }
+        if childrenUnavailable || roleUnknown { return .informationUnavailable }
         if !errorCountsByCode.isEmpty { return .attributeError }
         return .complete
     }
@@ -112,14 +123,24 @@ enum TreeWalker {
             }
             var facts = source.facts(of: item.node)
             let index = snapshot.entries.count
+            // A role that cannot be read could hide a content item or a loading indicator.
+            if facts.role == nil { snapshot.roleUnknown = true }
             if item.depth >= limits.maximumDepth {
-                if (facts.childCount ?? 0) > 0 { snapshot.truncatedByDepthLimit = true }
+                // Only a child count positively reported as zero shows that nothing lies beyond the limit.
+                if facts.childCount != 0 { snapshot.truncatedByDepthLimit = true }
             } else {
                 let kids = source.children(of: item.node)
                 if let code = kids.error, !facts.errors.contains(where: { $0.attribute == "AXChildren" }) {
                     facts.errors.append(AttributeError(attribute: "AXChildren", code: code))
                 }
                 if kids.truncated { snapshot.truncatedByChildLimit = true }
+                // An unknown child count, an unavailable collection, or fewer children than the earlier count
+                // reported cannot show that nothing is missing. The merged list of an application may hold more
+                // entries than its own child count, never fewer.
+                if kids.unavailable || facts.childCount == nil { snapshot.childrenUnavailable = true }
+                if let reported = facts.childCount, !kids.truncated, kids.error == nil, kids.nodes.count < reported {
+                    snapshot.childrenUnavailable = true
+                }
                 for kid in kids.nodes { queue.append((node: kid, depth: item.depth + 1, parent: index)) }
             }
             for error in facts.errors { snapshot.errorCountsByCode[error.code, default: 0] += 1 }

@@ -62,12 +62,15 @@
 
         /// Walks the application element and its windows without a profile and returns the raw snapshot.
         static func walk(application: AXUIElement, limits: WalkLimits) -> TreeSnapshot<AXUIElement> {
-            let source = MusicTreeSource(timeout: Float(limits.timeoutSeconds))
+            let source = MusicTreeSource(timeout: Float(limits.timeoutSeconds), application: application)
             return TreeWalker.walk(roots: [application], source: source, limits: limits)
         }
 
         struct MusicTreeSource: TreeSource {
             var timeout: Float
+            /// The application element whose windows are merged into its children. It is compared by identity,
+            /// so that no second role read can omit the windows.
+            var application: AXUIElement
 
             private func fetch(_ element: AXUIElement, _ attribute: String) -> Fetch<CFTypeRef> {
                 var value: CFTypeRef?
@@ -109,7 +112,13 @@
                 var total: CFIndex = 0
                 let error = AXUIElementGetAttributeValueCount(element, attribute as CFString, &total)
                 switch error {
-                case .success: return total
+                case .success:
+                    // A negative count is not a measurement.
+                    guard total >= 0 else {
+                        facts.errors.append(AttributeError(attribute: attribute, code: invalidCountCode))
+                        return nil
+                    }
+                    return total
                 case .noValue, .attributeUnsupported: return nil
                 default:
                     facts.errors.append(AttributeError(attribute: attribute, code: error.rawValue))
@@ -184,7 +193,8 @@
                 let countError = AXUIElementGetAttributeValueCount(element, attribute as CFString, &total)
                 switch countError {
                 case .success: break
-                case .noValue, .attributeUnsupported: return Children(nodes: [], error: nil)
+                // Neither status shows that the collection is empty; only a successful count of zero does.
+                case .noValue, .attributeUnsupported: return Children(nodes: [], error: nil, unavailable: true)
                 default: return Children(nodes: [], error: countError.rawValue)
                 }
                 let wanted = min(total, AccessibilityReader.maximumChildrenPerNode)
@@ -216,8 +226,7 @@
             func children(of element: AXUIElement) -> Children<AXUIElement> {
                 _ = AXUIElementSetMessagingTimeout(element, timeout)
                 var result = elements(element, "AXChildren")
-                var scratch = NodeFacts()
-                if text(element, "AXRole", into: &scratch).0 == "AXApplication" {
+                if CFEqual(element, application) {
                     let windows = elements(element, "AXWindows")
                     for window in windows.nodes where !result.nodes.contains(where: { CFEqual($0, window) }) {
                         result.nodes.append(window)
@@ -227,6 +236,8 @@
                     // another walked window holds an empty one, so a truncated windows list makes the merged
                     // list, and with it the walk, incomplete.
                     if windows.truncated { result.truncated = true }
+                    // An unavailable windows list likewise cannot show that no window was missed.
+                    if windows.unavailable { result.unavailable = true }
                 }
                 return result
             }

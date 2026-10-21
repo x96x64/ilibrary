@@ -42,6 +42,8 @@ enum Reason: Hashable, Sendable {
     case contradictoryRowTotal
     /// The profile declares the row list complete, but a reading did not report its total.
     case rowTotalUnknown
+    /// The profile declares the row list complete, but a reading reported a negative row total.
+    case invalidRowTotal
     /// The observation stopped before every requested reading was taken and checked.
     case runStopped
     case inventoryContradictsView(count: Int)
@@ -81,6 +83,7 @@ enum Reason: Hashable, Sendable {
         case .contradictoryRowTotal:
             "the profile declares the row list complete, but a reading reported a row total above zero"
         case .rowTotalUnknown: "the profile declares the row list complete, but its total was not reported"
+        case .invalidRowTotal: "the profile declares the row list complete, but a reading reported a negative row total"
         case .runStopped: "the observation stopped before every requested reading was taken"
         case .inventoryContradictsView(let count):
             "the inventory reports \(count) file tracks but the view shows no content"
@@ -197,6 +200,9 @@ enum TreeStatus: String, Codable, Equatable, Sendable {
     case truncatedByLimit
     case timedOut
     case attributeError
+    /// A child collection, a child count, or a role could not be established, or a later read disagreed with an
+    /// earlier one; the walk cannot show that nothing is missing.
+    case informationUnavailable
     case notFound
 }
 
@@ -283,6 +289,7 @@ enum Classifier {
         // whatever the placeholder shows; an unreported total is unknown, never zero.
         if rowsComplete {
             if readings.contains(where: { ($0.totalItemCount ?? 0) > 0 }) { reasons.append(.contradictoryRowTotal) }
+            if readings.contains(where: { ($0.totalItemCount ?? 0) < 0 }) { reasons.append(.invalidRowTotal) }
             if readings.contains(where: { $0.totalItemCount == nil }) { reasons.append(.rowTotalUnknown) }
         }
         if Set(readings.map(\.structure)).count > 1 { reasons.append(.readingsDisagree) }

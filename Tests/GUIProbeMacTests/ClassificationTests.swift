@@ -307,6 +307,18 @@ import Testing
         #expect(!Fixtures.reasons(Fixtures.classify(readings, profile: incomplete)).contains(.contradictoryRowTotal))
     }
 
+    @Test func aNegativeCompleteRowTotalIsInvalidEvenWithAPlaceholder() {
+        let readings = Fixtures.emptyReadings.map { reading -> ViewReading in
+            var copy = reading
+            copy.placeholderPresent = true
+            copy.totalItemCount = -1
+            return copy
+        }
+        let verdict = Fixtures.classify(readings)
+        #expect(verdict.outcome == "indeterminate")
+        #expect(Fixtures.reasons(verdict).contains(.invalidRowTotal))
+    }
+
     @Test func aCompleteRowListWithAnUnreportedTotalIsNeverEmpty() {
         let readings = Fixtures.emptyReadings.map { reading -> ViewReading in
             var copy = reading

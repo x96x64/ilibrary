@@ -31,6 +31,87 @@ import Testing
         #expect(Fixtures.classify([reading]).outcome == "indeterminate")
     }
 
+    /// Three agreeing readings of one extracted reading, so that only completeness can decide the verdict.
+    func classifyRepeated(_ reading: ViewReading, rule: ViewRule = Fixtures.songsRule) -> Verdict {
+        var profile = Fixtures.profile()
+        profile.songs = rule
+        let readings = [0.0, 3, 6].map { time -> ViewReading in
+            var copy = reading
+            copy.elapsed = time
+            return copy
+        }
+        return Fixtures.classify(readings, profile: profile)
+    }
+
+    // The table is node 4 of the songs tree: application, window, view, scroll area, table.
+    static let table = 4
+
+    @Test func aContainerWithAnUnknownChildCountBesideAPlaceholderIsNeverEmpty() {
+        var rule = Fixtures.songsRule
+        rule.rowsComplete = false
+        var tree = SyntheticTree.songs(rows: 0, placeholder: true)
+        tree.unknownChildCounts = [Self.table]
+        let reading = read(tree, rule: rule)
+        #expect(reading.treeStatus == .informationUnavailable)
+        #expect(reading.placeholderPresent == true && reading.contentItemCount == 0)
+        let verdict = classifyRepeated(reading, rule: rule)
+        #expect(verdict.outcome == "indeterminate")
+        #expect(Fixtures.reasons(verdict).contains(.treeIncomplete))
+    }
+
+    @Test func aContainerWhoseChildrenCannotBeEnumeratedIsNeverEmpty() {
+        var rule = Fixtures.songsRule
+        rule.rowsComplete = false
+        var tree = SyntheticTree.songs(rows: 2, placeholder: true)
+        tree.unavailableChildren = [Self.table]
+        tree.unknownChildCounts = [Self.table]
+        let reading = read(tree, rule: rule)
+        #expect(reading.treeStatus == .informationUnavailable && reading.contentItemCount == 0)
+        #expect(classifyRepeated(reading, rule: rule).outcome == "indeterminate")
+    }
+
+    @Test func aKnownCountFollowedByAnUnavailableOrShorterEnumerationIsIncomplete() {
+        var rule = Fixtures.songsRule
+        rule.rowsComplete = false
+        var unavailable = SyntheticTree.songs(rows: 0, placeholder: true)
+        unavailable.nodes[Self.table].childCount = 3
+        unavailable.unavailableChildren = [Self.table]
+        #expect(read(unavailable, rule: rule).treeStatus == .informationUnavailable)
+        var shorter = SyntheticTree.songs(rows: 0, placeholder: true)
+        shorter.nodes[Self.table].childCount = 3
+        let reading = read(shorter, rule: rule)
+        #expect(reading.treeStatus == .informationUnavailable)
+        #expect(classifyRepeated(reading, rule: rule).outcome == "indeterminate")
+    }
+
+    @Test func anUnavailableWindowsListOfTheApplicationMakesTheWalkIncomplete() {
+        var tree = SyntheticTree.songs(rows: 0, placeholder: true)
+        tree.unavailableChildren = [0]
+        let snapshot = TreeWalker.walk(roots: [0], source: tree, limits: WalkLimits())
+        #expect(snapshot.childrenUnavailable && snapshot.status == .informationUnavailable)
+    }
+
+    @Test func aBoundaryNodeWithAnUnknownChildCountTruncatesTheWalk() {
+        var tree = SyntheticTree.songs(rows: 0, placeholder: true)
+        tree.unknownChildCounts = [Self.table]
+        let limits = WalkLimits(maximumNodes: 100, maximumDepth: 4, timeoutSeconds: 2)
+        let snapshot = TreeWalker.walk(roots: [0], source: tree, limits: limits)
+        #expect(snapshot.truncatedByDepthLimit && snapshot.status == .truncatedByLimit)
+        var known = SyntheticTree.songs(rows: 0, placeholder: true)
+        known.nodes[Self.table].childCount = 0
+        #expect(!TreeWalker.walk(roots: [0], source: known, limits: limits).truncatedByDepthLimit)
+    }
+
+    @Test func anElementWithoutARoleMakesTheWalkIncomplete() {
+        var rule = Fixtures.songsRule
+        rule.rowsComplete = false
+        var tree = SyntheticTree.songs(rows: 1, placeholder: true)
+        tree.nodes[Self.table + 1].role = nil
+        let reading = read(tree, rule: rule)
+        #expect(reading.treeStatus == .informationUnavailable && reading.contentItemCount == 0)
+        #expect(classifyRepeated(reading, rule: rule).outcome == "indeterminate")
+    }
+
     @Test func rowsAreCounted() {
         let reading = read(.songs(rows: 3, placeholder: false))
         #expect(reading.contentItemCount == 3 && reading.totalItemCount == 3)

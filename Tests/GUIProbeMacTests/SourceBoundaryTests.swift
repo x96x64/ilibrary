@@ -112,6 +112,21 @@ import Testing
         let reader = try #require(files.first { $0.name == "AccessibilityReader.swift" })
         #expect(reader.text.contains("let windows = elements(element, \"AXWindows\")"))
         #expect(reader.text.contains("if windows.truncated { result.truncated = true }"))
+        #expect(reader.text.contains("if windows.unavailable { result.unavailable = true }"))
+        // The windows are read for the application element by identity, not after a second role read.
+        #expect(reader.text.contains("if CFEqual(element, application) {"))
+        #expect(!reader.text.contains("var scratch = NodeFacts()\n                if text(element, \"AXRole\""))
+    }
+
+    /// Source checks for the macOS count reads, which the synthetic tests cannot execute.
+    @Test func theReaderNeverTakesAnUnavailableOrNegativeCountForEmptiness() throws {
+        let files = try Self.swiftFiles()
+        let reader = try #require(files.first { $0.name == "AccessibilityReader.swift" })
+        #expect(
+            reader.text.contains(
+                "case .noValue, .attributeUnsupported: return Children(nodes: [], error: nil, unavailable: true)"))
+        #expect(
+            reader.text.contains("facts.errors.append(AttributeError(attribute: attribute, code: invalidCountCode))"))
     }
 
     @Test func theProbeAddsNoPackageDependency() throws {

@@ -72,6 +72,11 @@ struct SyntheticTree: TreeSource {
     var nodes: [NodeFacts] = []
     var parents: [Int?] = []
     var childErrors: [Int: Int32] = [:]
+    /// Nodes whose child count is reported as unknown. Every other node reports the number of its synthetic
+    /// children unless a count is given explicitly; a real interface need not supply such counts.
+    var unknownChildCounts: Set<Int> = []
+    /// Nodes whose child collection cannot be enumerated.
+    var unavailableChildren: Set<Int> = []
 
     @discardableResult
     mutating func add(
@@ -98,10 +103,19 @@ struct SyntheticTree: TreeSource {
         return nodes.count - 1
     }
 
-    func facts(of node: Int) -> NodeFacts { nodes[node] }
+    func facts(of node: Int) -> NodeFacts {
+        var facts = nodes[node]
+        if unknownChildCounts.contains(node) {
+            facts.childCount = nil
+        } else if facts.childCount == nil {
+            facts.childCount = parents.filter { $0 == node }.count
+        }
+        return facts
+    }
 
     func children(of node: Int) -> Children<Int> {
-        Children(nodes: parents.indices.filter { parents[$0] == node }, error: childErrors[node])
+        if unavailableChildren.contains(node) { return Children(nodes: [], error: nil, unavailable: true) }
+        return Children(nodes: parents.indices.filter { parents[$0] == node }, error: childErrors[node])
     }
 
     /// An application with one window holding the Songs view: a scroll area, a table with `rows` rows, and
