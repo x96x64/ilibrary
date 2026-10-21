@@ -16,6 +16,7 @@
 - [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
 - [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
 - [Plan for M11](m11-plan.md): backup, inventory, strict export, and recovery-record work for 0.2.0, approved under Decision 41 with its Decisions A to G and safeguards; M11 passed under Decision 45
+- [M12 Progress Journal](m12-progress-journal.md): the portable progress journal of staged rebuilding, in local development and unqualified
 - [Decision F Live Comparison of check --library](decision-f-live-comparison.md): English procedure for the maintainer-operated comparison of `check --library` between the M11 merge and the Decision F commit on a new synthetic library `DecisionF-comparison-v4`; its unchanged-library phase was performed once and accepted under Decision 49
 - [M11 Backup and Inventory Qualification, Version 2](m11-qualification-v2.md): completed English procedure for the maintainer-operated bulk-reader, external-drive backup, restoration, and disconnection measurements of M11 with the library `M11-qualification-v2`; M11 passed on its report and supplementary `rebuild status` observation under Decision 45; retained for the record and not to be repeated
 - [M11 Backup and Inventory Qualification](m11-qualification.md): completed first-run procedure; the run stopped at Step 6 on the snapshot date conversion; retained for the record and not to be continued
