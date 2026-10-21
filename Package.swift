@@ -26,6 +26,8 @@ let package = Package(
         .executableTarget(name: "ReferenceProbe", dependencies: ["MP4Core", "FLACCore"]),
         // Read-only qualification probe for the maintainer's separate test user; not part of the product.
         .executableTarget(name: "M11Probe", dependencies: ["LibraryMac", "RebuildCore"]),
+        // Read-only GUI-emptiness feasibility probe for the maintainer's separate test user; not part of the product.
+        .executableTarget(name: "GUIProbeMac", dependencies: ["RebuildCore"]),
         // Synthetic media shared by the test targets.
         .target(name: "SyntheticMedia", path: "Tests/SyntheticMedia"),
         .target(name: "SyntheticMediaMac", path: "Tests/SyntheticMediaMac"),
@@ -35,6 +37,7 @@ let package = Package(
         .testTarget(name: "RebuildCoreTests", dependencies: ["RebuildCore"]),
         .testTarget(name: "LibraryMacTests", dependencies: ["LibraryMac"]),
         .testTarget(name: "M11ProbeTests", dependencies: ["M11Probe", "LibraryMac"]),
+        .testTarget(name: "GUIProbeMacTests", dependencies: ["GUIProbeMac"]),
         .testTarget(
             name: "ConversionMacTests", dependencies: ["ConversionMac", "SyntheticMedia", "SyntheticMediaMac"]),
         .testTarget(
