@@ -227,7 +227,8 @@ struct SurveySection: Codable, Equatable, Sendable {
     var timeoutSeconds: Double
     /// The elapsed-time budget, checked between requests; the walk stops expanding when it is used up.
     var timeBudgetSeconds: Double?
-    /// The time after which the system terminates the probe; a run that reaches it writes no record.
+    /// The time after which the system terminates the probe. Termination stops further writing but removes nothing
+    /// already published, so a record, with or without its mapping, can remain after it.
     var hardLimitSeconds: Double?
     var maximumConsecutiveTimedOutNodes: Int?
     /// Seconds on a monotonic clock from the start of the run to the end of the walk.

@@ -46,7 +46,7 @@ import RebuildCore
     /// The hard stop of a survey: the system terminates the probe when the timer expires. No handler is installed,
     /// so the default action of SIGALRM, termination, applies even while a request blocks; because a disposition and
     /// a signal mask are inherited across exec, the default is restored and the signal unblocked first. The timer
-    /// signals only this process. Nothing is written when it fires.
+    /// signals only this process. When it fires, nothing further is written; files already published remain.
     func armHardStop(seconds: Double) -> Bool {
         var action = sigaction()
         action.__sigaction_u.__sa_handler = SIG_DFL
