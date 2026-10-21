@@ -847,7 +847,11 @@ struct JournalBuilder {
             evacuation: Self.observations(full.record, evacuated: [0, 1], method: "rename"), registrationIDs: [],
             musicRunning: false)
         let problems = ProgressJournal.reconcile(record: full.record, progress: prefixProgress, snapshot: snapshot)
-        #expect(problems.isEmpty == false)
+        // The prefix ends with the second evacuation returned and unverified, which reconciliation accepts in either
+        // state; the removals that the truncation hid are revealed only because the registrations are absent.
+        #expect(prefixProgress.openOperation?.operation == .evacuateFile)
+        let hidden = full.record.mapping.map { $0.persistentID.uppercased() }.sorted()
+        #expect(problems == hidden.map { ReconciliationProblem.registrationMissing(persistentID: $0) })
         #expect(ProgressJournal.reconcile(record: full.record, progress: fullProgress, snapshot: snapshot).isEmpty)
     }
 
@@ -1223,6 +1227,21 @@ struct JournalBuilder {
             error {
                 try ProgressJournalFile.read(in: workspace.url, record: workspace.record, recordBytes: workspace.bytes)
             }
+                == .notARegularFile(path: workspace.journalPath))
+        #expect(error { try workspace.create() } == .alreadyExists(path: workspace.journalPath))
+    }
+
+    @Test func aNamedPipeInPlaceOfTheJournalIsRefusedWithoutBlocking() throws {
+        let workspace = try Workspace()
+        #expect(mkfifo(workspace.journalPath, 0o600) == 0)
+        let head = JournalHead(sequence: 0, checksum: "")
+        #expect(
+            error {
+                try ProgressJournalFile.read(in: workspace.url, record: workspace.record, recordBytes: workspace.bytes)
+            }
+                == .notARegularFile(path: workspace.journalPath))
+        #expect(
+            error { try workspace.append(.stageBegan(.evacuation), head: head) }
                 == .notARegularFile(path: workspace.journalPath))
         #expect(error { try workspace.create() } == .alreadyExists(path: workspace.journalPath))
     }

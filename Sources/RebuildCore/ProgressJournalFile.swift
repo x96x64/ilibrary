@@ -92,7 +92,7 @@ public enum ProgressJournalFile {
     /// record, because the journal header binds the bytes.
     public static func loadRecord(from directory: URL) throws -> (record: RecoveryRecord, bytes: Data) {
         let path = directory.appendingPathComponent(RecoveryRecord.fileName).path
-        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
         defer { close(descriptor) }
         try requireRegular(descriptor, path: path)
@@ -143,6 +143,10 @@ public enum ProgressJournalFile {
             var buffer = stat()
             if fstat(descriptor, &buffer) == 0 && buffer.st_size == 0 {
                 operations.remove(path)
+                if (try? FileStatus.read(atPath: path)) != nil {
+                    throw ProgressJournalError.creationUncertain(
+                        "the header could not be written, and the empty journal could not be removed: \(error)")
+                }
                 throw ProgressJournalError.writeFailed("the header could not be written: \(error)")
             }
             throw ProgressJournalError.creationUncertain("the header write failed after bytes were written: \(error)")
@@ -151,7 +155,7 @@ public enum ProgressJournalFile {
             try operations.synchronize(descriptor)
             try operations.synchronizeDirectory(directoryPath)
             // The creating descriptor is write-only, so the read-back uses a second descriptor on the same path.
-            let reader = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+            let reader = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
             guard reader >= 0 else {
                 throw ProgressJournalError.creationUncertain("the journal cannot be reopened: errno \(errno)")
             }
@@ -176,7 +180,7 @@ public enum ProgressJournalFile {
         -> (entries: [JournalEntry], progress: RebuildProgress)
     {
         let path = directory.appendingPathComponent(ProgressJournal.fileName).path
-        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
         defer { close(descriptor) }
         try requireRegular(descriptor, path: path)
@@ -206,7 +210,7 @@ public enum ProgressJournalFile {
         if let status = try? FileStatus.read(atPath: path), status.kind != .regular {
             throw ProgressJournalError.notARegularFile(path: path)
         }
-        let descriptor = open(path, O_RDWR | O_APPEND | O_NOFOLLOW | O_CLOEXEC)
+        let descriptor = open(path, O_RDWR | O_APPEND | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
         defer { close(descriptor) }
         try requireRegular(descriptor, path: path, strict: true)
