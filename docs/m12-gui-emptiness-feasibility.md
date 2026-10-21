@@ -1,0 +1,82 @@
+# M12 GUI-Emptiness Feasibility Procedure
+
+## Status and Authorization
+
+This is a prepared, unexecuted maintainer procedure for M12 (staged rebuilding, target version 0.3.0). It has not been run, and running any part of it requires the maintainer's separate authorization. It asks whether a public macOS Accessibility interface can distinguish an empty Songs view and an empty Recently Added view of Music from non-empty, loading, stale, or incompletely exposed views. It does not qualify a detector, does not change the M12 completion gate, and authorizes no registration removal or termination of Music.
+
+The procedure is performed by the maintainer in a new, separate macOS test user on a synthetic library. An agent prepares the procedure and the offline probe, assesses the resulting report, and never operates Music, the interface, or the test user.
+
+## Existing Evidence
+
+The M10 qualification established library emptiness through Apple Events: the guarded probe removed its own registrations one persistent ID per call and then read the library snapshot, which contained no file track (measured). The emptiness of the Songs and Recently Added views was confirmed only by the maintainer's visual observation in answer to a prompt, and the probe's report states that automatic GUI emptiness detection is not qualified. The display-order results of M10 are likewise the maintainer's visual confirmations. None of this evidence shows that an automatic detector would be reliable: a track count of zero describes the scripting model, not the presentation, and the absence of visible album cards does not show that no card exists outside the visible region.
+
+## Detector Design Under Test
+
+The probe `GUIProbeMac` is validation-only and never part of the product. It uses only documented public interfaces: `NSRunningApplication` to identify the one running Music process by its bundle identifier, `AXIsProcessTrustedWithOptions` with the prompt disabled to learn whether the probe is trusted, and `AXUIElementCreateApplication`, `AXUIElementSetMessagingTimeout`, `AXUIElementCopyAttributeValue`, `AXUIElementGetAttributeValueCount`, and `AXUIElementCopyAttributeValues` to read an allow-list of attributes. The messaging timeout is a setting of the probe's own element reference; it changes nothing in Music. Reading the tree can still cause Music to build or serve its accessibility hierarchy, which is an effect on the process though not on its library or settings. The probe performs no accessibility action, sets no attribute, registers no observer, sends no Apple Event, uses no System Events, takes no screenshot, launches or activates nothing, and starts no subprocess. A source test fails if any such interface appears in the probe.
+
+The probe needs the Accessibility permission for the executable that runs it, which the maintainer grants in System Settings in the test user; the probe never prompts and stops when it is not trusted. Music's accessibility hierarchy is undocumented and may differ between versions and localizations, so every interpretation depends on a reviewed interface profile for the observed macOS version, Music version, and locale. The repository contains no profile, and none is reviewed.
+
+Each view receives one verdict over its set of readings, and the two views are combined, the combination being candidate empty only if both views are and verified non-empty if either is:
+
+| Outcome | Requirement |
+| --- | --- |
+| Verified non-empty | A complete reading of the identified view shows at least one content item |
+| Candidate empty | Every preflight condition holds, the operator's separate registration count is zero, enough readings over a long enough span all show the identified view complete, not busy, not scrollable, with no content and with positive empty-state evidence (a placeholder or a complete row count of zero), and they agree |
+| Indeterminate | Anything else, with every reason |
+
+A missing node, an ambiguous or unexpected structure, an unknown label, a missing permission, a timeout, a truncated walk, a loading or unknown loading state, a possible scroll region, disagreeing readings, missing or contradicting registration evidence, a missing profile, unqualified stability parameters, or a version or locale mismatch makes the result indeterminate. No element count, missing album card, or absence of rows is sufficient alone. If the interface exposes only visible or lazily created elements, the detector cannot conclude that a whole view is empty, and the result stays indeterminate. The minimum number of readings and their minimum span are inputs of the profile, at least two readings over a positive span; no value is proposed before measurement. The locale and the file-track count are supplied by the operator, not observed by the probe, so the locale check compares the operator's statement with the profile.
+
+## Phases
+
+Each phase below is authorized separately. The probe phases only read.
+
+| Phase | Performed by | Changes state | Content |
+| --- | --- | --- | --- |
+| 1. Test user | Maintainer | Yes, a new macOS user | Create a new user whose name matches `ilibrarytest…`; do not sign in to an Apple Account; confirm in System Settings that no Apple Account is signed in and that iCloud Music Library and Sync Library are off |
+| 2. Fixtures | Maintainer | Yes, Music library | In that user, create a new, empty Music library and synthetic audio from the repository's generators; never reuse an M10, M11, or Decision F library, bundle, or workspace |
+| 3. Survey | Maintainer navigates manually; probe reads | Navigation only | With Music open on a view the maintainer selects by hand, run `GUIProbeMac survey` to record the structure of the two views; the survey informs a draft profile |
+| 4. Profile review | Agent and maintainer | No | Draft an interface profile from the survey for the observed versions and locale; it is reviewed before use |
+| 5. Observation | Maintainer navigates; probe reads | Navigation only | For each control state, the maintainer opens the view, waits, and runs `GUIProbeMac observe` with the reviewed profile, the separately obtained registration count, and the chosen reading count and interval |
+| 6. Assessment | Agent | No | Compare every outcome with the expected one and report |
+| 7. Cleanup | Maintainer | Yes | Only when separately decided; the test user, library, and reports are evidence until then |
+
+The maintainer performs every view change manually; the probe never clicks, scrolls, types, selects, or navigates. The count of file tracks for each state is obtained by a separate, separately authorized Apple Events read of the library, whose method is fixed when this phase is authorized, and is passed to the probe; the probe itself never reads the library.
+
+## Commands and Preflight
+
+The probe is built with `swift build -c release --product GUIProbeMac` from the authorized source commit. Its two modes are:
+
+```text
+GUIProbeMac survey --output FILE --confirm-separate-test-user --confirm-synthetic-library \
+  --confirm-no-apple-account --confirm-no-cloud-library [--source-commit SHA]
+GUIProbeMac observe --profile PROFILE.json --locale LOCALE [--inventory-count N] --readings K \
+  --interval SECONDS --output FILE --confirm-separate-test-user --confirm-synthetic-library \
+  --confirm-no-apple-account --confirm-no-cloud-library [--source-commit SHA]
+```
+
+Before any accessibility call, the probe refuses when a confirmation is missing, when the process user's name in the password database does not match `^(ilibrarytest|ilibrary-test)[A-Za-z0-9_-]*$` or the user is root, when the output file exists, or, in observe mode, when the profile is missing, invalid, or for another macOS version or locale. A matching user name is necessary, never sufficient: the confirmations record the maintainer's own checks in System Settings, and the probe never reads account preferences. It then checks trust without prompting and requires exactly one running Music process, refusing on a different Music version. The walk is bounded by 5,000 nodes, a depth of 40, and a two-second timeout for each attribute. The locale must equal the profile's locale string exactly, and a missing `--inventory-count` makes every verdict indeterminate. If the Music process changes or disappears during observation, including during the last reading, the run stops and is recorded as stopped with the readings taken so far, and no view of a stopped run can be a candidate for emptiness.
+
+## Control States
+
+The controls are synthetic. Each is observed in Songs and in Recently Added, after the view has loaded and, where stated, while it changes.
+
+| State | Expected outcome |
+| --- | --- |
+| Exactly one remaining track | Verified non-empty |
+| Several albums | Verified non-empty |
+| Content beyond the initially visible part of Recently Added | Not candidate empty |
+| A view that is still loading or changing, for example observed immediately after a new library opens or during an addition | Indeterminate, or verified non-empty when content is shown |
+| An empty library, both views loaded, registration count zero | Candidate empty only if every condition holds; otherwise indeterminate |
+| Each preflight condition missing in turn | Indeterminate with that reason |
+
+Creating these states adds or removes synthetic content and is therefore a separately authorized fixture operation by the maintainer, outside the probe. Removing a track to reach the one-track or empty state uses the established M10 guarded method or a new library; it is never done by the probe or by a product rebuilding command.
+
+## Evidence
+
+The probe writes one JSON file, created exclusively, containing the probe version, the source commit, the macOS and Music versions, the operator's confirmations, for each reading the relative time and the structural observations, and for each view and for the combination the verdict with every reason. A usage error, an existing output file, or an unwritable output location produces no file; the exit status and standard error report them. The survey records roles, subroles, identifiers that match a short identifier pattern, child and row counts, scroll bar presence and position, and the loading attribute; it records a title or description only when it equals an allow-listed view label and otherwise records `other`. Neither mode records album or artist names, other interface text, file paths, persistent IDs, account details, positions, or screenshots. Identifiers that match the pattern could still carry library-specific tokens, so every survey and observation file is reviewed before it is shared. Reports stay in an ignored local location until reviewed; a stopped or refused run is recorded as such, so it cannot be mistaken for a passing observation.
+
+## What the Result Can Establish
+
+A successful observation of all controls with one reviewed profile would support the detector only for that macOS version, Music version, locale, synthetic library, and timing. It would not establish compatibility with other versions, cloud-safe clearing, recovery from unknown storage states, or the correctness of any destructive stage. An indeterminate or negative result is reported as such; it is not repaired by weakening the gate. If automatic detection proves impractical, a recorded manual confirmation by second invocation can be proposed as a change of the M12 gate, which requires the maintainer's separate decision.
+
+The other M12 prerequisites are independent of this procedure: the progress journal cannot detect the removal of a valid suffix or an older valid journal without an independent checkpoint or contradicting observation, reconciliation does not yet check files whose application is open or verified, and the first live qualification must begin with a non-destructive `rebuild prepare` phase that observes the corrected M11 disconnection and recovery-record paths.
