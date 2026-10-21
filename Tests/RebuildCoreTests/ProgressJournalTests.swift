@@ -1269,7 +1269,9 @@ struct JournalBuilder {
         }
         if done.wait(timeout: .now() + seconds) == .success { return result.get() }
         Issue.record("the operation blocked on the named pipe for more than \(seconds) seconds")
-        let writer = open(fifo, O_WRONLY)
+        // A non-blocking open of the write end succeeds only while a reader is waiting, and then releases it; with no
+        // reader it fails at once, so the release itself cannot block.
+        let writer = open(fifo, O_WRONLY | O_NONBLOCK)
         if writer >= 0 { close(writer) }
         _ = done.wait(timeout: .now() + seconds)
         return nil
