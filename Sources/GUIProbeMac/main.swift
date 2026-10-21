@@ -133,6 +133,13 @@ import RebuildCore
                 macOS: macOSVersion, music: music.musicVersion)
         }
 
+        // A survey compares the process before and after its walk; without a launch date, a replacement process that
+        // reused the identifier could not be told apart, so the survey is refused before anything is read.
+        if case .survey = command, music.identity == nil {
+            refuse(
+                mode: mode, reasons: [.musicProcessIdentityUnknown], confirmations: confirmations, options: context,
+                macOS: macOSVersion, music: musicVersion)
+        }
         if let loadedProfile, loadedProfile.musicVersion != musicVersion {
             refuse(
                 mode: mode, reasons: [.versionMismatch], confirmations: confirmations, options: context,
@@ -142,12 +149,25 @@ import RebuildCore
         let limits = WalkLimits()
         switch command {
         case .survey:
+            guard let before = music.identity else { stop("internal error: no process identity", status: 1) }
             let snapshot = AccessibilityReader.walk(application: application, limits: limits)
+            // The process is read again after the walk, so that a walk that spanned the end or replacement of Music
+            // is recorded as stopped rather than completed.
+            let after = AccessibilityReader.musicProcess().identity
+            let outcome = SurveyRun.outcome(
+                before: before, after: after, applicationInvalid: snapshot.applicationInvalid,
+                treeStatus: snapshot.status)
             var output = ProbeOutput(
-                mode: mode, status: .completed, sourceCommit: commit, macOSVersion: macOSVersion,
-                musicVersion: musicVersion, confirmations: confirmations)
+                mode: mode, status: outcome.status, stopReason: outcome.stopReason, sourceCommit: commit,
+                macOSVersion: macOSVersion, musicVersion: musicVersion, confirmations: confirmations)
             output.survey = SurveySanitizer.section(snapshot, limits: limits)
-            finish(output, path: outputPath, status: 0)
+            if let reason = outcome.stopReason {
+                FileHandle.standardError.write(Data("GUIProbeMac: stopped: \(reason)\n".utf8))
+            } else if snapshot.status != .complete {
+                FileHandle.standardError.write(
+                    Data("GUIProbeMac: the walk is incomplete: \(snapshot.status.rawValue)\n".utf8))
+            }
+            finish(output, path: outputPath, status: outcome.exitStatus)
         case .observe(let options):
             guard let profile = loadedProfile else { stop("internal error: no profile", status: 1) }
             let observed = ObservedContext(

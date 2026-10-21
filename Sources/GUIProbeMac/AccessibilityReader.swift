@@ -20,6 +20,13 @@
         /// The launch date of the process, compared with the identifier so that a replacement process that reuses
         /// the identifier is detected. Nil when the system does not report it, which never confirms identity.
         var launchDate: Date? = nil
+
+        /// The identity compared across a run, or nil unless exactly one process with a known identifier and launch
+        /// date was found.
+        var identity: ProcessIdentity? {
+            guard state == .exactlyOne, let processIdentifier, let launchDate else { return nil }
+            return ProcessIdentity(processIdentifier: processIdentifier, launchDate: launchDate)
+        }
     }
 
     enum AccessibilityReader {

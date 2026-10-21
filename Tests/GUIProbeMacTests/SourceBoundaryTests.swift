@@ -145,6 +145,80 @@ import Testing
         #expect(walking.text.contains("if scrollable { reading.scrollable = true }"))
     }
 
+    /// The code of a source file without its string literals and comments, so that a check of the code can be
+    /// neither met nor defeated by prose. This is static text analysis: it cannot see a function reached through
+    /// dynamic lookup, which is excluded separately, and it does not prove runtime behavior.
+    static func code(_ text: String) -> String {
+        let tripleQuote = String(repeating: "\"", count: 3)
+        var result = text.replacingOccurrences(
+            of: tripleQuote + #"[\s\S]*?"# + tripleQuote, with: "\"\"", options: .regularExpression)
+        result = result.replacingOccurrences(of: #""(?:[^"\\\n]|\\.)*""#, with: "\"\"", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"/\*[\s\S]*?\*/"#, with: "", options: .regularExpression)
+        return result.replacingOccurrences(of: #"//[^\n]*"#, with: "", options: .regularExpression)
+    }
+
+    static func accessibilityNames(_ code: String) -> Set<String> {
+        let pattern = try! NSRegularExpression(pattern: #"\bAX[A-Za-z0-9_]+\b"#)
+        let range = NSRange(code.startIndex..., in: code)
+        return Set(
+            pattern.matches(in: code, range: range).compactMap { Range($0.range, in: code).map { String(code[$0]) } })
+    }
+
+    @Test func theCodeFilterIgnoresCommentsAndStrings() {
+        let text = "// AXUIElementPerformAction\nlet a = \"AXUIElementSetAttributeValue\"\n_ = AXUIElementGetTypeID()"
+        #expect(Self.accessibilityNames(Self.code(text)) == ["AXUIElementGetTypeID"])
+    }
+
+    /// A positive allow-list of the accessibility functions and types that the probe's code names: the non-prompting
+    /// trust check, the creation of the application element, the client-side messaging timeout, and the attribute,
+    /// count, and range reads. It supplements the deny-list above; a name outside it, such as an action, a setter,
+    /// an observer, or the system-wide element, fails the test. It is a source check and is no proof of runtime
+    /// behavior, so the reader remains subject to independent review.
+    @Test func onlyAllowListedAccessibilityFunctionsAreNamed() throws {
+        let allowed: Set<String> = [
+            "AXIsProcessTrustedWithOptions", "AXUIElement", "AXUIElementCreateApplication",
+            "AXUIElementSetMessagingTimeout", "AXUIElementCopyAttributeValue", "AXUIElementGetAttributeValueCount",
+            "AXUIElementCopyAttributeValues", "AXUIElementGetTypeID",
+        ]
+        var named: Set<String> = []
+        for file in try Self.swiftFiles() {
+            let code = Self.code(file.text)
+            let names = Self.accessibilityNames(code)
+            if file.name != "AccessibilityReader.swift" {
+                #expect(names.isEmpty, "\(file.name) names \(names.sorted())")
+            }
+            named.formUnion(names)
+            for dynamic in [
+                "dlsym", "dlopen", "NSClassFromString", "NSSelectorFromString", "perform(", "_silgen_name", "@_cdecl",
+            ] {
+                #expect(!Self.contains(code, dynamic), "\(file.name) uses \(dynamic)")
+            }
+        }
+        #expect(named.isSubset(of: allowed), "not allow-listed: \(named.subtracting(allowed).sorted())")
+        #expect(named.contains("AXUIElementCopyAttributeValue") && named.contains("AXIsProcessTrustedWithOptions"))
+    }
+
+    /// The survey path cannot run without the accessibility service, so this source check guards its contract: the
+    /// launch identity is required before any element is created, the process is read again after the walk, and the
+    /// status and exit status come from the outcome rule rather than being fixed as completed and zero.
+    @Test func theSurveyConfirmsTheProcessAroundItsWalk() throws {
+        let main = try #require(Self.swiftFiles().first { $0.name == "main.swift" })
+        let code = Self.code(main.text)
+        let refusal = try #require(code.range(of: "if case .survey = command, music.identity == nil {"))
+        let element = try #require(code.range(of: "AccessibilityReader.applicationElement("))
+        #expect(refusal.upperBound < element.lowerBound)
+        let start = try #require(code.range(of: "case .survey:\n"))
+        let end = try #require(code.range(of: "case .observe(let options):", range: start.upperBound..<code.endIndex))
+        let survey = String(code[start.upperBound..<end.lowerBound])
+        let walk = try #require(survey.range(of: "AccessibilityReader.walk("))
+        let again = try #require(survey.range(of: "AccessibilityReader.musicProcess().identity"))
+        #expect(walk.upperBound < again.lowerBound)
+        #expect(survey.contains("applicationInvalid: snapshot.applicationInvalid"))
+        #expect(survey.contains("status: outcome.status, stopReason: outcome.stopReason"))
+        #expect(survey.contains("finish(output, path: outputPath, status: outcome.exitStatus)"))
+        #expect(!survey.contains("status: .completed") && !survey.contains("status: 0)"))
+    }
+
     /// Source checks for the macOS count reads, which the synthetic tests cannot execute.
     @Test func theReaderNeverTakesAnUnavailableOrNegativeCountForEmptiness() throws {
         let files = try Self.swiftFiles()
