@@ -8,26 +8,32 @@ import Testing
         "--confirm-separate-test-user", "--confirm-synthetic-library", "--confirm-no-apple-account",
         "--confirm-no-cloud-library",
     ]
+    static let survey = [
+        "survey", "--output-directory", "ilibrary-gui-survey/records", "--output-name", "songs-1.json",
+        "--mapping-directory", "ilibrary-gui-survey/private", "--time-budget", "600", "--operator-displayed-view",
+        "songs",
+    ]
     static let observe = [
         "observe", "--profile", "p.json", "--readings", "5", "--interval", "2.5", "--locale", "en_US", "--output",
         "o.json",
     ]
 
     @Test func surveyParsesWithAllConfirmations() throws {
-        let command = try CommandLineParser.parse(
-            ["survey", "--output", "o.json", "--source-commit", "abc123"] + Self.confirmations)
+        let command = try CommandLineParser.parse(Self.survey + ["--source-commit", "abc123"] + Self.confirmations)
         #expect(
             command
                 == .survey(
                     SurveyOptions(
-                        output: "o.json",
+                        outputDirectory: ["ilibrary-gui-survey", "records"], outputName: "songs-1.json",
+                        mappingDirectory: ["ilibrary-gui-survey", "private"], timeBudgetSeconds: 600,
+                        displayedView: .songs,
                         confirmations: Confirmations(
                             separateTestUser: true, syntheticLibrary: true, noAppleAccount: true, noCloudLibrary: true),
                         sourceCommit: "abc123")))
     }
 
     @Test func missingConfirmationsParseAsUnconfirmed() throws {
-        let command = try CommandLineParser.parse(["survey", "--output", "o.json", "--confirm-synthetic-library"])
+        let command = try CommandLineParser.parse(Self.survey + ["--confirm-synthetic-library"])
         guard case .survey(let options) = command else {
             Issue.record("expected survey")
             return
@@ -68,33 +74,83 @@ import Testing
         #expect(throws: UsageError.missingOption(option)) { try CommandLineParser.parse(arguments) }
     }
 
-    @Test func surveyRequiresAnOutput() {
-        #expect(throws: UsageError.missingOption("--output")) { try CommandLineParser.parse(["survey"]) }
+    @Test(arguments: [
+        "--output-directory", "--output-name", "--mapping-directory", "--time-budget", "--operator-displayed-view",
+    ])
+    func surveyRequiresEachOption(option: String) throws {
+        var arguments = Self.survey
+        let index = try #require(arguments.firstIndex(of: option))
+        arguments.removeSubrange(index...(index + 1))
+        #expect(throws: UsageError.missingOption(option)) { try CommandLineParser.parse(arguments) }
+    }
+
+    @Test func surveyNoLongerTakesAnOutputPath() {
+        #expect(throws: UsageError.unknownOption("--output")) {
+            try CommandLineParser.parse(Self.survey + ["--output", "o.json"])
+        }
+    }
+
+    @Test(arguments: [
+        ("--time-budget", "0"), ("--time-budget", "-1"), ("--time-budget", "3601"), ("--time-budget", "nan"),
+        ("--time-budget", "inf"), ("--time-budget", "1e400"), ("--time-budget", "ten"),
+        ("--operator-displayed-view", "albums"), ("--operator-displayed-view", "Songs"),
+        ("--output-name", "songs"), ("--output-name", "a/b.json"), ("--output-name", ".songs.json"),
+        ("--output-name", "songs.v2.json"), ("--output-name", "../songs.json"),
+        ("--output-directory", "/absolute/x"), ("--output-directory", "a/../b"), ("--output-directory", "a//b"),
+        ("--output-directory", ".hidden"), ("--output-directory", "Music/x"), ("--output-directory", "documents"),
+        ("--output-directory", "LIBRARY/x"), ("--mapping-directory", "Desktop/private"),
+        ("--mapping-directory", "a/./b"), ("--output-directory", "caf\u{E9}"),
+    ])
+    func invalidSurveyValuesAreRefused(option: String, value: String) throws {
+        var arguments = Self.survey
+        let index = try #require(arguments.firstIndex(of: option))
+        arguments[index + 1] = value
+        #expect(throws: UsageError.invalidValue(option)) { try CommandLineParser.parse(arguments) }
+    }
+
+    @Test func theBudgetBoundsAreTheSpecifiedOnes() throws {
+        var arguments = Self.survey
+        let index = try #require(arguments.firstIndex(of: "--time-budget"))
+        for value in ["0.5", "3600"] {
+            arguments[index + 1] = value
+            guard case .survey(let options) = try CommandLineParser.parse(arguments) else {
+                Issue.record("expected survey")
+                return
+            }
+            #expect(options.timeBudgetSeconds == Double(value))
+        }
+        // The hard stop allows twice the largest unchecked stretch of requests at the 2-second timeout.
+        #expect(
+            SurveyLimits.hardStopMarginSeconds
+                >= 2 * Double(SurveyLimits.maximumRequestsBetweenBudgetChecks) * WalkLimits().timeoutSeconds)
+        #expect(SurveyLimits.maximumTimeBudgetSeconds == 3_600 && SurveyLimits.maximumConsecutiveTimedOutNodes == 5)
     }
 
     @Test func malformedInvocationsAreUsageErrors() {
         #expect(throws: UsageError.missingCommand) { try CommandLineParser.parse([]) }
         #expect(throws: UsageError.unknownCommand("probe")) { try CommandLineParser.parse(["probe"]) }
         #expect(throws: UsageError.unknownOption("--prompt")) {
-            try CommandLineParser.parse(["survey", "--output", "o", "--prompt"])
+            try CommandLineParser.parse(Self.survey + ["--prompt"])
         }
-        #expect(throws: UsageError.missingValue("--output")) { try CommandLineParser.parse(["survey", "--output"]) }
-        #expect(throws: UsageError.missingValue("--output")) {
-            try CommandLineParser.parse(["survey", "--output", "--confirm-no-cloud-library"])
+        #expect(throws: UsageError.missingValue("--output-name")) {
+            try CommandLineParser.parse(["survey", "--output-name"])
         }
-        #expect(throws: UsageError.duplicateOption("--output")) {
-            try CommandLineParser.parse(["survey", "--output", "a", "--output", "b"])
+        #expect(throws: UsageError.missingValue("--output-name")) {
+            try CommandLineParser.parse(["survey", "--output-name", "--confirm-no-cloud-library"])
+        }
+        #expect(throws: UsageError.duplicateOption("--output-name")) {
+            try CommandLineParser.parse(Self.survey + ["--output-name", "b.json"])
         }
         #expect(throws: UsageError.duplicateOption("--confirm-no-cloud-library")) {
-            try CommandLineParser.parse([
-                "survey", "--output", "a", "--confirm-no-cloud-library", "--confirm-no-cloud-library",
-            ])
+            try CommandLineParser.parse(Self.survey + ["--confirm-no-cloud-library", "--confirm-no-cloud-library"])
         }
         #expect(throws: UsageError.unknownOption("--profile")) {
-            try CommandLineParser.parse(["survey", "--output", "a", "--profile", "p"])
+            try CommandLineParser.parse(Self.survey + ["--profile", "p"])
         }
-        #expect(throws: UsageError.invalidValue("--output")) {
-            try CommandLineParser.parse(["survey", "--output", ""])
+        #expect(throws: UsageError.invalidValue("--output-name")) {
+            var arguments = Self.survey
+            arguments[4] = ""
+            return try CommandLineParser.parse(arguments)
         }
     }
 

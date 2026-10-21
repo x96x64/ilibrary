@@ -39,7 +39,8 @@ import Testing
             "MediaPlayer", "iTunesLibrary", "ITLibrary", "sqlite", "FileManager.default.removeItem",
             "kAXTrustedCheckOptionPrompt: true", "posix_spawn", "popen(", "system(", "execv", "execl", "fork(",
             "ScreenCaptureKit", "SCStream", "SCShareable", "AXUIElementPostKeyboardEvent", "CGDisplayCreateImage",
-            "CGWindowListCopyWindowInfo", "NSWorkspace", "AXObserverCreate",
+            "CGWindowListCopyWindowInfo", "NSWorkspace", "AXObserverCreate", "kill(", "killpg(", "raise(",
+            "unlink(", "rename(", "remove(", "renameat(",
         ]
         let files = try Self.swiftFiles()
         #expect(files.count >= 6)
@@ -201,22 +202,77 @@ import Testing
     /// The survey path cannot run without the accessibility service, so this source check guards its contract: the
     /// launch identity is required before any element is created, the process is read again after the walk, and the
     /// status and exit status come from the outcome rule rather than being fixed as completed and zero.
-    @Test func theSurveyConfirmsTheProcessAroundItsWalk() throws {
+    /// The code of the survey flow in main.swift.
+    static func surveyCode() throws -> String {
+        let main = try #require(swiftFiles().first { $0.name == "main.swift" })
+        let code = Self.code(main.text)
+        let start = try #require(code.range(of: "func runSurvey(_ options: SurveyOptions) -> Never {"))
+        let end = try #require(code.range(of: "func run() -> Never {", range: start.upperBound..<code.endIndex))
+        return String(code[start.upperBound..<end.lowerBound])
+    }
+
+    static func position(_ token: String, in text: String) throws -> String.Index {
+        try #require(text.range(of: token), "missing: \(token)").lowerBound
+    }
+
+    /// The survey path cannot run without the accessibility service, so this source check guards its order: the
+    /// hard stop is armed before any file system access; refusals that need no file system access write nothing;
+    /// the destination is validated before any record can be written; the launch identity is required before an
+    /// element is created; the process is read again after the walk; and the record is published before the
+    /// private mapping, with the status and exit status taken from the outcome rule.
+    @Test func theSurveyFlowKeepsItsReviewedOrder() throws {
+        let survey = try Self.surveyCode()
+        let order = [
+            "armHardStop(seconds: hardLimit)", "if !early.isEmpty { stop(", "getpwuid(user)",
+            "SurveyPlacement.openValidated(options.outputDirectory", "SurveyPlacement.requireSeparate(output, mapping)",
+            "SurveyPlacement.requireAbsent(options.outputName, in: output)",
+            "AccessibilityReader.isTrustedWithoutPrompting()", "guard let before = music.identity",
+            "AccessibilityReader.applicationElement(", "AccessibilityReader.walk(",
+            "AccessibilityReader.musicProcess().identity",
+            "SurveyRun.outcome(", "publish(recordData, name: options.outputName, in: output)",
+            "publish(mapData, name: mappingName, in: mapping)", "exit(outcome.exitStatus)",
+        ]
+        let positions = try order.map { try Self.position($0, in: survey) }
+        #expect(positions == positions.sorted())
+        #expect(survey.contains("record(status: outcome.status, stopReason: outcome.stopReason"))
+        // The survey never uses the unvalidated output path of observe.
+        for token in ["finish(", "ExclusiveFile", "refuse(", "status: .completed", "options.output,"] {
+            #expect(!survey.contains(token), "the survey flow contains \(token)")
+        }
+        #expect(survey.contains("try SurveyPlacement.recheck(directory, home: home, user: user)"))
+    }
+
+    /// The hard stop uses only the default action of SIGALRM and a single-shot real-time timer of this process.
+    @Test func theHardStopUsesOnlyTheDefaultActionOfItsOwnTimer() throws {
         let main = try #require(Self.swiftFiles().first { $0.name == "main.swift" })
         let code = Self.code(main.text)
-        let refusal = try #require(code.range(of: "if case .survey = command, music.identity == nil {"))
-        let element = try #require(code.range(of: "AccessibilityReader.applicationElement("))
-        #expect(refusal.upperBound < element.lowerBound)
-        let start = try #require(code.range(of: "case .survey:\n"))
-        let end = try #require(code.range(of: "case .observe(let options):", range: start.upperBound..<code.endIndex))
-        let survey = String(code[start.upperBound..<end.lowerBound])
-        let walk = try #require(survey.range(of: "AccessibilityReader.walk("))
-        let again = try #require(survey.range(of: "AccessibilityReader.musicProcess().identity"))
-        #expect(walk.upperBound < again.lowerBound)
-        #expect(survey.contains("applicationInvalid: snapshot.applicationInvalid"))
-        #expect(survey.contains("status: outcome.status, stopReason: outcome.stopReason"))
-        #expect(survey.contains("finish(output, path: outputPath, status: outcome.exitStatus)"))
-        #expect(!survey.contains("status: .completed") && !survey.contains("status: 0)"))
+        #expect(code.contains("action.__sigaction_u.__sa_handler = SIG_DFL"))
+        #expect(code.components(separatedBy: "__sa_handler = ").count == 2)
+        #expect(code.contains("guard sigaction(SIGALRM, &action, nil) == 0"))
+        #expect(code.contains("pthread_sigmask(SIG_UNBLOCK, &unblock, nil)"))
+        #expect(code.contains("setitimer(ITIMER_REAL, &timer, nil)"))
+        #expect(code.contains("it_interval: timeval(tv_sec: 0, tv_usec: 0)"))
+        for file in try Self.swiftFiles() {
+            let text = Self.code(file.text)
+            for token in [
+                "signal(", "SIGKILL", "SIGTERM", "SIGINT", "SIGSTOP", "ITIMER_VIRTUAL", "ITIMER_PROF", "alarm(",
+            ] {
+                #expect(!Self.contains(text, token), "\(file.name) uses \(token)")
+            }
+            if file.name != "main.swift" {
+                #expect(!text.contains("sigaction(") && !text.contains("setitimer("), "\(file.name)")
+            }
+        }
+    }
+
+    /// Survey records are published only through the descriptor-relative exclusive sequence.
+    @Test func publicationLinksWithoutReplacing() throws {
+        let file = try #require(Self.swiftFiles().first { $0.name == "SurveyPlacement.swift" })
+        let code = Self.code(file.text)
+        #expect(code.contains("O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600"))
+        #expect(code.contains("linkat(directory, temporary, directory, name, 0)"))
+        #expect(code.contains("O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC"))
+        #expect(!code.contains("renameat") && !code.contains("rename("))
     }
 
     /// Source checks for the macOS count reads, which the synthetic tests cannot execute.

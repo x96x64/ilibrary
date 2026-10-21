@@ -1,6 +1,7 @@
 // The sanitized output of the probe and its exclusive creation. Foundation-only. The output holds structure,
 // counts, versions, and allow-listed labels, and never other text, values, positions, or sizes of Music.
 import Foundation
+import RebuildCore
 
 #if canImport(Darwin)
     import Darwin
@@ -18,7 +19,11 @@ struct SurveyNode: Codable, Equatable, Sendable {
     var parent: Int?
     var role: String?
     var subrole: String?
-    var identifier: String?
+    /// The alias of the element's identifier within this run; the raw identifier is never recorded here.
+    var identifierAlias: String?
+    /// The coarse form of the raw identifier (`uuid`, `numeric`, `hexadecimal`, `word`, or `other`), without its
+    /// length or content.
+    var identifierShape: String?
     var hasIdentifier: Bool
     var hasTitle: Bool
     var titleLabel: String?
@@ -41,11 +46,16 @@ enum SurveySanitizer {
         return text.range(of: "^AX[A-Za-z0-9]{1,60}$", options: .regularExpression) != nil ? text : "other"
     }
 
-    static func identifier(_ text: String?) -> String? {
-        guard let text, text.range(of: "^[A-Za-z0-9._-]{1,64}$", options: .regularExpression) != nil else {
-            return nil
+    /// The coarse form of a raw identifier, from a closed set; it never includes the length or any character.
+    static func shape(_ text: String) -> String {
+        let hex = "[0-9A-Fa-f]"
+        if text.range(of: "^\(hex){8}-\(hex){4}-\(hex){4}-\(hex){4}-\(hex){12}$", options: .regularExpression) != nil {
+            return "uuid"
         }
-        return text
+        if text.range(of: "^[0-9]+$", options: .regularExpression) != nil { return "numeric" }
+        if text.range(of: "^[0-9A-Fa-f]{8,}$", options: .regularExpression) != nil { return "hexadecimal" }
+        if text.range(of: "^[A-Za-z][A-Za-z0-9._-]*$", options: .regularExpression) != nil { return "word" }
+        return "other"
     }
 
     static func label(_ text: String?, exists: Bool) -> String? {
@@ -54,10 +64,14 @@ enum SurveySanitizer {
         return text
     }
 
-    static func node(_ facts: NodeFacts, depth: Int, parent: Int? = nil) -> SurveyNode {
-        SurveyNode(
+    static func node(_ facts: NodeFacts, depth: Int, parent: Int? = nil, aliases: inout IdentifierAliases)
+        -> SurveyNode
+    {
+        let raw = facts.identifier.flatMap { $0.isEmpty ? nil : $0 }
+        return SurveyNode(
             depth: depth, parent: parent, role: constant(facts.role), subrole: constant(facts.subrole),
-            identifier: identifier(facts.identifier), hasIdentifier: facts.hasIdentifier, hasTitle: facts.hasTitle,
+            identifierAlias: raw.map { aliases.alias(for: $0) }, identifierShape: raw.map(shape),
+            hasIdentifier: facts.hasIdentifier, hasTitle: facts.hasTitle,
             titleLabel: label(facts.title, exists: facts.hasTitle), hasDescription: facts.hasDescription,
             descriptionLabel: label(facts.description, exists: facts.hasDescription), childCount: facts.childCount,
             rowCount: facts.rowCount, visibleRowCount: facts.visibleRowCount,
@@ -66,18 +80,90 @@ enum SurveySanitizer {
             errors: facts.errors)
     }
 
-    static func section<Node>(_ snapshot: TreeSnapshot<Node>, limits: WalkLimits) -> SurveySection {
-        SurveySection(
+    /// The sanitized section of one walk. Raw identifiers go only into `aliases`, which the caller writes to the
+    /// private mapping.
+    static func section<Node>(
+        _ snapshot: TreeSnapshot<Node>, limits: WalkLimits, aliases: inout IdentifierAliases,
+        elapsedSeconds: Double? = nil, hardLimitSeconds: Double? = nil, runID: String? = nil,
+        identifierMappingName: String? = nil
+    ) -> SurveySection {
+        var nodes: [SurveyNode] = []
+        for entry in snapshot.entries {
+            nodes.append(node(entry.facts, depth: entry.depth, parent: entry.parent, aliases: &aliases))
+        }
+        return SurveySection(
             nodeLimit: limits.maximumNodes, depthLimit: limits.maximumDepth,
-            timeoutSeconds: limits.timeoutSeconds, visitedNodeCount: snapshot.entries.count,
+            timeoutSeconds: limits.timeoutSeconds, timeBudgetSeconds: limits.timeBudgetSeconds,
+            hardLimitSeconds: hardLimitSeconds,
+            maximumConsecutiveTimedOutNodes: limits.maximumConsecutiveTimedOutNodes, elapsedSeconds: elapsedSeconds,
+            visitedNodeCount: snapshot.entries.count,
             truncatedByNodeLimit: snapshot.truncatedByNodeLimit,
             truncatedByDepthLimit: snapshot.truncatedByDepthLimit,
             truncatedByChildLimit: snapshot.truncatedByChildLimit,
             childrenUnavailable: snapshot.childrenUnavailable, roleUnknown: snapshot.roleUnknown,
             errorCountsByCode: Dictionary(
                 uniqueKeysWithValues: snapshot.errorCountsByCode.map { (String($0.key), $0.value) }),
-            treeStatus: snapshot.status, applicationInvalid: snapshot.applicationInvalid,
-            nodes: snapshot.entries.map { node($0.facts, depth: $0.depth, parent: $0.parent) })
+            truncatedByDeadline: snapshot.truncatedByDeadline,
+            stoppedByRepeatedTimeouts: snapshot.stoppedByRepeatedTimeouts, treeStatus: snapshot.status,
+            applicationInvalid: snapshot.applicationInvalid, runID: runID, identifierMappingName: identifierMappingName,
+            nodes: nodes)
+    }
+}
+
+/// The aliases of the raw identifiers of one run, assigned in walk order. Equal identifiers, compared by their
+/// UTF-8 bytes, receive the same alias; an alias carries no information about the identifier.
+struct IdentifierAliases: Equatable, Sendable {
+    private(set) var values: [String] = []
+    private var aliasByBytes: [Data: String] = [:]
+
+    mutating func alias(for raw: String) -> String {
+        let key = Data(raw.utf8)
+        if let alias = aliasByBytes[key] { return alias }
+        values.append(raw)
+        let alias = "identifier-\(values.count)"
+        aliasByBytes[key] = alias
+        return alias
+    }
+}
+
+/// The private mapping from the aliases of one run to the raw identifiers. It stays in the maintainer's custody in
+/// the mapping directory and is never part of a shareable record.
+struct IdentifierMapping: Codable, Equatable, Sendable {
+    struct Entry: Codable, Equatable, Sendable {
+        var alias: String
+        /// The raw identifier, or nil when it is longer than `maximumValueBytes`.
+        var value: String?
+        /// The SHA-256 of an omitted long value, so that two long values can still be compared.
+        var omittedValueSHA256: String? = nil
+    }
+
+    static let format = "ilibrary-gui-probe-identifier-map-1"
+    static let maximumValueBytes = 256
+    static let privacyStatement =
+        "Private: raw accessibility identifiers of one survey run. Keep in the test user's custody; do not share."
+
+    var format = IdentifierMapping.format
+    var runID: String
+    var recordName: String
+    var privacy = IdentifierMapping.privacyStatement
+    var entries: [Entry]
+
+    init(runID: String, recordName: String, aliases: IdentifierAliases) {
+        self.runID = runID
+        self.recordName = recordName
+        entries = aliases.values.enumerated().map { index, value in
+            let alias = "identifier-\(index + 1)"
+            guard value.utf8.count <= Self.maximumValueBytes else {
+                return Entry(alias: alias, value: nil, omittedValueSHA256: SHA256.digest(of: Data(value.utf8)).hex)
+            }
+            return Entry(alias: alias, value: value, omittedValueSHA256: nil)
+        }
+    }
+
+    func json() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(self) + Data("\n".utf8)
     }
 }
 
@@ -139,6 +225,13 @@ struct SurveySection: Codable, Equatable, Sendable {
     var nodeLimit: Int
     var depthLimit: Int
     var timeoutSeconds: Double
+    /// The elapsed-time budget, checked between requests; the walk stops expanding when it is used up.
+    var timeBudgetSeconds: Double?
+    /// The time after which the system terminates the probe; a run that reaches it writes no record.
+    var hardLimitSeconds: Double?
+    var maximumConsecutiveTimedOutNodes: Int?
+    /// Seconds on a monotonic clock from the start of the run to the end of the walk.
+    var elapsedSeconds: Double?
     var visitedNodeCount: Int
     var truncatedByNodeLimit: Bool
     var truncatedByDepthLimit: Bool
@@ -146,12 +239,24 @@ struct SurveySection: Codable, Equatable, Sendable {
     var childrenUnavailable: Bool
     var roleUnknown: Bool
     var errorCountsByCode: [String: Int]
+    var truncatedByDeadline: Bool
+    var stoppedByRepeatedTimeouts: Bool
     /// The completeness of the walk, derived as for an observation; anything but `complete` means that the
     /// recorded structure may omit elements.
     var treeStatus: TreeStatus
     /// Whether the application element itself reported that it is invalid, as after Music has quit.
     var applicationInvalid: Bool
+    /// A random identifier shared with the run's private identifier mapping; it binds the two files and is no
+    /// evidence of provenance.
+    var runID: String?
+    /// The name of the private mapping file, kept in the mapping directory and never shared.
+    var identifierMappingName: String?
+    var identifierPrivacy = SurveySection.identifierPrivacyStatement
     var nodes: [SurveyNode]
+
+    static let identifierPrivacyStatement =
+        "Identifiers are recorded only as aliases; the raw values are in the private mapping named "
+        + "identifierMappingName, which is kept in the test user's custody and never shared."
 }
 
 struct VerdictRecord: Codable, Equatable, Sendable {
@@ -189,7 +294,11 @@ struct ObservationSection: Codable, Equatable, Sendable {
 }
 
 struct ProbeOutput: Codable, Equatable, Sendable {
-    var format = "ilibrary-gui-probe-output-1"
+    /// Observe records keep version 1; survey records use version 2, in which identifiers are aliases.
+    static let observeFormat = "ilibrary-gui-probe-output-1"
+    static let surveyFormat = "ilibrary-gui-probe-output-2"
+
+    var format = ProbeOutput.observeFormat
     var mode: String
     var status: RunStatus
     var stopReason: String?
@@ -203,6 +312,8 @@ struct ProbeOutput: Codable, Equatable, Sendable {
     /// The SHA-256 of the exact interface-profile bytes used, so that the reviewed profile can be identified. It
     /// identifies the file only; it does not show that the profile was reviewed.
     var profileSHA256: String?
+    /// The view that the operator declares was displayed during a survey; the probe does not verify it.
+    var operatorDisplayedView: String?
     var survey: SurveySection?
     var observation: ObservationSection?
     var provenance = ProbeOutput.provenanceStatement
@@ -216,6 +327,7 @@ struct ProbeOutput: Codable, Equatable, Sendable {
         case observation, provenance
         case sourceCommit = "operatorSourceLabel"
         case confirmations = "operatorConfirmations"
+        case operatorDisplayedView
     }
 
     func json() throws -> Data {
@@ -226,7 +338,7 @@ struct ProbeOutput: Codable, Equatable, Sendable {
 }
 
 enum GUIProbe {
-    static let version = "0.1.0"
+    static let version = "0.2.0"
 }
 
 enum ExclusiveFile {
