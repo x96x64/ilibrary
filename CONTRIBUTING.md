@@ -24,7 +24,7 @@ scripts/validation/import.sh
 scripts/validation/library-commands.sh --prepare-only
 ```
 
-The first two scripts use independent reference tools, including FFmpeg/ffprobe, exiftool, and FLAC tools, in addition to Apple's command-line tools. Those tools are verification dependencies only. The preparation-only script uses generated audio and never queries Music. Outputs stay under ignored `artifacts/`. Do not run `--run-live` in a personal user: follow [Test Library Validation](docs/test-library-validation.md). Reference-validation scripts require explicit permission and ignored local inputs; they are not part of the public suite.
+The first two scripts use independent reference tools, including FFmpeg・ffprobe, exiftool, and FLAC tools, in addition to Apple's command-line tools. Those tools are verification dependencies only. The preparation-only script uses generated audio and never queries Music. Outputs stay under ignored `artifacts/`. Do not run `--run-live` in a personal user: follow [Test Library Validation](docs/test-library-validation.md). Reference-validation scripts require explicit permission and ignored local inputs; they are not part of the public suite.
 
 ## Changes and Evidence
 
