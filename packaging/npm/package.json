@@ -14,5 +14,5 @@
   "bin": {"ilibrary": "bin/ilibrary"},
   "files": ["bin", "LICENSE", "README.md"],
   "publishConfig": {"access": "public", "tag": "latest"},
-  "keywords": ["apple-music", "music-library", "metadata", "alac", "flac", "macos"]
+  "keywords": ["apple-music", "music-library", "metadata", "alac", "flac", "m4a", "macos"]
 }
