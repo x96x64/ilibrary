@@ -1,6 +1,6 @@
 // The interface profile: a reviewed description of how one Music version in one locale exposes the Songs and
 // Recently Added views. The repository ships no profile, and no default exists for any field. Decoding is strict:
-// an unknown key, a missing required field, or an empty identifier is refused.
+// an unknown key, a missing required field, or an empty version or locale is refused.
 import Foundation
 
 private struct AnyKey: CodingKey {

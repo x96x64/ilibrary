@@ -36,6 +36,8 @@ struct NodeFacts: Equatable, Sendable {
 struct Children<Node> {
     var nodes: [Node]
     var error: Int32?
+    /// True when the node reported more children than were returned, so that the walk is incomplete.
+    var truncated = false
 }
 
 protocol TreeSource {
@@ -61,6 +63,7 @@ struct TreeSnapshot<Node> {
     var entries: [TreeEntry<Node>] = []
     var truncatedByNodeLimit = false
     var truncatedByDepthLimit = false
+    var truncatedByChildLimit = false
     var errorCountsByCode: [Int32: Int] = [:]
 
     /// Whether the root element itself reported that it is invalid, as after the application has quit.
@@ -73,7 +76,7 @@ struct TreeSnapshot<Node> {
     var status: TreeStatus {
         if entries.isEmpty { return .notFound }
         if timedOut { return .timedOut }
-        if truncatedByNodeLimit || truncatedByDepthLimit { return .truncatedByLimit }
+        if truncatedByNodeLimit || truncatedByDepthLimit || truncatedByChildLimit { return .truncatedByLimit }
         if !errorCountsByCode.isEmpty { return .attributeError }
         return .complete
     }
@@ -104,6 +107,7 @@ enum TreeWalker {
                 if let code = kids.error, !facts.errors.contains(where: { $0.attribute == "AXChildren" }) {
                     facts.errors.append(AttributeError(attribute: "AXChildren", code: code))
                 }
+                if kids.truncated { snapshot.truncatedByChildLimit = true }
                 for kid in kids.nodes { queue.append((node: kid, depth: item.depth + 1, parent: index)) }
             }
             for error in facts.errors { snapshot.errorCountsByCode[error.code, default: 0] += 1 }

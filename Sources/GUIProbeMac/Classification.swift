@@ -40,6 +40,8 @@ enum Reason: Hashable, Sendable {
     case inventoryEvidenceMissing
     case inventoryEvidenceInvalid
     case contradictoryRowTotal
+    /// The profile declares the row list complete, but a reading did not report its total.
+    case rowTotalUnknown
     /// The observation stopped before every requested reading was taken and checked.
     case runStopped
     case inventoryContradictsView(count: Int)
@@ -77,6 +79,7 @@ enum Reason: Hashable, Sendable {
         case .inventoryEvidenceMissing: "no registration inventory count was supplied"
         case .inventoryEvidenceInvalid: "the supplied inventory count is not a valid count"
         case .contradictoryRowTotal: "the empty-state element is present but the complete row list is not empty"
+        case .rowTotalUnknown: "the profile declares the row list complete, but its total was not reported"
         case .runStopped: "the observation stopped before every requested reading was taken"
         case .inventoryContradictsView(let count):
             "the inventory reports \(count) file tracks but the view shows no content"
@@ -275,10 +278,11 @@ enum Classifier {
                 && (reading.placeholderPresent == true || (rowsComplete && reading.totalItemCount == 0))
         }
         if !positive { reasons.append(.noPositiveEmptyEvidence) }
-        if rowsComplete,
-            readings.contains(where: { $0.placeholderPresent == true && ($0.totalItemCount ?? 0) > 0 })
-        {
-            reasons.append(.contradictoryRowTotal)
+        // Where the profile declares the row list complete, its total must be reported as zero in every reading,
+        // whatever the placeholder shows; an unreported total is unknown, never zero.
+        if rowsComplete {
+            if readings.contains(where: { ($0.totalItemCount ?? 0) > 0 }) { reasons.append(.contradictoryRowTotal) }
+            if readings.contains(where: { $0.totalItemCount == nil }) { reasons.append(.rowTotalUnknown) }
         }
         if Set(readings.map(\.structure)).count > 1 { reasons.append(.readingsDisagree) }
         reasons = unique(reasons)

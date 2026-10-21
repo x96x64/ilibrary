@@ -69,6 +69,7 @@ enum SurveySanitizer {
             timeoutSeconds: limits.timeoutSeconds, visitedNodeCount: snapshot.entries.count,
             truncatedByNodeLimit: snapshot.truncatedByNodeLimit,
             truncatedByDepthLimit: snapshot.truncatedByDepthLimit,
+            truncatedByChildLimit: snapshot.truncatedByChildLimit,
             errorCountsByCode: Dictionary(
                 uniqueKeysWithValues: snapshot.errorCountsByCode.map { (String($0.key), $0.value) }),
             nodes: snapshot.entries.map { node($0.facts, depth: $0.depth) })
@@ -98,6 +99,7 @@ struct SurveySection: Codable, Equatable, Sendable {
     var visitedNodeCount: Int
     var truncatedByNodeLimit: Bool
     var truncatedByDepthLimit: Bool
+    var truncatedByChildLimit: Bool
     var errorCountsByCode: [String: Int]
     var nodes: [SurveyNode]
 }

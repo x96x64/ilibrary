@@ -97,6 +97,20 @@ import Testing
         #expect(snapshot.status == .complete)
     }
 
+    struct CutChildren: TreeSource {
+        func facts(of node: Int) -> NodeFacts { NodeFacts(role: node == 0 ? "AXTable" : "AXRow", childCount: 1) }
+        func children(of node: Int) -> Children<Int> {
+            node == 0 ? Children(nodes: [1], error: nil, truncated: true) : Children(nodes: [], error: nil)
+        }
+    }
+
+    @Test func aChildListCutAtTheLimitMakesTheWalkIncomplete() {
+        let snapshot = TreeWalker.walk(roots: [0], source: CutChildren(), limits: WalkLimits())
+        #expect(snapshot.truncatedByChildLimit)
+        #expect(snapshot.status == .truncatedByLimit)
+        #expect(SurveySanitizer.section(snapshot, limits: WalkLimits()).truncatedByChildLimit)
+    }
+
     @Test func theDepthLimitTruncatesOnlyWhenChildrenWereLeftUnread() {
         var chain = SyntheticTree()
         var parent: Int?

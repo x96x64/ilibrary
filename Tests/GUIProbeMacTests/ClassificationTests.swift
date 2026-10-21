@@ -307,6 +307,21 @@ import Testing
         #expect(!Fixtures.reasons(Fixtures.classify(readings, profile: incomplete)).contains(.contradictoryRowTotal))
     }
 
+    @Test func aCompleteRowListWithAnUnreportedTotalIsNeverEmpty() {
+        let readings = Fixtures.emptyReadings.map { reading -> ViewReading in
+            var copy = reading
+            copy.placeholderPresent = true
+            copy.totalItemCount = nil
+            return copy
+        }
+        let verdict = Fixtures.classify(readings)
+        #expect(verdict.outcome == "indeterminate")
+        #expect(Fixtures.reasons(verdict).contains(.rowTotalUnknown))
+        var incomplete = Fixtures.profile()
+        incomplete.songs.rowsComplete = false
+        #expect(!Fixtures.reasons(Fixtures.classify(readings, profile: incomplete)).contains(.rowTotalUnknown))
+    }
+
     @Test func combinationFollowsTheSafeDirection() {
         let empty = Verdict.candidateEmpty(evidence: [.inventoryZero])
         let non = Verdict.verifiedNonEmpty(reasons: [.visibleContent(items: 1)])
