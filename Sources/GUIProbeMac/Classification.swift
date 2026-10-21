@@ -20,6 +20,7 @@ enum Reason: Hashable, Sendable {
     case musicProcessNotRunning
     case musicProcessTerminated
     case musicProcessNotUnique
+    case musicProcessIdentityUnknown
     case versionsMissing
     case noReviewedProfile
     case versionMismatch
@@ -62,6 +63,8 @@ enum Reason: Hashable, Sendable {
         case .musicProcessNotRunning: "no Music process is running"
         case .musicProcessTerminated: "the Music process has terminated"
         case .musicProcessNotUnique: "more than one Music process is running"
+        case .musicProcessIdentityUnknown:
+            "the launch date of the Music process is unknown, so its identity cannot be confirmed"
         case .versionsMissing: "the macOS or Music version could not be determined"
         case .noReviewedProfile: "no reviewed interface profile was supplied"
         case .versionMismatch: "the observed versions or locale differ from those of the profile"

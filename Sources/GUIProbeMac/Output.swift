@@ -13,6 +13,9 @@ let surveyLabelAllowList: [String] = ["Songs", "Recently Added", "Library", "曲
 
 struct SurveyNode: Codable, Equatable, Sendable {
     var depth: Int
+    /// The index in `nodes` of the node through which this node was reached; nil for the application element.
+    /// It is a position in the record only, never an element reference or an interface value.
+    var parent: Int?
     var role: String?
     var subrole: String?
     var identifier: String?
@@ -51,9 +54,9 @@ enum SurveySanitizer {
         return text
     }
 
-    static func node(_ facts: NodeFacts, depth: Int) -> SurveyNode {
+    static func node(_ facts: NodeFacts, depth: Int, parent: Int? = nil) -> SurveyNode {
         SurveyNode(
-            depth: depth, role: constant(facts.role), subrole: constant(facts.subrole),
+            depth: depth, parent: parent, role: constant(facts.role), subrole: constant(facts.subrole),
             identifier: identifier(facts.identifier), hasIdentifier: facts.hasIdentifier, hasTitle: facts.hasTitle,
             titleLabel: label(facts.title, exists: facts.hasTitle), hasDescription: facts.hasDescription,
             descriptionLabel: label(facts.description, exists: facts.hasDescription), childCount: facts.childCount,
@@ -73,7 +76,8 @@ enum SurveySanitizer {
             childrenUnavailable: snapshot.childrenUnavailable, roleUnknown: snapshot.roleUnknown,
             errorCountsByCode: Dictionary(
                 uniqueKeysWithValues: snapshot.errorCountsByCode.map { (String($0.key), $0.value) }),
-            nodes: snapshot.entries.map { node($0.facts, depth: $0.depth) })
+            treeStatus: snapshot.status, applicationInvalid: snapshot.applicationInvalid,
+            nodes: snapshot.entries.map { node($0.facts, depth: $0.depth, parent: $0.parent) })
     }
 }
 
@@ -85,12 +89,50 @@ struct Confirmations: Codable, Equatable, Sendable {
 }
 
 enum RunStatus: String, Codable, Equatable, Sendable {
-    /// The probe ran to its end and the output holds its observations.
+    /// The probe ran to its end on a Music process whose identity held throughout, and the output holds its
+    /// observations. It says nothing about completeness: a survey states that in `survey.treeStatus`, and only a
+    /// complete tree exits with status 0.
     case completed
     /// The probe declined to read anything.
     case refused
-    /// The probe began to read and stopped early; `stopReason` says why.
+    /// The probe began to read and stopped early, or finished reading from a source that can no longer be trusted;
+    /// `stopReason` says why, and any structure recorded is partial and never a complete observation.
     case stopped
+}
+
+/// The identity of the Music process that the probe compares across a run: its identifier together with its
+/// launch date, since a replacement process can reuse an identifier.
+struct ProcessIdentity: Equatable, Sendable {
+    var processIdentifier: Int32
+    var launchDate: Date
+}
+
+/// The outcome of a survey, decided from the process identity before and after the single walk, the validity of
+/// the application element, and the completeness of the walk. The status reports the source and the command; the
+/// tree status reports the hierarchy, and only a complete tree from an unchanged process exits with status 0.
+enum SurveyRun {
+    struct Outcome: Equatable, Sendable {
+        var status: RunStatus
+        var stopReason: String?
+        var exitStatus: Int32
+    }
+
+    static let processChanged = "the Music process changed or ended during the walk"
+    static let applicationInvalid = "the application element became invalid during the walk"
+
+    /// `after` is nil when, after the walk, there is not exactly one Music process with a known identifier and
+    /// launch date; an unknown identity never confirms the earlier one.
+    static func outcome(
+        before: ProcessIdentity, after: ProcessIdentity?, applicationInvalid: Bool, treeStatus: TreeStatus
+    ) -> Outcome {
+        var reasons: [String] = []
+        if after != before { reasons.append(processChanged) }
+        if applicationInvalid { reasons.append(Self.applicationInvalid) }
+        if !reasons.isEmpty {
+            return Outcome(status: .stopped, stopReason: reasons.joined(separator: "; "), exitStatus: 1)
+        }
+        return Outcome(status: .completed, stopReason: nil, exitStatus: treeStatus == .complete ? 0 : 1)
+    }
 }
 
 struct SurveySection: Codable, Equatable, Sendable {
@@ -104,6 +146,11 @@ struct SurveySection: Codable, Equatable, Sendable {
     var childrenUnavailable: Bool
     var roleUnknown: Bool
     var errorCountsByCode: [String: Int]
+    /// The completeness of the walk, derived as for an observation; anything but `complete` means that the
+    /// recorded structure may omit elements.
+    var treeStatus: TreeStatus
+    /// Whether the application element itself reported that it is invalid, as after Music has quit.
+    var applicationInvalid: Bool
     var nodes: [SurveyNode]
 }
 

@@ -64,7 +64,8 @@ import Testing
         #expect(!text.contains("Secret"))
         let keys = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any]).keys
         let allowed: Set<String> = [
-            "depth", "role", "subrole", "identifier", "hasIdentifier", "hasTitle", "titleLabel", "hasDescription",
+            "depth", "parent", "role", "subrole", "identifier", "hasIdentifier", "hasTitle", "titleLabel",
+            "hasDescription",
             "descriptionLabel", "childCount", "rowCount", "visibleRowCount", "hasHorizontalScrollBar",
             "hasVerticalScrollBar", "scrollValue", "busy", "errors",
         ]
