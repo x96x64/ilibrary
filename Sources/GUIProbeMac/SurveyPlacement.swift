@@ -67,9 +67,38 @@ enum SurveyPlacement {
         "applications", "desktop", "documents", "downloads", "library", "movies", "music", "pictures", "public",
     ]
 
-    private static let componentPattern = "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-    private static let namePattern = "^[A-Za-z0-9][A-Za-z0-9_-]{0,47}\\.json$"
     static let mappingSuffix = ".identifier-map.json"
+    private static let recordSuffix = ".json"
+
+    private static func isASCIILetterOrDigit(_ scalar: Unicode.Scalar) -> Bool {
+        ("a"..."z").contains(scalar) || ("A"..."Z").contains(scalar) || ("0"..."9").contains(scalar)
+    }
+
+    /// Whether every Unicode scalar of `text` is permitted: the first an ASCII letter or digit, each other one an
+    /// ASCII letter, digit, or one of `extra`, with between 1 and `maximumLength` scalars. The whole input is
+    /// examined, so no prefix or suffix, such as a line terminator, can be ignored, whatever a regular-expression
+    /// engine would make of an end anchor.
+    private static func consistsOfPermittedScalars(
+        _ text: Substring.UnicodeScalarView, maximumLength: Int, extra: Set<Unicode.Scalar>
+    ) -> Bool {
+        guard let first = text.first, isASCIILetterOrDigit(first), text.count <= maximumLength else { return false }
+        return text.allSatisfy { isASCIILetterOrDigit($0) || extra.contains($0) }
+    }
+
+    /// A path component: 1 to 64 scalars, starting with an ASCII letter or digit, otherwise letters, digits, and
+    /// `._-` only.
+    static func isPermittedComponent(_ text: String) -> Bool {
+        consistsOfPermittedScalars(Substring(text).unicodeScalars, maximumLength: 64, extra: [".", "_", "-"])
+    }
+
+    /// A record name: a stem of 1 to 48 scalars, starting with an ASCII letter or digit, otherwise letters, digits,
+    /// `_`, and `-`, followed by exactly `.json` and nothing else.
+    static func isPermittedName(_ text: String) -> Bool {
+        let scalars = Substring(text).unicodeScalars
+        let suffix = Substring(recordSuffix).unicodeScalars
+        guard scalars.count > suffix.count, scalars.suffix(suffix.count).elementsEqual(suffix) else { return false }
+        return consistsOfPermittedScalars(scalars.dropLast(suffix.count), maximumLength: 48, extra: ["_", "-"])
+    }
 
     /// The components of a directory relative to the home directory, checked without touching the file system:
     /// no absolute path, no empty, hidden, or traversal component, no character outside ASCII letters, digits, and
@@ -78,18 +107,14 @@ enum SurveyPlacement {
         guard !relativePath.hasPrefix("/") else { throw PlacementError.invalidComponent(relativePath) }
         let parts = relativePath.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
         guard !parts.isEmpty else { throw PlacementError.invalidComponent(relativePath) }
-        for part in parts where part.range(of: componentPattern, options: .regularExpression) == nil {
-            throw PlacementError.invalidComponent(part)
-        }
+        for part in parts where !isPermittedComponent(part) { throw PlacementError.invalidComponent(part) }
         if protectedHomeFolders.contains(parts[0].lowercased()) { throw PlacementError.protectedLocation(parts[0]) }
         return parts
     }
 
     /// A record name: one component ending in `.json`, whose stem has no dot.
     static func validateName(_ name: String) throws {
-        guard name.range(of: namePattern, options: .regularExpression) != nil else {
-            throw PlacementError.invalidName(name)
-        }
+        guard isPermittedName(name) else { throw PlacementError.invalidName(name) }
     }
 
     /// The private mapping's name, derived from the record's name; it never equals a record name.

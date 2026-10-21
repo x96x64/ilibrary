@@ -255,6 +255,47 @@ struct DisposableHome {
             try SurveyPlacement.components(of: "ilibrary-gui-survey/records") == ["ilibrary-gui-survey", "records"])
     }
 
+    /// The checks are made on every Unicode scalar of the input, so a disallowed suffix is never ignored, whatever
+    /// the platform's regular-expression engine does with an end anchor. Nothing here touches the file system.
+    @Test(arguments: ["\n", "\r", "\r\n", "\u{85}", "\u{2028}", "\u{2029}", "\u{0}", "\t", " ", "\u{FEFF}"])
+    func aDisallowedSuffixIsRefusedInComponentsAndNames(suffix: String) {
+        for path in ["survey" + suffix, "survey" + suffix + "/records", "Music" + suffix, "music" + suffix + "/x"] {
+            #expect(throws: PlacementError.self) { _ = try SurveyPlacement.components(of: path) }
+        }
+        for name in ["songs.json" + suffix, "songs" + suffix + ".json", suffix + "songs.json"] {
+            #expect(throws: PlacementError.self) { try SurveyPlacement.validateName(name) }
+            #expect(!SurveyPlacement.isPermittedName(name))
+        }
+        #expect(!SurveyPlacement.isPermittedComponent("survey" + suffix))
+    }
+
+    @Test func theReportedExamplesAreRefused() {
+        #expect(throws: PlacementError.invalidComponent("survey\n")) {
+            _ = try SurveyPlacement.components(of: "survey\n")
+        }
+        #expect(throws: PlacementError.invalidName("songs.json\n")) { try SurveyPlacement.validateName("songs.json\n") }
+    }
+
+    @Test func embeddedDisallowedCharactersAreRefused() {
+        for component in ["sur\nvey", "sur vey", "sur\u{2028}vey", "caf\u{E9}", "-survey", "_survey", "sur:vey"] {
+            #expect(!SurveyPlacement.isPermittedComponent(component), "\(component.debugDescription)")
+        }
+        for name in ["so\nngs.json", "songs.js\non", "songs.json.json", "songs .json", "-songs.json", "songs.jso"] {
+            #expect(!SurveyPlacement.isPermittedName(name), "\(name.debugDescription)")
+        }
+    }
+
+    @Test func theLengthLimitsAreExact() {
+        #expect(SurveyPlacement.isPermittedComponent("a") && SurveyPlacement.isPermittedComponent("a.b_c-1"))
+        #expect(SurveyPlacement.isPermittedComponent(String(repeating: "a", count: 64)))
+        #expect(!SurveyPlacement.isPermittedComponent(String(repeating: "a", count: 65)))
+        #expect(!SurveyPlacement.isPermittedComponent(""))
+        #expect(SurveyPlacement.isPermittedName("a.json") && SurveyPlacement.isPermittedName("recently-added_2.json"))
+        #expect(SurveyPlacement.isPermittedName(String(repeating: "b", count: 48) + ".json"))
+        #expect(!SurveyPlacement.isPermittedName(String(repeating: "b", count: 49) + ".json"))
+        #expect(!SurveyPlacement.isPermittedName(".json") && !SurveyPlacement.isPermittedName("json"))
+    }
+
     @Test func anExistingNameIsRefusedAndALinkCountsAsExisting() throws {
         let home = try prepared()
         defer { home.remove() }
