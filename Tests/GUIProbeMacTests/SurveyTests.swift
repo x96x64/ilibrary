@@ -104,6 +104,32 @@ import Testing
         }
     }
 
+    @Test func aBoundedCollectionReadIsCompleteOnlyWhenEveryRequestedElementArrives() {
+        // Complete: a reported zero, and a full read of every requested element.
+        #expect(!CollectionRead.isIncomplete(reported: 0, requested: 0, returned: 0, usable: 0))
+        #expect(!CollectionRead.isIncomplete(reported: 3, requested: 3, returned: 3, usable: 3))
+        // A positive count followed by a success without an array.
+        #expect(CollectionRead.isIncomplete(reported: 3, requested: 3, returned: nil, usable: 0))
+        // Fewer entries than requested, compared with the bounded request rather than the reported count.
+        #expect(CollectionRead.isIncomplete(reported: 3, requested: 3, returned: 2, usable: 2))
+        #expect(CollectionRead.isIncomplete(reported: 2_500, requested: 2_000, returned: 2_000, usable: 2_000))
+        #expect(CollectionRead.isIncomplete(reported: 2_000, requested: 2_000, returned: 1_999, usable: 1_999))
+        #expect(!CollectionRead.isIncomplete(reported: 2_000, requested: 2_000, returned: 2_000, usable: 2_000))
+        // More entries than requested, entries that are not elements, and invalid counts.
+        #expect(CollectionRead.isIncomplete(reported: 3, requested: 3, returned: 4, usable: 4))
+        #expect(CollectionRead.isIncomplete(reported: 3, requested: 3, returned: 3, usable: 2))
+        #expect(CollectionRead.isIncomplete(reported: -1, requested: -1, returned: 0, usable: 0))
+    }
+
+    @Test func theReaderJudgesEveryCollectionReadByItsBoundedRequest() throws {
+        // A source check: the macOS reader cannot run without the accessibility service.
+        let url = SourceBoundaryTests.sources.appendingPathComponent("AccessibilityReader.swift")
+        let reader = try String(contentsOf: url, encoding: .utf8)
+        #expect(reader.contains("guard let values else { return Children(nodes: [], error: nil, truncated: true) }"))
+        #expect(reader.contains("reported: total, requested: wanted, returned: items.count, usable: nodes.count"))
+        #expect(!reader.contains("error == .success ? nil : error.rawValue"))
+    }
+
     @Test func aChildListCutAtTheLimitMakesTheWalkIncomplete() {
         let snapshot = TreeWalker.walk(roots: [0], source: CutChildren(), limits: WalkLimits())
         #expect(snapshot.truncatedByChildLimit)

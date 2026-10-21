@@ -40,6 +40,18 @@ struct Children<Node> {
     var truncated = false
 }
 
+/// The completeness of one bounded read of a collection attribute: the count that the element reported, the
+/// count requested after the per-call limit, the count of entries returned (nil when no array came back), and the
+/// count of usable elements among them. The count and the copy are separate requests and not an atomic snapshot,
+/// so any disagreement is incompleteness and never evidence of an empty collection.
+enum CollectionRead {
+    static func isIncomplete(reported: Int, requested: Int, returned: Int?, usable: Int) -> Bool {
+        if reported < 0 || requested < 0 || reported > requested { return true }
+        guard let returned else { return requested > 0 }
+        return returned != requested || usable != returned
+    }
+}
+
 protocol TreeSource {
     associatedtype Node
     func facts(of node: Node) -> NodeFacts

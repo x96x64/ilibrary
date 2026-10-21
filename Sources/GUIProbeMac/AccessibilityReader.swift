@@ -188,18 +188,28 @@
                 default: return Children(nodes: [], error: countError.rawValue)
                 }
                 let wanted = min(total, AccessibilityReader.maximumChildrenPerNode)
-                guard wanted > 0 else { return Children(nodes: [], error: nil) }
+                // A reported count of zero is an empty collection; a negative count is not a valid read.
+                guard wanted > 0 else {
+                    return Children(
+                        nodes: [], error: nil,
+                        truncated: CollectionRead.isIncomplete(
+                            reported: total, requested: wanted, returned: 0, usable: 0))
+                }
                 var values: CFArray?
                 let error = AXUIElementCopyAttributeValues(element, attribute as CFString, 0, wanted, &values)
-                guard error == .success, let values else {
-                    return Children(nodes: [], error: error == .success ? nil : error.rawValue)
-                }
+                guard error == .success else { return Children(nodes: [], error: error.rawValue) }
+                // A success without an array, after a positive count, is not an empty collection.
+                guard let values else { return Children(nodes: [], error: nil, truncated: true) }
                 let items = values as [AnyObject]
                 let nodes = items.compactMap { item -> AXUIElement? in
                     CFGetTypeID(item) == AXUIElementGetTypeID() ? unsafeDowncast(item, to: AXUIElement.self) : nil
                 }
-                // A list cut at the limit, or with entries that are not elements, leaves the walk incomplete.
-                return Children(nodes: nodes, error: nil, truncated: total > wanted || nodes.count != items.count)
+                // A list cut at the limit, shorter than requested, or with entries that are not elements, leaves the
+                // walk incomplete.
+                return Children(
+                    nodes: nodes, error: nil,
+                    truncated: CollectionRead.isIncomplete(
+                        reported: total, requested: wanted, returned: items.count, usable: nodes.count))
             }
 
             /// The children of an element; for the application element, also its windows without duplicates.
