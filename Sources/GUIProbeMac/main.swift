@@ -4,6 +4,7 @@
 // candidate-for-emptiness verdict, and it refuses unless every precondition is confirmed. It never prompts for
 // permission, never acts on Music, and writes only the exclusively created output file.
 import Foundation
+import RebuildCore
 
 #if canImport(ApplicationServices) && canImport(AppKit)
     #if canImport(Darwin)
@@ -89,10 +90,13 @@ import Foundation
         }
         // In observe mode the profile is read and checked before any accessibility call.
         var loadedProfile: InterfaceProfile?
+        var profileDigest: String?
         if case .observe(let options) = command {
             let profile: InterfaceProfile
             do {
-                profile = try InterfaceProfile.decode(from: Data(contentsOf: URL(fileURLWithPath: options.profilePath)))
+                let bytes = try Data(contentsOf: URL(fileURLWithPath: options.profilePath))
+                profileDigest = SHA256.digest(of: bytes).hex
+                profile = try InterfaceProfile.decode(from: bytes)
             } catch {
                 refuse(
                     mode: mode, reasons: [.noReviewedProfile], confirmations: confirmations, options: context,
@@ -153,11 +157,17 @@ import Foundation
             var songs: [ViewReading] = []
             var recent: [ViewReading] = []
             var stopReason: String?
+            // The identifier alone could be reused by a replacement process; the launch date must also match, and an
+            // unknown launch date never confirms identity.
+            func sameLaunch(_ snapshot: MusicProcessSnapshot) -> Bool {
+                guard let first = music.launchDate, let later = snapshot.launchDate else { return false }
+                return first == later
+            }
             for index in 0..<options.readings {
                 if index > 0 {
                     Thread.sleep(forTimeInterval: options.interval)
                     let again = AccessibilityReader.musicProcess()
-                    if again.state != .exactlyOne || again.processIdentifier != pid {
+                    if again.state != .exactlyOne || again.processIdentifier != pid || !sameLaunch(again) {
                         stopReason = "the Music process changed or ended after \(songs.count) readings"
                         break
                     }
@@ -175,7 +185,7 @@ import Foundation
             if stopReason == nil {
                 // A process that ends during the last walk would otherwise leave a completed record.
                 let after = AccessibilityReader.musicProcess()
-                if after.state != .exactlyOne || after.processIdentifier != pid {
+                if after.state != .exactlyOne || after.processIdentifier != pid || !sameLaunch(after) {
                     stopReason = "the Music process changed or ended during the last reading"
                 }
             }
@@ -195,6 +205,7 @@ import Foundation
                 mode: mode, status: stopReason == nil ? .completed : .stopped, stopReason: stopReason,
                 sourceCommit: commit, macOSVersion: macOSVersion, musicVersion: musicVersion,
                 confirmations: confirmations)
+            output.profileSHA256 = profileDigest
             output.observation = ObservationSection(
                 readingsRequested: options.readings, intervalSeconds: options.interval, locale: options.locale,
                 inventoryFileTrackCount: options.inventoryCount,

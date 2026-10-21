@@ -120,11 +120,20 @@ struct ViewObservation: Codable, Equatable, Sendable {
 struct ObservationSection: Codable, Equatable, Sendable {
     var readingsRequested: Int
     var intervalSeconds: Double
+    /// Declared by the operator; the probe does not observe the locale.
     var locale: String
+    /// Declared by the operator from a separate read; the probe does not read the library.
     var inventoryFileTrackCount: Int?
     var songs: ViewObservation?
     var recentlyAdded: ViewObservation?
     var combined: VerdictRecord
+
+    // The serialized names mark operator-supplied values, so that a reader does not take them for measurements.
+    private enum CodingKeys: String, CodingKey {
+        case readingsRequested, intervalSeconds, songs, recentlyAdded, combined
+        case locale = "operatorLocale"
+        case inventoryFileTrackCount = "operatorInventoryFileTrackCount"
+    }
 }
 
 struct ProbeOutput: Codable, Equatable, Sendable {
@@ -133,12 +142,29 @@ struct ProbeOutput: Codable, Equatable, Sendable {
     var status: RunStatus
     var stopReason: String?
     var probeVersion: String = GUIProbe.version
+    /// A label typed by the operator; it is not verified against Git or the executable.
     var sourceCommit: String?
     var macOSVersion: String?
     var musicVersion: String?
+    /// The operator's declarations; the probe verifies none of them.
     var confirmations: Confirmations
+    /// The SHA-256 of the exact interface-profile bytes used, so that the reviewed profile can be identified. It
+    /// identifies the file only; it does not show that the profile was reviewed.
+    var profileSHA256: String?
     var survey: SurveySection?
     var observation: ObservationSection?
+    var provenance = ProbeOutput.provenanceStatement
+
+    static let provenanceStatement =
+        "Fields named operator* are declarations by the operator and are not measured or verified by the probe; "
+        + "the profile digest identifies a file and does not establish its review."
+
+    private enum CodingKeys: String, CodingKey {
+        case format, mode, status, stopReason, probeVersion, macOSVersion, musicVersion, profileSHA256, survey
+        case observation, provenance
+        case sourceCommit = "operatorSourceLabel"
+        case confirmations = "operatorConfirmations"
+    }
 
     func json() throws -> Data {
         let encoder = JSONEncoder()

@@ -17,6 +17,9 @@
         var state: MusicProcessState
         var processIdentifier: pid_t?
         var musicVersion: String?
+        /// The launch date of the process, compared with the identifier so that a replacement process that reuses
+        /// the identifier is detected. Nil when the system does not report it, which never confirms identity.
+        var launchDate: Date? = nil
     }
 
     enum AccessibilityReader {
@@ -49,7 +52,8 @@
                 return MusicProcessSnapshot(state: .terminated, processIdentifier: nil, musicVersion: version)
             }
             return MusicProcessSnapshot(
-                state: .exactlyOne, processIdentifier: application.processIdentifier, musicVersion: version)
+                state: .exactlyOne, processIdentifier: application.processIdentifier, musicVersion: version,
+                launchDate: application.launchDate)
         }
 
         static func applicationElement(processIdentifier: pid_t) -> AXUIElement {

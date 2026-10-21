@@ -107,7 +107,9 @@ import Testing
 
     @Test func theProbeAddsNoPackageDependency() throws {
         let package = Sources.packageManifest
-        #expect(package.contains(#".executableTarget(name: "GUIProbeMac")"#))
+        // The probe depends only on the repository's portable RebuildCore, for SHA-256; no package dependency.
+        #expect(package.contains(#".executableTarget(name: "GUIProbeMac", dependencies: ["RebuildCore"])"#))
+        #expect(!package.contains(".package("))
         #expect(package.contains(#".testTarget(name: "GUIProbeMacTests", dependencies: ["GUIProbeMac"])"#))
     }
 

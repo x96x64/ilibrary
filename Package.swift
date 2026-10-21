@@ -27,7 +27,7 @@ let package = Package(
         // Read-only qualification probe for the maintainer's separate test user; not part of the product.
         .executableTarget(name: "M11Probe", dependencies: ["LibraryMac", "RebuildCore"]),
         // Read-only GUI-emptiness feasibility probe for the maintainer's separate test user; not part of the product.
-        .executableTarget(name: "GUIProbeMac"),
+        .executableTarget(name: "GUIProbeMac", dependencies: ["RebuildCore"]),
         // Synthetic media shared by the test targets.
         .target(name: "SyntheticMedia", path: "Tests/SyntheticMedia"),
         .target(name: "SyntheticMediaMac", path: "Tests/SyntheticMediaMac"),

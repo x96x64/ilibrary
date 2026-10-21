@@ -38,9 +38,28 @@ import Testing
         let object = try #require(JSONSerialization.jsonObject(with: output.json()) as? [String: Any])
         #expect(object["status"] as? String == "refused")
         #expect(object["probeVersion"] as? String == GUIProbe.version)
-        #expect(object["sourceCommit"] as? String == "abc")
+        #expect(object["operatorSourceLabel"] as? String == "abc")
+        #expect(object["sourceCommit"] == nil)
         #expect(object["observation"] == nil && object["survey"] == nil)
-        #expect((object["confirmations"] as? [String: Bool])?.values.allSatisfy { !$0 } == true)
+        #expect((object["operatorConfirmations"] as? [String: Bool])?.values.allSatisfy { !$0 } == true)
+        #expect(object["provenance"] as? String == ProbeOutput.provenanceStatement)
+    }
+
+    @Test func operatorSuppliedValuesAreNamedAsDeclarationsAndTheProfileIsIdentified() throws {
+        var output = ProbeOutput(
+            mode: "observe", status: .completed, macOSVersion: Fixtures.macOS, musicVersion: Fixtures.music,
+            confirmations: Confirmations(separateTestUser: true))
+        output.profileSHA256 = String(repeating: "a", count: 64)
+        output.observation = ObservationSection(
+            readingsRequested: 3, intervalSeconds: 3, locale: Fixtures.locale, inventoryFileTrackCount: 0,
+            songs: nil, recentlyAdded: nil, combined: VerdictRecord(.indeterminate(reasons: [.loading])))
+        let object = try #require(JSONSerialization.jsonObject(with: output.json()) as? [String: Any])
+        let observation = try #require(object["observation"] as? [String: Any])
+        #expect(observation["operatorLocale"] as? String == Fixtures.locale)
+        #expect(observation["operatorInventoryFileTrackCount"] as? Int == 0)
+        #expect(observation["locale"] == nil && observation["inventoryFileTrackCount"] == nil)
+        #expect(object["profileSHA256"] as? String == String(repeating: "a", count: 64))
+        #expect(object["confirmations"] == nil && object["operatorConfirmations"] != nil)
     }
 
     @Test func anObservationRecordHoldsReadingsAndVerdicts() throws {
