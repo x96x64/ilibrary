@@ -251,12 +251,35 @@ import Testing
         let text = try String(contentsOf: url, encoding: .utf8)
         try text.replacingOccurrences(of: "\"prepared\"", with: "\"evacuated\"").write(
             to: url, atomically: true, encoding: .utf8)
-        do {
-            _ = try RecoveryRecord.load(from: directory)
-            Issue.record("expected a refusal")
-        } catch let error as RecoveryRecordError {
-            if case .malformed = error {} else { Issue.record("\(error)") }
+        #expect(throws: RecoveryRecordError.malformed("unsupported stage 'evacuated'")) {
+            try RecoveryRecord.load(from: directory)
         }
+    }
+
+    @Test func aSealedRecordKeepsItsEncodingAndChecksum() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let written = try Self.sample().write(to: directory)
+        let url = directory.appendingPathComponent(RecoveryRecord.fileName)
+        let bytes = try Data(contentsOf: url)
+        let loaded = try RecoveryRecord.load(from: directory)
+        #expect(loaded == written)
+        #expect(loaded.checksum == written.checksum)
+        // Re-encoding the loaded record in the writer's format reproduces the file byte for byte.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        #expect(try encoder.encode(loaded) == bytes)
+        #expect(try loaded.sealed().checksum == loaded.checksum)
+    }
+
+    @Test func aLiteralRecordOfTheCurrentEncodingLoadsAndEqualsTheSealedSample() throws {
+        // The exact bytes that `write` produced for `sample()` in 0.2.0. This pins the encoding and the checksum.
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data(Self.literalRecord.utf8).write(to: directory.appendingPathComponent(RecoveryRecord.fileName))
+        let loaded = try RecoveryRecord.load(from: directory)
+        #expect(loaded == (try Self.sample().sealed()))
+        #expect(loaded.checksum == "7cae8f6e39d7f07d5cf2b1616773ca0c7dd474e763b5efee653d94019c0d5f1c")
     }
 
     @Test func malformedAndDuplicatePersistentIDsAreRefused() throws {
@@ -393,4 +416,135 @@ import Testing
         let result = try loadEdited { $0.ilibraryVersion = "0.2.1" }
         #expect((try? result.get().ilibraryVersion) == "0.2.1")
     }
+
+    static let literalRecord = #"""
+        {
+          "additionList" : [
+            "a1",
+            "a2",
+            "a3"
+          ],
+          "backup" : {
+            "disconnectedAt" : "2026-10-20T12:02:00Z",
+            "filesystemType" : "apfs",
+            "independenceReasons" : [
+
+            ],
+            "maintainerConfirmed" : true,
+            "root" : "/bk/backup",
+            "timestampPolicy" : "apfs",
+            "verification" : {
+              "checkedCount" : 2,
+              "success" : true
+            },
+            "verifiedAt" : "2026-10-20T12:01:00Z",
+            "volumeUUID" : "UUID-1"
+          },
+          "catalogPath" : "/ws/catalog.json",
+          "catalogSHA256" : "2b4c342f5433ebe591a1da77e013d1b72475562d48578dca8b84bac6651c3cb9",
+          "checksum" : "7cae8f6e39d7f07d5cf2b1616773ca0c7dd474e763b5efee653d94019c0d5f1c",
+          "createdAt" : "2026-10-20T12:00:00Z",
+          "evacuation" : [
+            {
+              "sourcePath" : "/lib/media/Music/A/1.m4a",
+              "stagingPath" : "/st/stage/A/1.m4a"
+            },
+            {
+              "sourcePath" : "/lib/media/Music/A/2.m4a",
+              "stagingPath" : "/st/stage/A/2.m4a"
+            }
+          ],
+          "expectedDisplayList" : [
+            "a3",
+            "a2",
+            "a1"
+          ],
+          "format" : "ilibrary-rebuild-record-1",
+          "ilibraryVersion" : "0.2.0",
+          "inventory" : [
+            {
+              "record" : {
+                "creation" : {
+                  "nanoseconds" : 7,
+                  "seconds" : 90
+                },
+                "modification" : {
+                  "nanoseconds" : 5,
+                  "seconds" : 100
+                },
+                "path" : "A/1.m4a",
+                "sha256" : "f5b607b70b2a518d4f213e61c0b9234358f360d48594fa1f41b25a3b7cc3acc0",
+                "size" : 3
+              },
+              "sourceRoot" : "/lib/media/Music"
+            },
+            {
+              "record" : {
+                "creation" : {
+                  "nanoseconds" : 7,
+                  "seconds" : 90
+                },
+                "modification" : {
+                  "nanoseconds" : 5,
+                  "seconds" : 100
+                },
+                "path" : "A/2.m4a",
+                "sha256" : "94355555853645984e392c767daf1ff197c2c82803177ecd48eef87b70272c4b",
+                "size" : 3
+              },
+              "sourceRoot" : "/lib/media/Music"
+            }
+          ],
+          "locations" : {
+            "backupRoot" : "/bk/backup",
+            "mediaFolder" : "/lib/media",
+            "restorationDirectory" : "/rs/restore",
+            "sources" : [
+              "/lib/media/Music"
+            ],
+            "stagingDirectory" : "/st/stage",
+            "workspaceDirectory" : "/ws/work"
+          },
+          "mapping" : [
+            {
+              "location" : "/lib/media/Music/A/1.m4a",
+              "persistentID" : "0000000000000001"
+            },
+            {
+              "location" : "/lib/media/Music/A/2.m4a",
+              "persistentID" : "00000000000000AB"
+            }
+          ],
+          "registrations" : [
+            {
+              "album" : "A",
+              "albumArtist" : "x",
+              "artist" : "x",
+              "cloudStatus" : "",
+              "dateAdded" : 5,
+              "location" : "/lib/media/Music/A/1.m4a",
+              "name" : "1",
+              "persistentID" : "0000000000000001"
+            },
+            {
+              "album" : "A",
+              "albumArtist" : "x",
+              "artist" : "x",
+              "cloudStatus" : "unknown",
+              "location" : "/lib/media/Music/A/2.m4a",
+              "name" : "2",
+              "persistentID" : "00000000000000AB"
+            }
+          ],
+          "restoration" : {
+            "directory" : "/rs/restore",
+            "verification" : {
+              "checkedCount" : 2,
+              "success" : true
+            },
+            "verifiedAt" : "2026-10-20T12:03:00Z"
+          },
+          "stage" : "prepared"
+        }
+        """#
 }

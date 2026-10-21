@@ -467,6 +467,15 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
             throw RecoveryRecordError.malformed("not a recovery record: \(error)")
         }
         guard header.format == formatIdentifier else { throw RecoveryRecordError.wrongFormat(header.format) }
+        // A stage that this version does not know, such as one reserved for a later version, is named in the
+        // diagnostic instead of being reported as a generic decoding failure. It remains a `malformed` error, so
+        // that the error type and the diagnostics of `rebuild status` are unchanged.
+        struct StageHeader: Decodable { let stage: String? }
+        if let stage = (try? decoder.decode(StageHeader.self, from: data))?.stage,
+            RecoveryStage(rawValue: stage) == nil
+        {
+            throw RecoveryRecordError.malformed("unsupported stage '\(stage)'")
+        }
         let record: RecoveryRecord
         do {
             record = try decoder.decode(RecoveryRecord.self, from: data)
