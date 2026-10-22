@@ -211,6 +211,63 @@ import Testing
         return String(code[start.upperBound..<end.lowerBound])
     }
 
+    /// The code of the trust-check flow in main.swift, which precedes the survey flow.
+    static func trustCheckCode() throws -> String {
+        let main = try #require(swiftFiles().first { $0.name == "main.swift" })
+        let code = Self.code(main.text)
+        let start = try #require(code.range(of: "func runTrustCheck(_ options: TrustCheckOptions) -> Never {"))
+        let end = try #require(
+            code.range(
+                of: "func runSurvey(_ options: SurveyOptions) -> Never {", range: start.upperBound..<code.endIndex))
+        return String(code[start.upperBound..<end.lowerBound])
+    }
+
+    /// The trust check reads only the trust state of its own process: after the confirmations and the test-user
+    /// guard it calls the reader's non-prompting trust function once, prints its line, and exits with status 0. It
+    /// reaches no Music process, element, walk, timer, destination, publication, or file. These are name-based
+    /// checks of the source text, not proof of runtime behavior.
+    @Test func theTrustCheckReadsOnlyItsOwnTrustState() throws {
+        let trust = try Self.trustCheckCode()
+        #expect(trust.components(separatedBy: "AccessibilityReader.isTrustedWithoutPrompting()").count == 2)
+        for token in [
+            "musicProcess(", "applicationElement(", "walk(", "NSRunningApplication", "AXUIElement", "AXIsProcess",
+            "SurveyPlacement", "Publication", "ExclusiveFile", "armHardStop", "finish(", "refuse(", "publish(",
+            "createAndWrite", "setitimer", "sigaction", "write(to", "FileManager", "terminate(", "kill(",
+        ] {
+            #expect(!Self.contains(trust, token), "the trust check contains \(token)")
+        }
+        let guardCheck = try Self.position("if !early.isEmpty { stop(", in: trust)
+        let call = try Self.position("AccessibilityReader.isTrustedWithoutPrompting()", in: trust)
+        let line = try Self.position("TrustCheckReport.line(trusted: trusted)", in: trust)
+        let end = try Self.position("exit(0)", in: trust)
+        #expect(guardCheck < call && call < line && line < end)
+        #expect(trust.contains("Preflight.isTestUserName(processUserName()) && getuid() != 0"))
+        #expect(trust.components(separatedBy: "exit(").count == 2)
+        // Only the three accessibility- and Music-dependent reasons are excluded from the refusal, and the report line is
+        // the only output written.
+        #expect(
+            trust.contains(
+                "$0 != .accessibilityNotTrusted && $0 != .musicProcessNotRunning && $0 != .versionsMissing"))
+        #expect(trust.components(separatedBy: "FileHandle").count == 2)
+        #expect(trust.contains("FileHandle.standardOutput.write("))
+    }
+
+    /// The trust check is a separate flow: the survey and observe code never call it, and it lies outside the
+    /// survey code that the order test above extracts.
+    @Test func theTrustCheckStaysOutsideTheSurveyAndObserveFlows() throws {
+        let survey = try Self.surveyCode()
+        #expect(!survey.contains("runTrustCheck") && !survey.contains("TrustCheckReport"))
+        let main = try #require(Self.swiftFiles().first { $0.name == "main.swift" })
+        let code = Self.code(main.text)
+        let run = try #require(code.range(of: "func run() -> Never {"))
+        let runCode = String(code[run.upperBound...])
+        #expect(runCode.components(separatedBy: "runTrustCheck(").count == 2)
+        #expect(runCode.components(separatedBy: "TrustCheckReport").count == 1)
+        for file in try Self.swiftFiles() where file.name != "main.swift" && file.name != "CommandLineOptions.swift" {
+            #expect(!file.text.contains("TrustCheck"), "\(file.name) refers to the trust check")
+        }
+    }
+
     static func position(_ token: String, in text: String) throws -> String.Index {
         try #require(text.range(of: token), "missing: \(token)").lowerBound
     }
