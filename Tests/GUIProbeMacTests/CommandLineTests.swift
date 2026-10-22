@@ -168,6 +168,43 @@ import Testing
         #expect(throws: UsageError.invalidValue(option)) { try CommandLineParser.parse(arguments) }
     }
 
+    @Test func trustCheckParsesOnlyTheConfirmations() throws {
+        #expect(
+            try CommandLineParser.parse(["trust-check"] + Self.confirmations)
+                == .trustCheck(
+                    TrustCheckOptions(
+                        confirmations: Confirmations(
+                            separateTestUser: true, syntheticLibrary: true, noAppleAccount: true, noCloudLibrary: true))
+                ))
+        #expect(
+            try CommandLineParser.parse(["trust-check"])
+                == .trustCheck(TrustCheckOptions(confirmations: Confirmations())))
+    }
+
+    @Test(arguments: [
+        "--operator-displayed-view", "--output-directory", "--output-name", "--mapping-directory", "--time-budget",
+        "--output", "--profile", "--readings", "--interval", "--locale", "--inventory-count", "--source-commit",
+        "--prompt", "songs",
+    ])
+    func trustCheckRefusesEveryOtherArgument(argument: String) {
+        #expect(throws: UsageError.unknownOption(argument)) {
+            try CommandLineParser.parse(["trust-check"] + Self.confirmations + [argument, "value"])
+        }
+    }
+
+    @Test func trustCheckRefusesARepeatedConfirmation() {
+        #expect(throws: UsageError.duplicateOption("--confirm-synthetic-library")) {
+            try CommandLineParser.parse(["trust-check", "--confirm-synthetic-library", "--confirm-synthetic-library"])
+        }
+    }
+
+    @Test func trustCheckReportsOneFixedLineForEachState() {
+        #expect(TrustCheckReport.line(trusted: true) == "GUIProbeMac trust-check: trusted")
+        #expect(TrustCheckReport.line(trusted: false) == "GUIProbeMac trust-check: untrusted")
+        #expect(CommandLineParser.usage.contains("GUIProbeMac trust-check CONFIRMATIONS"))
+        #expect(UsageError.missingCommand.description == "a command is required: survey, observe, or trust-check")
+    }
+
     @Test func usageErrorsHaveFixedDescriptions() {
         #expect(UsageError.missingOption("--readings").description == "option --readings is required")
         #expect(CommandLineParser.usage.contains("survey"))

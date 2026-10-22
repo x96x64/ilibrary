@@ -44,9 +44,24 @@ struct ObserveOptions: Equatable, Sendable {
     var sourceCommit: String?
 }
 
+/// The options of a trust check, which takes the four confirmations and nothing else.
+struct TrustCheckOptions: Equatable, Sendable {
+    var confirmations: Confirmations
+}
+
+/// The single line that a trust check prints. Only the calling process's trust state is reported: the line
+/// identifies neither the permission principal nor the stored record, and says nothing about other accounts.
+enum TrustCheckReport {
+    static let trusted = "GUIProbeMac trust-check: trusted"
+    static let untrusted = "GUIProbeMac trust-check: untrusted"
+
+    static func line(trusted: Bool) -> String { trusted ? Self.trusted : Self.untrusted }
+}
+
 enum ProbeCommand: Equatable, Sendable {
     case survey(SurveyOptions)
     case observe(ObserveOptions)
+    case trustCheck(TrustCheckOptions)
 }
 
 enum UsageError: Error, Equatable, CustomStringConvertible {
@@ -60,7 +75,7 @@ enum UsageError: Error, Equatable, CustomStringConvertible {
 
     var description: String {
         switch self {
-        case .missingCommand: "a command is required: survey or observe"
+        case .missingCommand: "a command is required: survey, observe, or trust-check"
         case .unknownCommand(let name): "unknown command '\(name)'"
         case .unknownOption(let name): "unknown option '\(name)'"
         case .missingValue(let name): "option \(name) requires a value"
@@ -77,6 +92,7 @@ enum CommandLineParser {
         --time-budget SECONDS --operator-displayed-view songs|recently-added CONFIRMATIONS [--source-commit HASH]
                GUIProbeMac observe --profile PROFILE.json --readings K --interval SECONDS --locale ID \
         --output FILE [--inventory-count N] CONFIRMATIONS [--source-commit HASH]
+               GUIProbeMac trust-check CONFIRMATIONS
         CONFIRMATIONS: --confirm-separate-test-user --confirm-synthetic-library \
         --confirm-no-apple-account --confirm-no-cloud-library
         DIR is relative to the home directory of the process user.
@@ -107,6 +123,8 @@ enum CommandLineParser {
                 "--output", "--source-commit", "--profile", "--inventory-count", "--readings", "--interval",
                 "--locale",
             ]
+        case "trust-check":
+            valueOptions = []
         default: throw UsageError.unknownCommand(name)
         }
         var values: [String: String] = [:]
@@ -133,6 +151,9 @@ enum CommandLineParser {
             guard let value = values[option] else { throw UsageError.missingOption(option) }
             guard !value.isEmpty else { throw UsageError.invalidValue(option) }
             return value
+        }
+        if name == "trust-check" {
+            return .trustCheck(TrustCheckOptions(confirmations: confirmations))
         }
         if name == "survey" {
             func directory(_ option: String) throws -> [String] {

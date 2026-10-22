@@ -67,6 +67,27 @@ import RebuildCore
         return setitimer(ITIMER_REAL, &timer, nil) == 0
     }
 
+    /// A trust check. It applies the confirmations and the test-user guard, asks once whether this process is
+    /// trusted for accessibility without prompting, prints one line, and exits with status 0 whether or not the
+    /// process is trusted. It identifies no Music process, creates no element, arms no timer, and writes no file.
+    func runTrustCheck(_ options: TrustCheckOptions) -> Never {
+        let confirmations = options.confirmations
+        var preflight = Preflight()
+        preflight.operatorConfirmedSeparateTestUser = confirmations.separateTestUser
+        preflight.operatorConfirmedSyntheticLibrary = confirmations.syntheticLibrary
+        preflight.operatorConfirmedNoAppleAccount = confirmations.noAppleAccount
+        preflight.operatorConfirmedNoCloudLibrary = confirmations.noCloudLibrary
+        preflight.processUserMatchesTestUserPattern = Preflight.isTestUserName(processUserName()) && getuid() != 0
+        preflight.profileSupplied = true
+        let early = preflight.failures.filter {
+            $0 != .accessibilityNotTrusted && $0 != .musicProcessNotRunning && $0 != .versionsMissing
+        }
+        if !early.isEmpty { stop("refused: " + early.map(\.description).joined(separator: "; "), status: 1) }
+        let trusted = AccessibilityReader.isTrustedWithoutPrompting()
+        FileHandle.standardOutput.write(Data((TrustCheckReport.line(trusted: trusted) + "\n").utf8))
+        exit(0)
+    }
+
     /// A survey. Its records are written only into a directory validated below the home directory of the process
     /// user, and published only when complete; failures before that directory is validated write nothing.
     func runSurvey(_ options: SurveyOptions) -> Never {
@@ -199,6 +220,7 @@ import RebuildCore
         let observeOptions: ObserveOptions
         switch command {
         case .survey(let options): runSurvey(options)
+        case .trustCheck(let options): runTrustCheck(options)
         case .observe(let options): observeOptions = options
         }
         let (mode, confirmations, outputPath, commit) = (
