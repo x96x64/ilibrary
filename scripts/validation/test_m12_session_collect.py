@@ -116,7 +116,7 @@ class Scenario:
         return collect.Environment(
             shared=self.shared, home=self.home, user=user, uid=os.getuid(),
             owner_name=lambda uid: collect.TEST_USER, system_version=self.version, ask=ask,
-            today=lambda: "2026-10-24")
+            today=lambda: "2026-10-24", root=False)
 
     def prepare(self, answers):
         return collect.prepare(self.environment(answers))
@@ -235,7 +235,7 @@ class PrepareTests(CollectorTestCase):
         answers = ["passed", "passed", "off", "passed"]
         self.assertRefused(collect.prepare, self.scenario.environment(answers, user="maintainer"))
         environment = self.scenario.environment(answers)
-        environment.uid = 0
+        environment.root = True
         self.assertRefused(collect.prepare, environment)
 
     def test_another_executable_is_refused(self):
@@ -302,7 +302,7 @@ class ReportTests(CollectorTestCase):
         self.assertRefused(collect.report, self.scenario.environment(["completed"]))
         self.assertRefused(collect.report, self.scenario.environment(["completed"], user="ilibrary-test-other"))
         environment = self.scenario.environment(["completed"], user="maintainer")
-        environment.uid = 0
+        environment.root = True
         self.assertRefused(collect.report, environment)
 
     def test_a_missing_summary_is_refused(self):

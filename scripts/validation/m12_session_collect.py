@@ -74,12 +74,14 @@ class Environment:
     """The fixed locations and the process identity; tests substitute temporary directories and identities."""
 
     def __init__(self, shared=SHARED, home=None, user=None, uid=None, owner_name=None, system_version=SYSTEM_VERSION,
-                 ask=input, today=None):
+                 ask=input, today=None, root=None):
         entry = pwd.getpwuid(os.getuid())
         self.shared = Path(shared)
         self.home = Path(home if home is not None else entry.pw_dir)
         self.user = user if user is not None else entry.pw_name
         self.uid = uid if uid is not None else os.getuid()
+        # Running as root is refused; the effective uid decides, independently of the uid used for ownership.
+        self.root = (os.geteuid() == 0) if root is None else root
         self.owner_name = owner_name or (lambda owner: pwd.getpwuid(owner).pw_name)
         self.system_version = Path(system_version)
         self.ask = ask
@@ -215,7 +217,7 @@ def ask_exact(environment, prompt, allowed):
 
 def prepare(environment):
     """Writes the intermediate summary in the test user."""
-    if environment.user != TEST_USER or environment.uid == 0:
+    if environment.user != TEST_USER or environment.root:
         raise Refusal("prepare runs only in the test user, never as root")
     if os.path.lexists(str(environment.summary)):
         raise Refusal(f"{SUMMARY_NAME} already exists; nothing is ever replaced")
@@ -367,7 +369,7 @@ def render(values, date, macos):
 
 def report(environment):
     """Writes the final report in the personal account."""
-    if environment.uid == 0 or TEST_USER_PATTERN.fullmatch(environment.user):
+    if environment.root or TEST_USER_PATTERN.fullmatch(environment.user):
         raise Refusal("report runs only in the personal account after the return, never as root")
     if os.path.lexists(str(environment.report)):
         raise Refusal(f"{REPORT_NAME} already exists; nothing is ever replaced")
