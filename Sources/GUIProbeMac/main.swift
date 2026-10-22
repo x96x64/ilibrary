@@ -67,6 +67,42 @@ import RebuildCore
         return setitimer(ITIMER_REAL, &timer, nil) == 0
     }
 
+    /// A record review. After the test-user guard, it opens one survey record below the home directory through the
+    /// validated directory chain, reads it without following a link, prints whether it is shareable, and exits with
+    /// status 0 when it is and 1 when it is not. It reads no other file, makes no accessibility call, arms no timer,
+    /// and writes no file.
+    func runReviewSurvey(_ options: ReviewOptions) -> Never {
+        let user = getuid()
+        guard Preflight.isTestUserName(processUserName()), user != 0 else {
+            stop("refused: " + Reason.userNameDoesNotMatchPattern.description, status: 1)
+        }
+        guard let entry = getpwuid(user), let homePointer = entry.pointee.pw_dir else {
+            stop("the home directory of the process user is unknown", status: 1)
+        }
+        let directory: ValidatedDirectory
+        do {
+            directory = try SurveyPlacement.openValidated(
+                options.outputDirectory, home: String(cString: homePointer), user: user)
+        } catch {
+            stop("the record location was refused: \(error)", status: 1)
+        }
+        let file = openat(directory.descriptor, options.outputName, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard file >= 0 else { stop("the record could not be opened (\(errno))", status: 1) }
+        let reader = FileHandle(fileDescriptor: file, closeOnDealloc: true)
+        var info = stat()
+        guard fstat(file, &info) == 0, UInt32(info.st_mode) & UInt32(S_IFMT) == UInt32(S_IFREG), info.st_uid == user,
+            info.st_size <= SurveyReview.maximumRecordBytes
+        else { stop("the record is not a regular file of the process user within the size limit", status: 1) }
+        guard let data = try? reader.readToEnd() ?? Data() else { stop("the record could not be read", status: 1) }
+        let findings = SurveyReview.findings(of: data, recordName: options.outputName)
+        if findings.isEmpty {
+            FileHandle.standardOutput.write(Data((SurveyReview.shareable + "\n").utf8))
+            exit(0)
+        }
+        FileHandle.standardOutput.write(Data((SurveyReview.notShareable + "\n").utf8))
+        stop("not shareable: " + findings.map(\.description).joined(separator: "; "), status: 1)
+    }
+
     /// A trust check. It applies the confirmations and the test-user guard, asks once whether this process is
     /// trusted for accessibility without prompting, prints one line, and exits with status 0 whether or not the
     /// process is trusted. It identifies no Music process, creates no element, arms no timer, and writes no file.
@@ -221,6 +257,7 @@ import RebuildCore
         switch command {
         case .survey(let options): runSurvey(options)
         case .trustCheck(let options): runTrustCheck(options)
+        case .reviewSurvey(let options): runReviewSurvey(options)
         case .observe(let options): observeOptions = options
         }
         let (mode, confirmations, outputPath, commit) = (

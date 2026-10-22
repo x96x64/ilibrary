@@ -268,6 +268,46 @@ import Testing
         }
     }
 
+    /// The code of the record review in main.swift, which precedes the trust check.
+    static func reviewCode() throws -> String {
+        let main = try #require(swiftFiles().first { $0.name == "main.swift" })
+        let code = Self.code(main.text)
+        let start = try #require(code.range(of: "func runReviewSurvey(_ options: ReviewOptions) -> Never {"))
+        let end = try #require(
+            code.range(
+                of: "func runTrustCheck(_ options: TrustCheckOptions) -> Never {",
+                range: start.upperBound..<code.endIndex))
+        return String(code[start.upperBound..<end.lowerBound])
+    }
+
+    /// The record review only reads: after the test-user guard it opens one record through the validated directory
+    /// chain without following a link, and it reaches no accessibility function, Music process, timer, mapping,
+    /// publication, or writing call. The review logic itself is likewise free of these. Name-based source checks.
+    @Test func theRecordReviewOnlyReadsOneRecord() throws {
+        let review = try Self.reviewCode()
+        let logic = Self.code(try #require(Self.swiftFiles().first { $0.name == "SurveyReview.swift" }).text)
+        for token in [
+            "AccessibilityReader", "AXUIElement", "AXIsProcess", "musicProcess(", "applicationElement(", "walk(",
+            "NSRunningApplication", "armHardStop", "setitimer", "sigaction", "Publication", "publish(",
+            "ExclusiveFile", "createAndWrite", "O_WRONLY", "O_CREAT", "O_RDWR", "linkat", "mkdir", "write(to",
+            "FileManager", "IdentifierMapping", "mappingDirectory", "finish(", "refuse(",
+        ] {
+            #expect(!Self.contains(review, token), "the review contains \(token)")
+            #expect(!Self.contains(logic, token), "the review logic contains \(token)")
+        }
+        let guardCheck = try Self.position("Preflight.isTestUserName(processUserName()), user != 0", in: review)
+        let validated = try Self.position("SurveyPlacement.openValidated(", in: review)
+        let opened = try Self.position(
+            "openat(directory.descriptor, options.outputName, O_RDONLY | O_NOFOLLOW", in: review)
+        let judged = try Self.position("SurveyReview.findings(of: data", in: review)
+        #expect(guardCheck < validated && validated < opened && opened < judged)
+        #expect(review.components(separatedBy: "openat(").count == 2)
+        #expect(review.components(separatedBy: "exit(0)").count == 2)
+        let surveyFlow = try Self.surveyCode()
+        let trustFlow = try Self.trustCheckCode()
+        #expect(!surveyFlow.contains("runReviewSurvey") && !trustFlow.contains("runReviewSurvey"))
+    }
+
     static func position(_ token: String, in text: String) throws -> String.Index {
         try #require(text.range(of: token), "missing: \(token)").lowerBound
     }
