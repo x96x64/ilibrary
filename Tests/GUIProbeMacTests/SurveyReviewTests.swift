@@ -55,6 +55,22 @@ import Testing
         #expect(SurveyReview.findings(of: compact, recordName: Self.name).contains(.notCanonical))
     }
 
+    @Test func duplicateKeysAMarkOrAnotherNumberFormIsRefused() throws {
+        let data = try Self.record().json()
+        let text = String(decoding: data, as: UTF8.self)
+        let duplicate = text.replacingOccurrences(
+            of: "\"format\" :", with: "\"mode\" : \"survey\",\n  \"format\" :")
+        try #require(duplicate != text)
+        let marked = Data([0xEF, 0xBB, 0xBF]) + data
+        let decimal = text.replacingOccurrences(of: "\"hardLimitSeconds\" : 660", with: "\"hardLimitSeconds\" : 660.0")
+        try #require(decimal != text)
+        for variant in [Data(duplicate.utf8), marked, Data(decimal.utf8)] {
+            let findings = SurveyReview.findings(of: variant, recordName: Self.name)
+            #expect(findings.contains(.notCanonical) || findings == [.notASurveyRecord])
+            #expect(!findings.isEmpty)
+        }
+    }
+
     @Test func otherFilesAreNotSurveyRecords() throws {
         let mapping = IdentifierMapping(runID: Self.runID, recordName: Self.name, aliases: IdentifierAliases())
         for data in [Data(), Data("{}".utf8), Data("not json".utf8), try mapping.json()] {
@@ -73,6 +89,7 @@ import Testing
         }
         #expect(try Self.findings(stopped) == [.notCompleted])
         #expect(try Self.findings(Self.record { $0.status = .refused }) == [.notCompleted])
+        #expect(try Self.findings(Self.record { $0.stopReason = SurveyRun.processChanged }) == [.notCompleted])
     }
 
     @Test func everyTextFieldIsHeldToItsClosedForm() throws {
@@ -102,6 +119,26 @@ import Testing
             ),
             ("scrollValue", { (r: inout ProbeOutput) in r.survey?.nodes[1].scrollValue = 2 }),
             ("counts", { (r: inout ProbeOutput) in r.survey?.nodes[1].childCount = -1 }),
+            ("musicVersion", { (r: inout ProbeOutput) in r.musicVersion = nil }),
+            ("operatorSourceLabel", { (r: inout ProbeOutput) in r.sourceCommit = String(repeating: "a", count: 41) }),
+            (
+                "observation",
+                { (r: inout ProbeOutput) in
+                    r.observation = ObservationSection(
+                        readingsRequested: 1, intervalSeconds: 1, locale: "en_US", inventoryFileTrackCount: nil,
+                        songs: nil,
+                        recentlyAdded: nil, combined: VerdictRecord(.indeterminate(reasons: [.runStopped])))
+                }
+            ),
+            (
+                "label",
+                { (r: inout ProbeOutput) in
+                    r.survey?.nodes[1].hasDescription = true
+                    r.survey?.nodes[1].descriptionLabel = "A Private Description"
+                }
+            ),
+            ("errorCountsByCode", { (r: inout ProbeOutput) in r.survey?.errorCountsByCode = ["-25205": -1] }),
+            ("survey", { (r: inout ProbeOutput) in r.survey?.elapsedSeconds = -1 }),
         ]
         for (field, edit) in cases {
             #expect(try Self.findings(Self.record(edit)).contains(.unexpectedValue(field)), "\(field)")
@@ -117,6 +154,7 @@ import Testing
             { $0.survey?.nodes[4].identifierAlias = "identifier-7" },
             { $0.survey?.nodes[4].identifierShape = nil },
             { $0.survey?.nodes[3].hasTitle = false },
+            { $0.survey?.nodes[1].hasDescription = true },
         ]
         for edit in edits { #expect(try Self.findings(Self.record(edit)).contains(.inconsistentStructure)) }
     }
