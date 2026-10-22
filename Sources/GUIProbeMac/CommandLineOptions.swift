@@ -58,10 +58,18 @@ enum TrustCheckReport {
     static func line(trusted: Bool) -> String { trusted ? Self.trusted : Self.untrusted }
 }
 
+/// The options of a record review: one survey record below the home directory, and nothing else. A review takes no
+/// confirmations, since it reads only that file and makes no accessibility call.
+struct ReviewOptions: Equatable, Sendable {
+    var outputDirectory: [String]
+    var outputName: String
+}
+
 enum ProbeCommand: Equatable, Sendable {
     case survey(SurveyOptions)
     case observe(ObserveOptions)
     case trustCheck(TrustCheckOptions)
+    case reviewSurvey(ReviewOptions)
 }
 
 enum UsageError: Error, Equatable, CustomStringConvertible {
@@ -75,7 +83,7 @@ enum UsageError: Error, Equatable, CustomStringConvertible {
 
     var description: String {
         switch self {
-        case .missingCommand: "a command is required: survey, observe, or trust-check"
+        case .missingCommand: "a command is required: survey, observe, trust-check, or review-survey"
         case .unknownCommand(let name): "unknown command '\(name)'"
         case .unknownOption(let name): "unknown option '\(name)'"
         case .missingValue(let name): "option \(name) requires a value"
@@ -93,6 +101,7 @@ enum CommandLineParser {
                GUIProbeMac observe --profile PROFILE.json --readings K --interval SECONDS --locale ID \
         --output FILE [--inventory-count N] CONFIRMATIONS [--source-commit HASH]
                GUIProbeMac trust-check CONFIRMATIONS
+               GUIProbeMac review-survey --output-directory DIR --output-name NAME.json
         CONFIRMATIONS: --confirm-separate-test-user --confirm-synthetic-library \
         --confirm-no-apple-account --confirm-no-cloud-library
         DIR is relative to the home directory of the process user.
@@ -125,6 +134,8 @@ enum CommandLineParser {
             ]
         case "trust-check":
             valueOptions = []
+        case "review-survey":
+            valueOptions = ["--output-directory", "--output-name"]
         default: throw UsageError.unknownCommand(name)
         }
         var values: [String: String] = [:]
@@ -134,7 +145,7 @@ enum CommandLineParser {
         while index < arguments.count {
             let option = arguments[index]
             index += 1
-            if setConfirmation(option, in: &confirmations) {
+            if name != "review-survey", setConfirmation(option, in: &confirmations) {
                 guard seenFlags.insert(option).inserted else { throw UsageError.duplicateOption(option) }
             } else if valueOptions.contains(option) {
                 guard index < arguments.count, !arguments[index].hasPrefix("--") else {
@@ -155,18 +166,26 @@ enum CommandLineParser {
         if name == "trust-check" {
             return .trustCheck(TrustCheckOptions(confirmations: confirmations))
         }
-        if name == "survey" {
-            func directory(_ option: String) throws -> [String] {
-                do { return try SurveyPlacement.components(of: try required(option)) } catch is PlacementError {
-                    throw UsageError.invalidValue(option)
-                }
+        func directory(_ option: String) throws -> [String] {
+            do { return try SurveyPlacement.components(of: try required(option)) } catch is PlacementError {
+                throw UsageError.invalidValue(option)
             }
-            let outputDirectory = try directory("--output-directory")
-            let mappingDirectory = try directory("--mapping-directory")
+        }
+        func recordName() throws -> String {
             let outputName = try required("--output-name")
             guard (try? SurveyPlacement.validateName(outputName)) != nil else {
                 throw UsageError.invalidValue("--output-name")
             }
+            return outputName
+        }
+        if name == "review-survey" {
+            let outputDirectory = try directory("--output-directory")
+            return .reviewSurvey(ReviewOptions(outputDirectory: outputDirectory, outputName: try recordName()))
+        }
+        if name == "survey" {
+            let outputDirectory = try directory("--output-directory")
+            let mappingDirectory = try directory("--mapping-directory")
+            let outputName = try recordName()
             guard let budget = Double(try required("--time-budget")), budget.isFinite, budget > 0,
                 budget <= SurveyLimits.maximumTimeBudgetSeconds
             else { throw UsageError.invalidValue("--time-budget") }

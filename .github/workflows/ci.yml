@@ -57,7 +57,7 @@ jobs:
       # formats) on the second Foundation implementation. These suites use synthetic data and disposable
       # directories only; the probe's macOS-only reader is not compiled here, and the probe is never run.
       - name: Run portable GUI probe survey safety tests
-        run: swift test --disable-xctest --filter 'GUIProbeMacTests\.(SurveyPlacementTests|SurveyPublicationTests|SurveyBudgetTests|SurveyRecordFormatTests|SurveyRunTests|SurveyTests)/'
+        run: swift test --disable-xctest --filter 'GUIProbeMacTests\.(SurveyPlacementTests|SurveyPublicationTests|SurveyBudgetTests|SurveyRecordFormatTests|SurveyRunTests|SurveyTests|SurveyReviewTests)/'
       - name: Test publication guards
         run: python3 -m unittest discover -s packaging -p 'test_*.py'
       - name: Test rebuild probe guards without Music

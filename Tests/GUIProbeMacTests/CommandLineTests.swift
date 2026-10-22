@@ -202,7 +202,48 @@ import Testing
         #expect(TrustCheckReport.line(trusted: true) == "GUIProbeMac trust-check: trusted")
         #expect(TrustCheckReport.line(trusted: false) == "GUIProbeMac trust-check: untrusted")
         #expect(CommandLineParser.usage.contains("GUIProbeMac trust-check CONFIRMATIONS"))
-        #expect(UsageError.missingCommand.description == "a command is required: survey, observe, or trust-check")
+        #expect(
+            UsageError.missingCommand.description
+                == "a command is required: survey, observe, trust-check, or review-survey")
+    }
+
+    static let review = [
+        "review-survey", "--output-directory", "ilibrary-m12/records", "--output-name", "songs-1.json",
+    ]
+
+    @Test func reviewSurveyParsesOnlyTheRecordLocation() throws {
+        #expect(
+            try CommandLineParser.parse(Self.review)
+                == .reviewSurvey(
+                    ReviewOptions(outputDirectory: ["ilibrary-m12", "records"], outputName: "songs-1.json")))
+        #expect(
+            CommandLineParser.usage.contains("GUIProbeMac review-survey --output-directory DIR --output-name NAME.json")
+        )
+    }
+
+    @Test(arguments: [
+        "--confirm-separate-test-user", "--confirm-synthetic-library", "--confirm-no-apple-account",
+        "--confirm-no-cloud-library", "--mapping-directory", "--time-budget", "--operator-displayed-view",
+        "--source-commit", "--output", "--profile",
+    ])
+    func reviewSurveyRefusesEveryOtherArgument(argument: String) {
+        #expect(throws: UsageError.unknownOption(argument)) {
+            try CommandLineParser.parse(Self.review + [argument, "value"])
+        }
+    }
+
+    @Test func reviewSurveyValidatesItsLocationAsASurveyDoes() {
+        #expect(throws: UsageError.missingOption("--output-name")) {
+            try CommandLineParser.parse(Array(Self.review.prefix(3)))
+        }
+        for (option, value) in [
+            ("--output-directory", "/Users/x"), ("--output-directory", "Music/x"), ("--output-directory", "a/../b"),
+            ("--output-name", "songs-1.identifier-map.json"), ("--output-name", "../songs.json"),
+        ] {
+            var arguments = Self.review
+            arguments[arguments.firstIndex(of: option)! + 1] = value
+            #expect(throws: UsageError.invalidValue(option)) { try CommandLineParser.parse(arguments) }
+        }
     }
 
     @Test func usageErrorsHaveFixedDescriptions() {
