@@ -149,6 +149,9 @@ enum SurveyReview {
                 .allSatisfy(isFiniteNonNegative), "survey")
 
         var structureHolds = survey.visitedNodeCount == survey.nodes.count
+        // A walk records no depth beyond its fixed limit, so every depth, a parent's included, is checked against that
+        // range before any arithmetic; a malformed record is then refused rather than trapping on overflow.
+        let depths = 0...WalkLimits().maximumDepth
         var highestAlias = 0
         for (index, node) in survey.nodes.enumerated() {
             require(node.role.map { $0 == "other" || isAccessibilityConstant($0) } ?? true, "role")
@@ -175,8 +178,12 @@ enum SurveyReview {
             if (node.titleLabel != nil) != node.hasTitle || (node.descriptionLabel != nil) != node.hasDescription {
                 structureHolds = false
             }
-            if let parent = node.parent {
-                if parent < 0 || parent >= index || node.depth != survey.nodes[parent].depth + 1 {
+            if !depths.contains(node.depth) {
+                structureHolds = false
+            } else if let parent = node.parent {
+                if parent < 0 || parent >= index || !depths.contains(survey.nodes[parent].depth)
+                    || node.depth != survey.nodes[parent].depth + 1
+                {
                     structureHolds = false
                 }
             } else if node.depth != 0 {

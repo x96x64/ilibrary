@@ -159,6 +159,44 @@ import Testing
         for edit in edits { #expect(try Self.findings(Self.record(edit)).contains(.inconsistentStructure)) }
     }
 
+    /// Extreme or malformed depths and parent indices are refused through the documented finding and never trap,
+    /// including the reported case of a root at `Int.max` followed by a child of that root.
+    @Test func extremeDepthsAndParentsAreRefusedWithoutTrapping() throws {
+        let edits: [(inout ProbeOutput) -> Void] = [
+            { $0.survey?.nodes[0].depth = Int.max },
+            { $0.survey?.nodes[0].depth = Int.min },
+            { $0.survey?.nodes[0].depth = -1 },
+            { $0.survey?.nodes[1].depth = Int.max },
+            { $0.survey?.nodes[1].depth = Int.min },
+            { $0.survey?.nodes[1].depth = WalkLimits().maximumDepth + 1 },
+            { $0.survey?.nodes[1].parent = Int.max },
+            { $0.survey?.nodes[1].parent = Int.min },
+            { $0.survey?.nodes[1].parent = -1 },
+            { $0.survey?.nodes[1].parent = 1 },
+            {
+                $0.survey?.nodes[0].depth = Int.max
+                $0.survey?.nodes[1].depth = Int.min
+            },
+        ]
+        for edit in edits {
+            let findings = try Self.findings(Self.record(edit))
+            #expect(findings == [.inconsistentStructure])
+        }
+        // A chain that reaches the walk's depth limit exactly remains consistent.
+        var tree = SyntheticTree()
+        var parent = tree.add(parent: nil, role: "AXApplication")
+        for _ in 0..<WalkLimits().maximumDepth { parent = tree.add(parent: parent, role: "AXGroup") }
+        let snapshot = TreeWalker.walk(roots: [0], source: tree, limits: WalkLimits())
+        var aliases = IdentifierAliases()
+        let deep = Self.record {
+            $0.survey = SurveySanitizer.section(
+                snapshot, limits: WalkLimits(), aliases: &aliases, elapsedSeconds: 1, hardLimitSeconds: 660,
+                runID: Self.runID, identifierMappingName: SurveyPlacement.mappingName(for: Self.name))
+        }
+        #expect(deep.survey?.nodes.last?.depth == WalkLimits().maximumDepth)
+        #expect(try Self.findings(deep).isEmpty)
+    }
+
     @Test func theFormChecksExamineEveryScalar() {
         #expect(SurveyReview.isMacOSVersion("Version 27.0.1 (Build 26A434)"))
         #expect(!SurveyReview.isMacOSVersion("Version 27.0.1 (Build 26A434)\n"))
