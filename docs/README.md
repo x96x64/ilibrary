@@ -96,3 +96,4 @@ The reports below record findings and decisions in the order the work was done. 
 - 2026-10-20 — [Decision F: Bulk Library Read for check --library](reports/decision-f-check-library.md)
 - 2026-10-20 — [Decision F Live Comparison Results](reports/decision-f-live-comparison-results.md)
 - 2026-10-20 — [Version 0.2.0 Publication](reports/release-publication-0.2.0.md)
+- 2026-10-22 — [M12 Launcher Preliminary Qualification](reports/m12-launcher-preliminary-qualification.md)
