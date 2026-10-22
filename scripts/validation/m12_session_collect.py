@@ -98,18 +98,17 @@ class Environment:
         return self.shared / EXPORT_DIRECTORY_NAME
 
 
-def read_regular(path, limit, owner_uid=None):
-    """The bytes of a regular file opened without following a link, within `limit` bytes, optionally owned by
-    `owner_uid`; None when it is absent, a link, another kind of object, too large, or otherwise unreadable."""
+def read_file(path, limit):
+    """The bytes and the status of a regular file with a single link, both taken from one descriptor opened without
+    following a link, within `limit` bytes; None when it is absent, a link, another kind of object, hard-linked,
+    too large, or otherwise unreadable. Mode and owner policies are applied by the caller to this status."""
     try:
         descriptor = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     except OSError:
         return None
     try:
         info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
-            return None
-        if owner_uid is not None and info.st_uid != owner_uid:
+        if not stat.S_ISREG(info.st_mode) or info.st_size > limit or info.st_nlink != 1:
             return None
         chunks, total = [], 0
         while True:
@@ -120,9 +119,25 @@ def read_regular(path, limit, owner_uid=None):
             if total > limit:
                 return None
             chunks.append(chunk)
-        return b"".join(chunks)
+        return b"".join(chunks), info
+    except OSError:
+        return None
     finally:
         os.close(descriptor)
+
+
+def read_regular(path, limit, owner_uid=None, mode=None):
+    """The bytes of a regular single-link file, optionally required to be owned by `owner_uid` and to have `mode`,
+    both checked on the descriptor that was read; None otherwise."""
+    result = read_file(path, limit)
+    if result is None:
+        return None
+    data, info = result
+    if owner_uid is not None and info.st_uid != owner_uid:
+        return None
+    if mode is not None and stat.S_IMODE(info.st_mode) != mode:
+        return None
+    return data
 
 
 def publish(path, data):
@@ -135,7 +150,10 @@ def publish(path, data):
     if os.path.lexists(str(path)):
         raise Refusal(f"{path.name} already exists; nothing is ever replaced")
     temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.partial")
-    descriptor = os.open(str(temporary), os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        descriptor = os.open(str(temporary), os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    except OSError as error:
+        raise Refusal(f"{path.name} could not be created in its folder ({error.__class__.__name__})")
     try:
         try:
             os.fchmod(descriptor, 0o644)
@@ -159,9 +177,30 @@ def publish(path, data):
             os.unlink(str(temporary))
         except OSError:
             pass
-    if read_regular(path, max(len(data), 1)) != data or stat.S_IMODE(os.lstat(str(path)).st_mode) != 0o644:
+    if read_regular(path, max(len(data), 1), owner_uid=os.getuid(), mode=0o644) != data:
         raise Refusal(f"{path.name} was written but does not read back as written with mode 0644", written=True)
     return hashlib.sha256(data).hexdigest()
+
+
+def owner_of(environment, uid):
+    """The account name of `uid`, or None when the uid has no account."""
+    try:
+        return environment.owner_name(uid)
+    except KeyError:
+        return None
+
+
+def export_directory_valid(environment, owner_is_valid):
+    """Whether the export directory is a real directory, not a link, with mode 0755, owned as `owner_is_valid`
+    requires, and holding nothing but the two record names."""
+    directory = environment.export_directory
+    try:
+        info = os.lstat(str(directory))
+        names = set(os.listdir(str(directory))) if stat.S_ISDIR(info.st_mode) else None
+    except OSError:
+        return False
+    return (stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o755 and owner_is_valid(info.st_uid)
+            and names is not None and names <= set(RECORDS))
 
 
 def ask_exact(environment, prompt, allowed):
@@ -193,20 +232,12 @@ def prepare(environment):
     digests = {}
     if export in ("passed", "R-7"):
         directory = environment.export_directory
-        try:
-            info = os.lstat(str(directory))
-            directory_valid = (stat.S_ISDIR(info.st_mode) and info.st_uid == environment.uid
-                               and stat.S_IMODE(info.st_mode) == 0o755)
-        except OSError:
-            directory_valid = False
+        directory_valid = export_directory_valid(environment, lambda uid: uid == environment.uid)
         for name in RECORDS:
-            original = read_regular(workspace / "records" / name, MAXIMUM_RECORD_BYTES, environment.uid)
-            copy = read_regular(directory / name, MAXIMUM_RECORD_BYTES, environment.uid) if directory_valid else None
-            try:
-                copy_mode = stat.S_IMODE(os.lstat(str(directory / name)).st_mode)
-            except OSError:
-                copy_mode = None
-            if original is not None and copy is not None and copy == original and copy_mode == 0o644:
+            original = read_regular(workspace / "records" / name, MAXIMUM_RECORD_BYTES, environment.uid, 0o600)
+            copy = (read_regular(directory / name, MAXIMUM_RECORD_BYTES, environment.uid, 0o644)
+                    if directory_valid else None)
+            if original is not None and copy is not None and copy == original:
                 digests[name] = hashlib.sha256(copy).hexdigest()
         if export == "passed" and len(digests) != len(RECORDS):
             raise Refusal("the export was attested as passed, but not every exported copy equals its original")
@@ -257,7 +288,7 @@ def parse_summary(data):
     for key, expected in fixed.items():
         if values[key] != expected:
             raise Refusal(f"the summary's field '{key}' does not have its required value")
-    if not DATE.match(values["prepared-date"]):
+    if not DATE.fullmatch(values["prepared-date"]):
         raise Refusal("the summary's field 'prepared-date' is not a date")
     try:
         datetime.date.fromisoformat(values["prepared-date"])
@@ -270,7 +301,7 @@ def parse_summary(data):
     if values["usable-records"] not in USABLE_VALUES:
         raise Refusal("the summary's field 'usable-records' is not a permitted value")
     for key in ("songs-1-sha256", "recently-added-1-sha256"):
-        if values[key] != "none" and not HEX64.match(values[key]):
+        if values[key] != "none" and not HEX64.fullmatch(values[key]):
             raise Refusal(f"the summary's field '{key}' is not a digest")
     usable = {name for name in RECORDS if values[name.replace(".json", "") + "-sha256"] != "none"}
     expected_usable = {"both": set(RECORDS), "none": set()}.get(values["usable-records"], {values["usable-records"]})
@@ -293,7 +324,7 @@ def macos_version(environment):
     except Exception:
         info = {}
     version, build = info.get("ProductVersion"), info.get("ProductBuildVersion")
-    if not isinstance(version, str) or not VERSION.match(version) or not isinstance(build, str) or not BUILD.match(build):
+    if not isinstance(version, str) or not VERSION.fullmatch(version) or not isinstance(build, str) or not BUILD.fullmatch(build):
         raise Refusal("the macOS version could not be read from the system version file")
     return f"{version} ({build})"
 
@@ -336,43 +367,39 @@ def render(values, date, macos):
 
 def report(environment):
     """Writes the final report in the personal account."""
-    if environment.uid == 0 or TEST_USER_PATTERN.match(environment.user):
+    if environment.uid == 0 or TEST_USER_PATTERN.fullmatch(environment.user):
         raise Refusal("report runs only in the personal account after the return, never as root")
     if os.path.lexists(str(environment.report)):
         raise Refusal(f"{REPORT_NAME} already exists; nothing is ever replaced")
     ask_exact(environment, "Return R-8 to R-12 completed, and this is the personal account (type completed): ",
               ("completed",))
     summary = environment.summary
-    try:
-        info = os.lstat(str(summary))
-    except OSError:
+    if not os.path.lexists(str(summary)):
         raise Refusal(f"{SUMMARY_NAME} is missing")
-    if not stat.S_ISREG(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o644:
-        raise Refusal(f"{SUMMARY_NAME} is not a regular file with mode 0644")
-    try:
-        owner = environment.owner_name(info.st_uid)
-    except KeyError:
-        owner = None
-    if owner != TEST_USER:
+    result = read_file(summary, MAXIMUM_SUMMARY_BYTES)
+    if result is None:
+        raise Refusal(f"{SUMMARY_NAME} is not a regular single-link file that can be read")
+    data, info = result
+    if stat.S_IMODE(info.st_mode) != 0o644:
+        raise Refusal(f"{SUMMARY_NAME} does not have mode 0644")
+    if owner_of(environment, info.st_uid) != TEST_USER:
         raise Refusal(f"{SUMMARY_NAME} was not created by the test user")
-    data = read_regular(summary, MAXIMUM_SUMMARY_BYTES, info.st_uid)
-    if data is None:
-        raise Refusal(f"{SUMMARY_NAME} could not be read as a regular file")
     values = parse_summary(data)
-    for name in RECORDS:
+    today = datetime.date.fromisoformat(environment.today())
+    prepared = datetime.date.fromisoformat(values["prepared-date"])
+    if not datetime.timedelta(0) <= today - prepared <= datetime.timedelta(days=1):
+        raise Refusal("the summary was not prepared today or yesterday")
+    usable = [name for name in RECORDS if values[name.replace(".json", "") + "-sha256"] != "none"]
+    if usable and not export_directory_valid(environment, lambda uid: owner_of(environment, uid) == TEST_USER):
+        raise Refusal("the export directory is not the test user's directory of mode 0755 holding only the records")
+    for name in usable:
         digest = values[name.replace(".json", "") + "-sha256"]
-        if digest == "none":
-            continue
-        path = environment.export_directory / name
-        try:
-            copy_info = os.lstat(str(path))
-        except OSError:
-            raise Refusal(f"the exported copy {name} is missing")
-        copy = read_regular(path, MAXIMUM_RECORD_BYTES, copy_info.st_uid)
-        if (copy is None or stat.S_IMODE(copy_info.st_mode) != 0o644 or environment.owner_name(copy_info.st_uid)
-                != TEST_USER or hashlib.sha256(copy).hexdigest() != digest):
+        result = read_file(environment.export_directory / name, MAXIMUM_RECORD_BYTES)
+        if (result is None or stat.S_IMODE(result[1].st_mode) != 0o644
+                or owner_of(environment, result[1].st_uid) != TEST_USER
+                or hashlib.sha256(result[0]).hexdigest() != digest):
             raise Refusal(f"the exported copy {name} no longer matches the summary")
-    text = render(values, environment.today(), macos_version(environment))
+    text = render(values, today.isoformat(), macos_version(environment))
     return publish(environment.report, text.encode("ascii"))
 
 

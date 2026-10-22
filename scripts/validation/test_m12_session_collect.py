@@ -92,6 +92,8 @@ class Scenario:
         (self.workspace / "bin" / "GUIProbeMac").write_bytes(EXECUTABLE)
         (self.workspace / "records" / "songs-1.json").write_bytes(SONGS)
         (self.workspace / "records" / "recently-added-1.json").write_bytes(RECENT)
+        for name in collect.RECORDS:
+            os.chmod(self.workspace / "records" / name, 0o600)
         self.version.write_bytes(plistlib.dumps({"ProductVersion": "27.0.1", "ProductBuildVersion": "26A434"}))
 
     def export_records(self, names=collect.RECORDS):
@@ -377,6 +379,82 @@ class ReportTests(CollectorTestCase):
                 undo()
 
 
+class ReportHardeningTests(CollectorTestCase):
+    def prepared(self):
+        self.scenario.export_records()
+        self.scenario.prepare(["passed", "passed", "unavailable", "passed"])
+
+    def test_a_failure_before_r7_has_the_exact_none_usable_form(self):
+        self.scenario.prepare(["passed", "passed", "off", "R-5"])
+        self.scenario.report()
+        expected = EXPORT_FAILURE_REPORT.replace("FAILED AT R-7", "FAILED AT R-5").replace(
+            "songs-1.json only\n", "NONE USABLE\n").replace(
+            f"EXPORTED RECORD SHA-256 (EQUAL TO ITS ORIGINAL; CHECKED AGAIN AT REPORT TIME): songs-1.json {SONGS_SHA}\n", "")
+        self.assertEqual(self.report_text(), expected)
+
+    def test_a_linked_loosened_or_crowded_export_directory_is_refused_at_report_time(self):
+        for change in ("link", "mode", "extra"):
+            with self.subTest(change=change):
+                self.setUp()
+                self.prepared()
+                export = self.scenario.export
+                if change == "link":
+                    moved = self.scenario.root / "moved-export"
+                    os.rename(export, moved)
+                    os.symlink(moved, export)
+                elif change == "mode":
+                    os.chmod(export, 0o775)
+                else:
+                    (export / "other.json").write_text("{}\n")
+                self.assertRefused(self.scenario.report, message="export directory")
+
+    def test_a_copy_of_an_unmapped_owner_is_refused_without_a_traceback(self):
+        self.prepared()
+        environment = self.scenario.environment(["completed"], user="maintainer")
+        calls = []
+
+        def owner(uid):
+            calls.append(uid)
+            if len(calls) > 2:
+                raise KeyError(uid)
+            return collect.TEST_USER
+
+        environment.owner_name = owner
+        self.assertRefused(collect.report, environment, message="no longer matches")
+
+    def test_a_hard_linked_copy_is_neither_usable_nor_accepted(self):
+        self.scenario.export_records()
+        os.link(self.scenario.export / "songs-1.json", self.scenario.root / "second-link")
+        self.scenario.prepare(["passed", "passed", "off", "R-7"])
+        self.assertIn("usable-records=recently-added-1.json\n", self.summary_text())
+
+    def test_a_stale_or_future_summary_is_refused(self):
+        self.prepared()
+        for today in ("2026-10-23", "2026-10-26"):
+            with self.subTest(today=today):
+                environment = self.scenario.environment(["completed"], user="maintainer")
+                environment.today = lambda: today
+                self.assertRefused(collect.report, environment, message="today or yesterday")
+        environment = self.scenario.environment(["completed"], user="maintainer")
+        environment.today = lambda: "2026-10-25"
+        collect.report(environment)
+        self.assertIn("DATE: 2026-10-25\nSUMMARY PREPARED IN TEST USER ON: 2026-10-24\n", self.report_text())
+
+    def test_a_version_with_a_trailing_line_break_is_refused(self):
+        self.prepared()
+        self.scenario.version.write_bytes(plistlib.dumps({"ProductVersion": "27.0.1\n", "ProductBuildVersion": "26A434"}))
+        self.assertRefused(self.scenario.report, message="macOS version")
+
+    def test_a_missing_shared_folder_is_a_refusal_not_a_traceback(self):
+        self.scenario.export_records()
+        environment = self.scenario.environment(["passed", "passed", "off", "R-3"])
+        environment.shared = self.scenario.root / "absent"
+        with self.assertRaises(collect.Refusal) as context:
+            collect.prepare(environment)
+        self.assertIn("could not be created in its folder", str(context.exception))
+        self.assertFalse(context.exception.written)
+
+
 class PublicationTests(CollectorTestCase):
     def test_an_interrupted_write_leaves_neither_a_report_nor_a_temporary_file(self):
         self.scenario.export_records()
@@ -416,10 +494,10 @@ class PublicationTests(CollectorTestCase):
         self.scenario.prepare(["passed", "passed", "unavailable", "passed"])
         real_read = collect.read_regular
 
-        def read(path, limit, owner_uid=None):
+        def read(path, limit, owner_uid=None, mode=None):
             if Path(path).name == collect.REPORT_NAME:
                 return b"tampered"
-            return real_read(path, limit, owner_uid)
+            return real_read(path, limit, owner_uid, mode)
 
         with mock.patch.object(collect, "read_regular", read):
             with self.assertRaises(collect.Refusal) as context:
