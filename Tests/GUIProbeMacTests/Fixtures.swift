@@ -145,3 +145,16 @@ struct SyntheticTree: TreeSource {
         return tree
     }
 }
+
+extension SurveySanitizer {
+    /// A node or section for tests that do not inspect the aliases of the run.
+    static func node(_ facts: NodeFacts, depth: Int, parent: Int? = nil) -> SurveyNode {
+        var aliases = IdentifierAliases()
+        return node(facts, depth: depth, parent: parent, aliases: &aliases)
+    }
+
+    static func section<Node>(_ snapshot: TreeSnapshot<Node>, limits: WalkLimits) -> SurveySection {
+        var aliases = IdentifierAliases()
+        return section(snapshot, limits: limits, aliases: &aliases)
+    }
+}

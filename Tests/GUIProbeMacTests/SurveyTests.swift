@@ -23,7 +23,8 @@ import Testing
         let node = SurveySanitizer.node(facts(), depth: 2)
         #expect(node.titleLabel == "other")
         #expect(node.descriptionLabel == "other")
-        #expect(node.identifier == nil)
+        // The raw identifier is replaced by an alias and a shape; it never appears in the node.
+        #expect(node.identifierAlias == "identifier-1" && node.identifierShape == "other")
         #expect(node.hasIdentifier)
         #expect(node.subrole == "other")
         #expect(node.role == "AXGroup")
@@ -48,14 +49,43 @@ import Testing
         #expect(!node.hasTitle)
     }
 
-    @Test(arguments: [("songs-view", true), ("a.b_c-1", true), ("", false), ("has space", false), ("é", false)])
-    func identifiersFollowThePattern(text: String, kept: Bool) {
-        #expect((SurveySanitizer.identifier(text) != nil) == kept)
+    @Test(arguments: [
+        ("0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0", "uuid"), ("1234", "numeric"), ("00ff00ff00ff00ff", "hexadecimal"),
+        ("songs-view", "word"), ("_NS:12", "other"), ("has space", "other"), ("é", "other"), ("abc1234", "word"),
+        ("abcdef12", "hexadecimal"),
+    ])
+    func identifierShapesAreAClosedSet(text: String, shape: String) {
+        #expect(SurveySanitizer.shape(text) == shape)
     }
 
-    @Test func theIdentifierLengthIsBounded() {
-        #expect(SurveySanitizer.identifier(String(repeating: "a", count: 64)) != nil)
-        #expect(SurveySanitizer.identifier(String(repeating: "a", count: 65)) == nil)
+    @Test func equalIdentifiersShareAnAliasWithinARun() {
+        var aliases = IdentifierAliases()
+        #expect(aliases.alias(for: "synthetic-a") == "identifier-1")
+        #expect(aliases.alias(for: "synthetic-b") == "identifier-2")
+        #expect(aliases.alias(for: "synthetic-a") == "identifier-1")
+        // Canonically equivalent but byte-different strings are different identifiers.
+        #expect(aliases.alias(for: "caf\u{E9}") != aliases.alias(for: "cafe\u{301}"))
+        #expect(aliases.values == ["synthetic-a", "synthetic-b", "caf\u{E9}", "cafe\u{301}"])
+    }
+
+    @Test func anEmptyIdentifierHasNoAlias() {
+        var value = facts()
+        value.identifier = ""
+        let node = SurveySanitizer.node(value, depth: 0)
+        #expect(node.identifierAlias == nil && node.identifierShape == nil && node.hasIdentifier)
+    }
+
+    @Test func theMappingHoldsTheRawValuesAndOmitsLongOnes() throws {
+        var aliases = IdentifierAliases()
+        _ = aliases.alias(for: "synthetic-a")
+        let long = String(repeating: "z", count: IdentifierMapping.maximumValueBytes + 1)
+        _ = aliases.alias(for: long)
+        let map = IdentifierMapping(runID: "RUN", recordName: "songs.json", aliases: aliases)
+        #expect(map.format == "ilibrary-gui-probe-identifier-map-1" && map.runID == "RUN")
+        #expect(map.entries[0] == IdentifierMapping.Entry(alias: "identifier-1", value: "synthetic-a"))
+        #expect(map.entries[1].value == nil && map.entries[1].omittedValueSHA256?.count == 64)
+        let text = String(decoding: try map.json(), as: UTF8.self)
+        #expect(!text.contains(long) && text.contains("synthetic-a"))
     }
 
     @Test func noForbiddenFieldIsEmitted() throws {
@@ -64,7 +94,8 @@ import Testing
         #expect(!text.contains("Secret"))
         let keys = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any]).keys
         let allowed: Set<String> = [
-            "depth", "parent", "role", "subrole", "identifier", "hasIdentifier", "hasTitle", "titleLabel",
+            "depth", "parent", "role", "subrole", "identifierAlias", "identifierShape", "hasIdentifier", "hasTitle",
+            "titleLabel",
             "hasDescription",
             "descriptionLabel", "childCount", "rowCount", "visibleRowCount", "hasHorizontalScrollBar",
             "hasVerticalScrollBar", "scrollValue", "busy", "errors",

@@ -43,6 +43,152 @@ import RebuildCore
         finish(output, path: options.output, status: 1)
     }
 
+    /// The hard stop of a survey: the system terminates the probe when the timer expires. No handler is installed,
+    /// so the default action of SIGALRM, termination, applies even while a request blocks; because a disposition and
+    /// a signal mask are inherited across exec, the default is restored and the signal unblocked first. The timer
+    /// signals only this process. When it fires, nothing further is written; files already published remain.
+    func armHardStop(seconds: Double) -> Bool {
+        var action = sigaction()
+        action.__sigaction_u.__sa_handler = SIG_DFL
+        sigemptyset(&action.sa_mask)
+        action.sa_flags = 0
+        guard sigaction(SIGALRM, &action, nil) == 0 else { return false }
+        // The installed disposition is read back: the default has no handler.
+        var current = sigaction()
+        guard sigaction(SIGALRM, nil, &current) == 0, current.__sigaction_u.__sa_handler == nil else { return false }
+        var unblock = sigset_t()
+        sigemptyset(&unblock)
+        sigaddset(&unblock, SIGALRM)
+        guard pthread_sigmask(SIG_UNBLOCK, &unblock, nil) == 0 else { return false }
+        let whole = seconds.rounded(.down)
+        var timer = itimerval(
+            it_interval: timeval(tv_sec: 0, tv_usec: 0),
+            it_value: timeval(tv_sec: Int(whole), tv_usec: Int32((seconds - whole) * 1_000_000)))
+        return setitimer(ITIMER_REAL, &timer, nil) == 0
+    }
+
+    /// A survey. Its records are written only into a directory validated below the home directory of the process
+    /// user, and published only when complete; failures before that directory is validated write nothing.
+    func runSurvey(_ options: SurveyOptions) -> Never {
+        let clock = ContinuousClock()
+        let start = clock.now
+        func elapsed() -> Double {
+            let duration = start.duration(to: clock.now).components
+            return Double(duration.seconds) + Double(duration.attoseconds) / 1e18
+        }
+        let hardLimit = options.timeBudgetSeconds + SurveyLimits.hardStopMarginSeconds
+        // The hard stop is armed first, so that every later step, including validation and publication, is bounded.
+        guard armHardStop(seconds: hardLimit) else { stop("the hard time limit could not be armed", status: 1) }
+
+        // Refusals that need no file system access write nothing.
+        let confirmations = options.confirmations
+        var preflight = Preflight()
+        preflight.operatorConfirmedSeparateTestUser = confirmations.separateTestUser
+        preflight.operatorConfirmedSyntheticLibrary = confirmations.syntheticLibrary
+        preflight.operatorConfirmedNoAppleAccount = confirmations.noAppleAccount
+        preflight.operatorConfirmedNoCloudLibrary = confirmations.noCloudLibrary
+        let user = getuid()
+        preflight.processUserMatchesTestUserPattern = Preflight.isTestUserName(processUserName()) && user != 0
+        let macOSVersion = ProcessInfo.processInfo.operatingSystemVersionString
+        preflight.macOSVersionPresent = !macOSVersion.isEmpty
+        preflight.profileSupplied = true
+        let early = preflight.failures.filter {
+            $0 != .accessibilityNotTrusted && $0 != .musicProcessNotRunning && $0 != .versionsMissing
+        }
+        if !early.isEmpty { stop("refused: " + early.map(\.description).joined(separator: "; "), status: 1) }
+
+        // The destination directories, reached from the home directory in the password database.
+        guard let entry = getpwuid(user), let homePointer = entry.pointee.pw_dir else {
+            stop("the home directory of the process user is unknown", status: 1)
+        }
+        let home = String(cString: homePointer)
+        let mappingName = SurveyPlacement.mappingName(for: options.outputName)
+        let output: ValidatedDirectory
+        let mapping: ValidatedDirectory
+        do {
+            output = try SurveyPlacement.openValidated(options.outputDirectory, home: home, user: user)
+            mapping = try SurveyPlacement.openValidated(options.mappingDirectory, home: home, user: user)
+            try SurveyPlacement.requireSeparate(output, mapping)
+            try SurveyPlacement.requireAbsent(options.outputName, in: output)
+            try SurveyPlacement.requireAbsent(mappingName, in: mapping)
+        } catch {
+            stop("the output location was refused: \(error)", status: 1)
+        }
+        let runID = UUID().uuidString
+
+        func publish(_ data: Data, name: String, in directory: ValidatedDirectory) {
+            do {
+                try SurveyPlacement.recheck(directory, home: home, user: user)
+                if let left = try Publication.publish(data, name: name, runID: runID, in: directory.descriptor) {
+                    FileHandle.standardError.write(
+                        Data("GUIProbeMac: published '\(name)', but the temporary file '\(left)' remains\n".utf8))
+                }
+            } catch {
+                stop("'\(name)' was not published: \(error)", status: 1)
+            }
+        }
+        func record(status: RunStatus, stopReason: String?, music: String?) -> ProbeOutput {
+            var record = ProbeOutput(
+                mode: "survey", status: status, stopReason: stopReason, sourceCommit: options.sourceCommit,
+                macOSVersion: macOSVersion, musicVersion: music, confirmations: confirmations)
+            record.format = ProbeOutput.surveyFormat
+            record.operatorDisplayedView = options.displayedView.rawValue
+            return record
+        }
+        func refuseSurvey(_ reasons: [Reason], music: String?) -> Never {
+            let reason = reasons.map(\.description).joined(separator: "; ")
+            FileHandle.standardError.write(Data("GUIProbeMac: refused: \(reason)\n".utf8))
+            guard let data = try? record(status: .refused, stopReason: reason, music: music).json() else {
+                stop("the refusal record could not be encoded", status: 1)
+            }
+            publish(data, name: options.outputName, in: output)
+            exit(1)
+        }
+
+        preflight.accessibilityTrusted = AccessibilityReader.isTrustedWithoutPrompting()
+        if !preflight.accessibilityTrusted { refuseSurvey([.accessibilityNotTrusted], music: nil) }
+        let music = AccessibilityReader.musicProcess()
+        preflight.musicProcess = music.state
+        preflight.musicVersionPresent = music.musicVersion != nil
+        guard music.state == .exactlyOne, let pid = music.processIdentifier, let musicVersion = music.musicVersion
+        else { refuseSurvey(preflight.failures, music: music.musicVersion) }
+        // Without a launch date, a replacement process that reused the identifier could not be told apart.
+        guard let before = music.identity else { refuseSurvey([.musicProcessIdentityUnknown], music: musicVersion) }
+
+        let application = AccessibilityReader.applicationElement(processIdentifier: pid)
+        var limits = WalkLimits()
+        limits.timeBudgetSeconds = options.timeBudgetSeconds
+        limits.maximumConsecutiveTimedOutNodes = SurveyLimits.maximumConsecutiveTimedOutNodes
+        let snapshot = AccessibilityReader.walk(application: application, limits: limits, elapsed: elapsed)
+        let walkSeconds = elapsed()
+        // The process is read again after the walk, so that a walk that spanned the end or replacement of Music
+        // is recorded as stopped rather than completed.
+        let after = AccessibilityReader.musicProcess().identity
+        let outcome = SurveyRun.outcome(
+            before: before, after: after, applicationInvalid: snapshot.applicationInvalid,
+            treeStatus: snapshot.status)
+        var aliases = IdentifierAliases()
+        var surveyRecord = record(status: outcome.status, stopReason: outcome.stopReason, music: musicVersion)
+        surveyRecord.survey = SurveySanitizer.section(
+            snapshot, limits: limits, aliases: &aliases, elapsedSeconds: walkSeconds, hardLimitSeconds: hardLimit,
+            runID: runID, identifierMappingName: mappingName)
+        let map = IdentifierMapping(runID: runID, recordName: options.outputName, aliases: aliases)
+        guard let recordData = try? surveyRecord.json(), let mapData = try? map.json() else {
+            stop("the survey record could not be encoded", status: 1)
+        }
+        // The shareable record is published first; a stop between the two leaves a record whose mapping is
+        // missing, never raw identifiers without their record.
+        publish(recordData, name: options.outputName, in: output)
+        publish(mapData, name: mappingName, in: mapping)
+        if let reason = outcome.stopReason {
+            FileHandle.standardError.write(Data("GUIProbeMac: stopped: \(reason)\n".utf8))
+        } else if snapshot.status != .complete {
+            FileHandle.standardError.write(
+                Data("GUIProbeMac: the walk is incomplete: \(snapshot.status.rawValue)\n".utf8))
+        }
+        exit(outcome.exitStatus)
+    }
+
     func run() -> Never {
         let command: ProbeCommand
         do {
@@ -50,20 +196,14 @@ import RebuildCore
         } catch {
             stop("\(error)\n\(CommandLineParser.usage)", status: 2)
         }
-        let mode: String
-        let confirmations: Confirmations
-        let outputPath: String
-        let commit: String?
+        let observeOptions: ObserveOptions
         switch command {
-        case .survey(let options):
-            (mode, confirmations, outputPath, commit) = (
-                "survey", options.confirmations, options.output, options.sourceCommit
-            )
-        case .observe(let options):
-            (mode, confirmations, outputPath, commit) = (
-                "observe", options.confirmations, options.output, options.sourceCommit
-            )
+        case .survey(let options): runSurvey(options)
+        case .observe(let options): observeOptions = options
         }
+        let (mode, confirmations, outputPath, commit) = (
+            "observe", observeOptions.confirmations, observeOptions.output, observeOptions.sourceCommit
+        )
         let macOSVersion = ProcessInfo.processInfo.operatingSystemVersionString
         let context = (output: outputPath, commit: commit)
 
@@ -91,7 +231,8 @@ import RebuildCore
         // In observe mode the profile is read and checked before any accessibility call.
         var loadedProfile: InterfaceProfile?
         var profileDigest: String?
-        if case .observe(let options) = command {
+        do {
+            let options = observeOptions
             let profile: InterfaceProfile
             do {
                 let bytes = try Data(contentsOf: URL(fileURLWithPath: options.profilePath))
@@ -133,13 +274,6 @@ import RebuildCore
                 macOS: macOSVersion, music: music.musicVersion)
         }
 
-        // A survey compares the process before and after its walk; without a launch date, a replacement process that
-        // reused the identifier could not be told apart, so the survey is refused before anything is read.
-        if case .survey = command, music.identity == nil {
-            refuse(
-                mode: mode, reasons: [.musicProcessIdentityUnknown], confirmations: confirmations, options: context,
-                macOS: macOSVersion, music: musicVersion)
-        }
         if let loadedProfile, loadedProfile.musicVersion != musicVersion {
             refuse(
                 mode: mode, reasons: [.versionMismatch], confirmations: confirmations, options: context,
@@ -147,28 +281,8 @@ import RebuildCore
         }
         let application = AccessibilityReader.applicationElement(processIdentifier: pid)
         let limits = WalkLimits()
-        switch command {
-        case .survey:
-            guard let before = music.identity else { stop("internal error: no process identity", status: 1) }
-            let snapshot = AccessibilityReader.walk(application: application, limits: limits)
-            // The process is read again after the walk, so that a walk that spanned the end or replacement of Music
-            // is recorded as stopped rather than completed.
-            let after = AccessibilityReader.musicProcess().identity
-            let outcome = SurveyRun.outcome(
-                before: before, after: after, applicationInvalid: snapshot.applicationInvalid,
-                treeStatus: snapshot.status)
-            var output = ProbeOutput(
-                mode: mode, status: outcome.status, stopReason: outcome.stopReason, sourceCommit: commit,
-                macOSVersion: macOSVersion, musicVersion: musicVersion, confirmations: confirmations)
-            output.survey = SurveySanitizer.section(snapshot, limits: limits)
-            if let reason = outcome.stopReason {
-                FileHandle.standardError.write(Data("GUIProbeMac: stopped: \(reason)\n".utf8))
-            } else if snapshot.status != .complete {
-                FileHandle.standardError.write(
-                    Data("GUIProbeMac: the walk is incomplete: \(snapshot.status.rawValue)\n".utf8))
-            }
-            finish(output, path: outputPath, status: outcome.exitStatus)
-        case .observe(let options):
+        do {
+            let options = observeOptions
             guard let profile = loadedProfile else { stop("internal error: no profile", status: 1) }
             let observed = ObservedContext(
                 macOSVersion: macOSVersion, musicVersion: musicVersion, locale: options.locale)

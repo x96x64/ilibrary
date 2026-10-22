@@ -53,6 +53,11 @@ jobs:
         run: swift --version
       - name: Run Core and command tests
         run: swift test --disable-xctest --filter 'MP4CoreTests|FLACCoreTests|CatalogCoreTests|RebuildCoreTests|ilibraryTests'
+      # The portable survey safety logic of the GUI probe (path validation, publication, time budget, and record
+      # formats) on the second Foundation implementation. These suites use synthetic data and disposable
+      # directories only; the probe's macOS-only reader is not compiled here, and the probe is never run.
+      - name: Run portable GUI probe survey safety tests
+        run: swift test --disable-xctest --filter 'GUIProbeMacTests\.(SurveyPlacementTests|SurveyPublicationTests|SurveyBudgetTests|SurveyRecordFormatTests|SurveyRunTests|SurveyTests)/'
       - name: Test publication guards
         run: python3 -m unittest discover -s packaging -p 'test_*.py'
       - name: Test rebuild probe guards without Music

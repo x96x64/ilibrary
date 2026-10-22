@@ -68,9 +68,11 @@
         }
 
         /// Walks the application element and its windows without a profile and returns the raw snapshot.
-        static func walk(application: AXUIElement, limits: WalkLimits) -> TreeSnapshot<AXUIElement> {
+        static func walk(
+            application: AXUIElement, limits: WalkLimits, elapsed: () -> Double = { 0 }
+        ) -> TreeSnapshot<AXUIElement> {
             let source = MusicTreeSource(timeout: Float(limits.timeoutSeconds), application: application)
-            return TreeWalker.walk(roots: [application], source: source, limits: limits)
+            return TreeWalker.walk(roots: [application], source: source, limits: limits, elapsed: elapsed)
         }
 
         struct MusicTreeSource: TreeSource {

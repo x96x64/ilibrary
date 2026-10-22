@@ -3,10 +3,34 @@
 // errors, and no value has a default.
 import Foundation
 
+/// The view that the operator declares was displayed during a survey.
+enum DisplayedView: String, Equatable, Sendable {
+    case songs
+    case recentlyAdded = "recently-added"
+}
+
 struct SurveyOptions: Equatable, Sendable {
-    var output: String
+    /// Directories below the home directory of the process user, as checked lexical components.
+    var outputDirectory: [String]
+    var outputName: String
+    var mappingDirectory: [String]
+    var timeBudgetSeconds: Double
+    var displayedView: DisplayedView
     var confirmations: Confirmations
     var sourceCommit: String?
+}
+
+/// The bounds of a survey's time budget and its hard stop. Between two budget checks the reader issues at most 15
+/// requests for one node's facts, each bounded by the 2-second messaging timeout, so the budget can be overrun by
+/// about 30 seconds; the hard stop allows twice that. These figures assume that the timeout is honored, which has
+/// not been measured.
+enum SurveyLimits {
+    static let maximumTimeBudgetSeconds = 3_600.0
+    static let maximumRequestsBetweenBudgetChecks = 15
+    static let hardStopMarginSeconds = 60.0
+    /// A hung application times out on every request, so five such nodes in a row stop the walk after about
+    /// 150 seconds, while a single slow element in a responsive application resets the count.
+    static let maximumConsecutiveTimedOutNodes = 5
 }
 
 struct ObserveOptions: Equatable, Sendable {
@@ -49,11 +73,13 @@ enum UsageError: Error, Equatable, CustomStringConvertible {
 
 enum CommandLineParser {
     static let usage = """
-        usage: GUIProbeMac survey --output FILE CONFIRMATIONS [--source-commit HASH]
+        usage: GUIProbeMac survey --output-directory DIR --output-name NAME.json --mapping-directory DIR \
+        --time-budget SECONDS --operator-displayed-view songs|recently-added CONFIRMATIONS [--source-commit HASH]
                GUIProbeMac observe --profile PROFILE.json --readings K --interval SECONDS --locale ID \
         --output FILE [--inventory-count N] CONFIRMATIONS [--source-commit HASH]
         CONFIRMATIONS: --confirm-separate-test-user --confirm-synthetic-library \
         --confirm-no-apple-account --confirm-no-cloud-library
+        DIR is relative to the home directory of the process user.
         """
 
     private static func setConfirmation(_ option: String, in confirmations: inout Confirmations) -> Bool {
@@ -71,7 +97,11 @@ enum CommandLineParser {
         guard let name = arguments.first else { throw UsageError.missingCommand }
         let valueOptions: Set<String>
         switch name {
-        case "survey": valueOptions = ["--output", "--source-commit"]
+        case "survey":
+            valueOptions = [
+                "--output-directory", "--output-name", "--mapping-directory", "--time-budget",
+                "--operator-displayed-view", "--source-commit",
+            ]
         case "observe":
             valueOptions = [
                 "--output", "--source-commit", "--profile", "--inventory-count", "--readings", "--interval",
@@ -104,11 +134,31 @@ enum CommandLineParser {
             guard !value.isEmpty else { throw UsageError.invalidValue(option) }
             return value
         }
-        let output = try required("--output")
         if name == "survey" {
+            func directory(_ option: String) throws -> [String] {
+                do { return try SurveyPlacement.components(of: try required(option)) } catch is PlacementError {
+                    throw UsageError.invalidValue(option)
+                }
+            }
+            let outputDirectory = try directory("--output-directory")
+            let mappingDirectory = try directory("--mapping-directory")
+            let outputName = try required("--output-name")
+            guard (try? SurveyPlacement.validateName(outputName)) != nil else {
+                throw UsageError.invalidValue("--output-name")
+            }
+            guard let budget = Double(try required("--time-budget")), budget.isFinite, budget > 0,
+                budget <= SurveyLimits.maximumTimeBudgetSeconds
+            else { throw UsageError.invalidValue("--time-budget") }
+            guard let view = DisplayedView(rawValue: try required("--operator-displayed-view")) else {
+                throw UsageError.invalidValue("--operator-displayed-view")
+            }
             return .survey(
-                SurveyOptions(output: output, confirmations: confirmations, sourceCommit: values["--source-commit"]))
+                SurveyOptions(
+                    outputDirectory: outputDirectory, outputName: outputName, mappingDirectory: mappingDirectory,
+                    timeBudgetSeconds: budget, displayedView: view, confirmations: confirmations,
+                    sourceCommit: values["--source-commit"]))
         }
+        let output = try required("--output")
         let profile = try required("--profile")
         let locale = try required("--locale")
         guard let readings = Int(try required("--readings")), (1...1_000).contains(readings) else {

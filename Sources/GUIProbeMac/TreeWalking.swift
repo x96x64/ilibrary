@@ -79,6 +79,11 @@ struct WalkLimits: Equatable, Sendable {
     var maximumNodes = 5_000
     var maximumDepth = 40
     var timeoutSeconds = 2.0
+    /// An elapsed-time budget checked between requests, never during one; nil for no budget. It bounds when the
+    /// walk stops expanding, not how long a blocked request takes.
+    var timeBudgetSeconds: Double? = nil
+    /// The number of consecutive visited nodes with a timed-out request after which the walk stops; nil for none.
+    var maximumConsecutiveTimedOutNodes: Int? = nil
 }
 
 struct TreeEntry<Node> {
@@ -97,6 +102,10 @@ struct TreeSnapshot<Node> {
     var childrenUnavailable = false
     /// A node whose role could not be read as a string.
     var roleUnknown = false
+    /// The time budget expired while nodes remained to be read or a node's children remained to be enumerated.
+    var truncatedByDeadline = false
+    /// The walk stopped after the configured number of consecutive nodes with a timed-out request.
+    var stoppedByRepeatedTimeouts = false
     var errorCountsByCode: [Int32: Int] = [:]
 
     /// Whether the root element itself reported that it is invalid, as after the application has quit.
@@ -107,9 +116,14 @@ struct TreeSnapshot<Node> {
     var timedOut: Bool { errorCountsByCode[accessibilityCannotComplete] != nil }
 
     var status: TreeStatus {
-        if entries.isEmpty { return .notFound }
+        // A walk cut by its budget before reading anything is truncated, not a missing tree.
+        if entries.isEmpty && !truncatedByDeadline && !stoppedByRepeatedTimeouts { return .notFound }
         if timedOut { return .timedOut }
-        if truncatedByNodeLimit || truncatedByDepthLimit || truncatedByChildLimit { return .truncatedByLimit }
+        if truncatedByNodeLimit || truncatedByDepthLimit || truncatedByChildLimit || truncatedByDeadline
+            || stoppedByRepeatedTimeouts
+        {
+            return .truncatedByLimit
+        }
         if childrenUnavailable || roleUnknown { return .informationUnavailable }
         if !errorCountsByCode.isEmpty { return .attributeError }
         return .complete
@@ -118,14 +132,27 @@ struct TreeSnapshot<Node> {
 
 enum TreeWalker {
     /// A breadth-first walk bounded by node count and depth. A node at the depth limit is not expanded, and the
-    /// walk is marked truncated only when such a node has children.
-    static func walk<Source: TreeSource>(roots: [Source.Node], source: Source, limits: WalkLimits)
-        -> TreeSnapshot<Source.Node>
-    {
+    /// walk is marked truncated only when such a node has children. With a time budget, `elapsed` (seconds on a
+    /// monotonic clock) is compared with it before each node and before each node's children; with a timeout limit,
+    /// the walk stops after that many consecutive nodes with a timed-out request. Either stop marks the walk
+    /// incomplete, never complete.
+    static func walk<Source: TreeSource>(
+        roots: [Source.Node], source: Source, limits: WalkLimits, elapsed: () -> Double = { 0 }
+    ) -> TreeSnapshot<Source.Node> {
         var snapshot = TreeSnapshot<Source.Node>()
         var queue = roots.map { (node: $0, depth: 0, parent: Int?.none) }
         var head = 0
+        var consecutiveTimedOutNodes = 0
+        func budgetExpired() -> Bool {
+            guard let budget = limits.timeBudgetSeconds else { return false }
+            return elapsed() >= budget
+        }
         while head < queue.count {
+            // The node at the head of the queue remains unread.
+            if budgetExpired() {
+                snapshot.truncatedByDeadline = true
+                break
+            }
             let item = queue[head]
             head += 1
             if snapshot.entries.count >= limits.maximumNodes {
@@ -139,6 +166,10 @@ enum TreeWalker {
             if item.depth >= limits.maximumDepth {
                 // Only a child count positively reported as zero shows that nothing lies beyond the limit.
                 if facts.childCount != 0 { snapshot.truncatedByDepthLimit = true }
+            } else if budgetExpired() {
+                // Skipping the enumeration also skips its comparison with the child count, so even a node that
+                // reported no children leaves the walk incomplete.
+                snapshot.truncatedByDeadline = true
             } else {
                 let kids = source.children(of: item.node)
                 if let code = kids.error, !facts.errors.contains(where: { $0.attribute == "AXChildren" }) {
@@ -158,6 +189,17 @@ enum TreeWalker {
             }
             for error in facts.errors { snapshot.errorCountsByCode[error.code, default: 0] += 1 }
             snapshot.entries.append(TreeEntry(node: item.node, depth: item.depth, parent: item.parent, facts: facts))
+            // A node counts as timed out when any of its requests, including its child read, timed out; a node
+            // without a timeout resets the count. Reaching the limit ends the walk, and the rest of the queue is
+            // unread.
+            if let limit = limits.maximumConsecutiveTimedOutNodes {
+                let timedOut = facts.errors.contains { $0.code == accessibilityCannotComplete }
+                consecutiveTimedOutNodes = timedOut ? consecutiveTimedOutNodes + 1 : 0
+                if consecutiveTimedOutNodes >= limit {
+                    snapshot.stoppedByRepeatedTimeouts = true
+                    break
+                }
+            }
         }
         return snapshot
     }
