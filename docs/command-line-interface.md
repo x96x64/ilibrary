@@ -143,7 +143,7 @@ With `--dry-run`, steps 1 to 4 run, the complete plan is printed, and the comman
 
 #### rebuild apply
 
-`apply` writes the catalog recorded by `prepare` to the staged files and arranges them as `Album Artist/Album/NN Title.m4a` in the staging directory, exactly as `ilibrary apply --rename` would, and with `--timestamps` sets file dates to release dates at local midnight. Folder dates are set by `rebuild add --timestamps`, because the folders that remain are those in the media folder. Music must stay closed. The catalog must still have the SHA-256 recorded by `prepare`, every file in the staging directory must be one that the record lists, and every written file is read back. With `--dry-run`, the tag changes, moves, and dates are listed.
+`apply` writes the catalog recorded by `prepare` to the staged files and arranges them as `Album Artist/Album/NN Song.m4a` in the staging directory, exactly as `ilibrary apply --rename` would, and with `--timestamps` sets file dates to release dates at local midnight. Folder dates are set by `rebuild add --timestamps`, because the folders that remain are those in the media folder. Music must stay closed. The catalog must still have the SHA-256 recorded by `prepare`, every file in the staging directory must be one that the record lists, and every written file is read back. With `--dry-run`, the tag changes, moves, and dates are listed.
 
 #### rebuild add
 
