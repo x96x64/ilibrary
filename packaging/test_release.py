@@ -54,8 +54,9 @@ class NewReleaseTests(unittest.TestCase):
     def test_release_notes_carry_the_version_section_only(self):
         with tempfile.TemporaryDirectory() as temporary:
             text = release_notes.notes("1.2.3", self.tree(temporary))
-        self.assertIn("- A change.", text)
+        self.assertIn("## Highlights\n\n- **Added.** A change.\n", text)
         self.assertNotIn("Older.", text)
+        self.assertIn("## Installing and Upgrading", text)
         self.assertIn("@x96_64/ilibrary@1.2.3", text)
         self.assertIn("blob/v1.2.3/CHANGELOG.md", text)
         self.assertEqual(release_notes.TITLE.format(version="1.2.3"),
