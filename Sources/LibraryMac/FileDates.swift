@@ -35,7 +35,7 @@
     }
 
     public enum FileDates {
-        /// Requires that the path exists and is not a symbolic link, without following links (decision 9).
+        /// Requires that the path exists and is not a symbolic link, without following links.
         public static func checkTarget(_ url: URL) throws {
             var status = stat()
             guard lstat(url.path, &status) == 0 else { throw FileDateError.missing(path: url.path) }

@@ -1,4 +1,4 @@
-// Exclusive, streaming file copy for the M11 restoration test. The source is only read.
+// Exclusive, streaming file copy for restoring backed-up files. The source is only read.
 #if os(macOS)
     import Darwin
     import Foundation

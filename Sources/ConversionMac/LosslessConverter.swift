@@ -1,4 +1,4 @@
-// Lossless conversion to Apple Lossless through AudioToolbox, verified by decoded PCM (decision 7).
+// Lossless conversion to Apple Lossless through AudioToolbox, verified by decoded PCM.
 // Built only on macOS; on other platforms the target is empty.
 #if os(macOS)
     import AudioToolbox
@@ -203,7 +203,7 @@
             throw ConversionError.truncated(path: url.path, reason: "it has no sample data chunk")
         }
 
-        /// Checks that a source can be converted losslessly and returns its format (decision 7).
+        /// Checks that a source can be converted losslessly and returns its format.
         public static func preflight(_ url: URL) throws -> AudioFormat {
             try checkChunkLengths(url)
             let info = try format(of: url)
@@ -286,7 +286,7 @@
         }
 
         /// Verifies an Apple Lossless file against its source: equal PCM digests and frame counts, declared and
-        /// decoded counts equal in both, and the source's depth, rate, and channel count (decision 7).
+        /// decoded counts equal in both, and the source's depth, rate, and channel count.
         @discardableResult
         public static func verify(source: URL, output: URL) throws -> ConversionReport {
             try checkChunkLengths(source)

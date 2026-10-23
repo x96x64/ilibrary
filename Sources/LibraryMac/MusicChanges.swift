@@ -1,8 +1,8 @@
 // Changes to the Music library and app, and the addition dates they depend on. Built only on macOS.
 //
-// Removal uses the form measured in the separate-user qualifications on macOS 27.0.1 with Music 1.7: the track is
-// found again by persistent ID among the file tracks, exactly one must exist, and its name, album, and artist must
-// equal the recorded values before `delete` is sent. Dates use the conversion of the bulk reader.
+// Removal uses the form measured with Music 1.7 on macOS 27.0.1: the track is found again by persistent ID among
+// the file tracks, exactly one must exist, and its name, album, and artist must equal the recorded values before
+// `delete` is sent. Dates use the conversion of the bulk reader.
 #if os(macOS)
     import Foundation
 

@@ -30,7 +30,7 @@
         public var imagePath: String?
         public var deviceModel: String?
 
-        /// The facts used by the independence decision.
+        /// The facts from which the independence of two storage locations is decided.
         public var facts: StorageFacts {
             StorageFacts(
                 physicalDisk: physicalWholeDisk, filesystemType: filesystemType, isLocal: isLocal,
