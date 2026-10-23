@@ -327,7 +327,6 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
         }
         if catalogSHA256.bytes.count != SHA256Digest.byteCount { found.append(.inconsistent("bad catalog digest")) }
 
-        // Inventory.
         var previous: (root: Int, path: String)?
         var sortedOK = true
         var inventoryKeys: [String: String] = [:]
@@ -368,7 +367,6 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
         }
         if !sortedOK { found.append(.inventoryUnsorted) }
 
-        // Registrations and mapping.
         var ids = Set<String>()
         var registrationByID: [String: RegistrationRecord] = [:]
         for registration in registrations {
@@ -414,10 +412,8 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
             found.append(.mappingNotOneToOne("the counts of mapping and inventory differ"))
         }
 
-        // Lists.
         if expectedDisplayList != additionList.reversed() { found.append(.displayListNotReverse) }
 
-        // Evacuation.
         let stagingKey = PathKey.key(locations.stagingDirectory)
         var stagingKeys = Set<String>()
         var evacuationSources = Set<String>()
@@ -448,7 +444,6 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
             found.append(.evacuationSourcesDiffer("the inventory file has no evacuation entry: \(path)"))
         }
 
-        // Backup and restoration.
         if PathKey.relation(backup.root, locations.backupRoot) != .equal {
             found.append(.inconsistent("the backup root differs from the locations"))
         }

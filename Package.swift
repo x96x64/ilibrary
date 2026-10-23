@@ -10,7 +10,7 @@ let package = Package(
         .target(name: "MP4Core"),
         .target(name: "FLACCore"),
         .target(name: "CatalogCore"),
-        // Backup inventory, integrity hashing, and rebuild planning; Foundation-only so that it tests on Linux.
+        // Backup inventory, integrity hashing, and rebuild planning.
         .target(name: "RebuildCore"),
         // macOS-only file operations; the sources are empty on other platforms.
         .target(name: "LibraryMac", dependencies: ["RebuildCore"]),

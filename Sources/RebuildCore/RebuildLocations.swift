@@ -26,8 +26,8 @@ enum PathKey {
         let a = components(first)
         let b = components(second)
         if a == b { return .equal }
-        if a.count > b.count && Array(a[0..<b.count]) == b { return .firstInsideSecond }
-        if b.count > a.count && Array(b[0..<a.count]) == a { return .firstContainsSecond }
+        if a.count > b.count && a.starts(with: b) { return .firstInsideSecond }
+        if b.count > a.count && b.starts(with: a) { return .firstContainsSecond }
         return .disjoint
     }
 

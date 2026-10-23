@@ -142,7 +142,6 @@ public struct SHA256: Sendable {
         }
     }
 
-    /// Completes the computation and returns the digest.
     public consuming func finalize() -> SHA256Digest {
         let bitLength = totalBytes << 3
         var tail = pending

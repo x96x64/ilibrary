@@ -84,8 +84,8 @@ public enum BackupIndependence {
         case .some(true): reasons.append(.diskImage)
         case .none: reasons.append(.diskImageUnknown)
         }
-        if let type = backup.filesystemType?.lowercased(), type == "apfs" || type == "hfs" {
-        } else {
+        let filesystemType = backup.filesystemType?.lowercased()
+        if filesystemType != "apfs" && filesystemType != "hfs" {
             reasons.append(.unsupportedFilesystem(backup.filesystemType))
         }
         if !maintainerConfirmed { reasons.append(.notConfirmed) }
