@@ -40,11 +40,11 @@ enum PromptCommand {
            composer's full name, and separate several composers with a comma and a space.
            （アルバム単位の値は全曲に適用されます。曲単位の値は上書きする場合だけ設定してください。作曲者は省略せず正式な名前で書き、
            複数の場合は「, 」で区切ってください。）
-        7. Titles follow the source's capitalization unless `titleRules.case` says otherwise. A parenthetical
-           that contains another parenthetical is written with square brackets, as in
+        7. Keep the capitalization of the source titles; iLibrary applies `titleRules` when the catalog is
+           applied. A parenthetical that contains another parenthetical is written with square brackets, as in
            `Under the Lights [Sam's Mix (Demo)]`.
-           （曲名は、`titleRules.case` に指定がない限り元の大文字小文字に従います。括弧の中にさらに括弧がある場合は、外側を角括弧に
-           してください。）
+           （曲名は元の大文字小文字のままにしてください。`titleRules` はカタログの適用時に iLibrary が適用します。括弧の中に
+           さらに括弧がある場合は、外側を角括弧にしてください。）
         8. Live recordings carry `(Live)`, or `[Live]` when the title already ends with a parenthetical.
            Interludes carry no live designation.
            （ライブ録音には `(Live)` を付け、曲名がすでに括弧で終わる場合は `[Live]` にしてください。インタールードには付けません。）

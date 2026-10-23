@@ -33,7 +33,7 @@
       "items": { "type": "string" }
     },
     "titleRules": {
-      "description": "Rules that normalize source titles and support matching. Explicit titles in the catalog take precedence.",
+      "description": "Rules applied to every title before it is written. Qualifier removal also applies when files are matched. The defaults leave titles unchanged.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

@@ -13,9 +13,9 @@ public struct TitleRuleResult: Equatable, Sendable {
     public var reviews: [TitleReview]
 }
 
-/// Applies the title rules of a catalog: removal of qualifiers, square brackets for nested parentheticals,
-/// and a capitalization style. Explicit titles in a catalog take precedence; these rules normalize source
-/// names and support matching.
+/// The title rules of a catalog: removal of qualifiers, square brackets for nested parentheticals, and a
+/// capitalization style. They are applied to every catalog title before it is written or used in a name, and
+/// qualifier removal also applies when file titles are matched. The default rules leave titles unchanged.
 public struct TitleRules: Sendable {
     public var caseStyle: TitleCase
     public var removeQualifiers: [String]

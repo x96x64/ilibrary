@@ -141,7 +141,8 @@ public struct TrackReference: Hashable, Comparable, Sendable, CustomStringConver
     public var description: String { "album \(album + 1), disc \(disc), track \(track)" }
 }
 
-/// The effective metadata of one track after album-level values and per-track overrides are combined.
+/// The effective metadata of one track after album-level values and per-track overrides are combined and the
+/// title rules are applied.
 public struct ResolvedTrack: Equatable, Sendable {
     public var reference: TrackReference
     public var title: String
@@ -165,22 +166,27 @@ extension Catalog {
 
     /// Every track with its effective values. Empty strings are treated as unknown.
     public func resolvedTracks() -> [ResolvedTrack] {
-        albums.enumerated().flatMap { albumIndex, album in
+        let rules = TitleRules(titleRules)
+        return albums.enumerated().flatMap { albumIndex, album in
             album.discs.enumerated().flatMap { discIndex, disc in
-                disc.tracks.enumerated().map { trackIndex, track in
-                    let reference = TrackReference(album: albumIndex, disc: discIndex + 1, track: trackIndex + 1)
-                    return resolve(reference)
+                disc.tracks.indices.map { trackIndex in
+                    resolve(TrackReference(album: albumIndex, disc: discIndex + 1, track: trackIndex + 1), rules: rules)
                 }
             }
         }
     }
 
+    /// The effective values of a track, with the catalog's title rules applied to its title.
     public func resolve(_ reference: TrackReference) -> ResolvedTrack {
+        resolve(reference, rules: TitleRules(titleRules))
+    }
+
+    func resolve(_ reference: TrackReference, rules: TitleRules) -> ResolvedTrack {
         let album = albums[reference.album]
         let track = self.track(reference)
         func known(_ values: String?...) -> String? { values.first { ($0 ?? "").isEmpty == false } ?? nil }
         return ResolvedTrack(
-            reference: reference, title: track.title, album: album.album,
+            reference: reference, title: rules.apply(track.title).title, album: album.album,
             artist: known(track.artist, album.artist), albumArtist: known(album.albumArtist, album.artist),
             composer: known(track.composer, album.composer), genre: known(track.genre, album.genre),
             copyright: known(track.copyright, album.copyright),

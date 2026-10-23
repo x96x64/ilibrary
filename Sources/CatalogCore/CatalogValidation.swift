@@ -229,6 +229,11 @@ extension Catalog {
                             trackValue, trackPath, fields: CatalogFields.track, required: CatalogFields.trackRequired)
                         {
                             requireText(track, "title", trackPath)
+                            if case .string(let title)? = track["title"] {
+                                for review in rules.apply(title).reviews {
+                                    warning(join(trackPath, "title"), "\(review); left unchanged for review")
+                                }
+                            }
                         }
                     }
                 }

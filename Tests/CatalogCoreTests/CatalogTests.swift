@@ -94,6 +94,29 @@ func replacing(_ old: String, _ new: String) -> String {
         #expect(result.errors.map(\.path) == ["albums[0].releaseDate"])
     }
 
+    @Test func titleRulesApplyToResolvedTitles() throws {
+        let unchanged = try #require(validate(exampleCatalog).catalog)
+        #expect(unchanged.resolvedTracks()[0].title == "First Song")
+        let text = replacing(#""case": "keep""#, #""case": "mla""#)
+            .replacingOccurrences(of: #""First Song""#, with: #""a song for the road (2012 Remaster)""#)
+        let result = validate(text)
+        #expect(result.diagnostics.isEmpty)
+        let catalog = try #require(result.catalog)
+        #expect(catalog.resolvedTracks()[0].title == "A Song for the Road")
+        #expect(catalog.resolve(TrackReference(album: 0, disc: 1, track: 1)).title == "A Song for the Road")
+        #expect(catalog.albums[0].discs[0].tracks[0].title == "a song for the road (2012 Remaster)")
+    }
+
+    @Test func titleReviewsAreWarnings() throws {
+        let text = replacing(#""case": "keep""#, #""case": "mla""#)
+            .replacingOccurrences(of: #""First Song""#, with: #""turn on the lights""#)
+        let result = validate(text)
+        #expect(result.errors.isEmpty)
+        #expect(result.warnings.map(\.path) == ["albums[0].discs[0].tracks[0].title"])
+        #expect(result.warnings.first?.message.hasPrefix("\"on\": MLA capitalization depends") == true)
+        #expect(try #require(result.catalog).resolvedTracks()[0].title == "Turn on the Lights")
+    }
+
     @Test func emptyValuesMeanUnknown() throws {
         let result = validate(replacing(#""releaseDate": "1980-06-01""#, #""releaseDate": """#))
         #expect(result.diagnostics.isEmpty)
