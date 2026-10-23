@@ -180,7 +180,7 @@ Without `--strict`, every condition above is reported as a warning and the expor
 ilibrary prompt catalog.json > prompt.md
 ```
 
-Prints instructions for completing the catalog with an AI agent or AI chat: the authoring rules in English with Japanese explanations, the JSON Schema, and the draft. The catalog must be valid. The workflow is described in [Completing Catalogs with AI Agents](catalog-for-agents.md).
+Prints instructions for completing the catalog with an AI agent or AI chat: the authoring rules in English with Japanese explanations, the JSON Schema, and the draft. The catalog must be valid. The workflow is described in [Catalogs](catalogs.md#authoring-a-catalog).
 
 ### schema
 
