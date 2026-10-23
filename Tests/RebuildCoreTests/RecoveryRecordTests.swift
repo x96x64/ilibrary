@@ -273,7 +273,7 @@ import Testing
     }
 
     @Test func aLiteralRecordOfTheCurrentEncodingLoadsAndEqualsTheSealedSample() throws {
-        // The exact bytes that `write` produced for `sample()` in 0.2.0. This pins the encoding and the checksum.
+        // The exact bytes that `write` produces for `sample()`, pinning the encoding and the checksum.
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         try Data(Self.literalRecord.utf8).write(to: directory.appendingPathComponent(RecoveryRecord.fileName))
