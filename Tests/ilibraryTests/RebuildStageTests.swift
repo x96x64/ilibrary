@@ -18,7 +18,10 @@ struct StageFixture {
     let record: RecoveryRecord
     var environment: Environment
 
-    init(albums: [SyntheticLibrary.AlbumSpec] = SyntheticLibrary.standardAlbums) throws {
+    init(
+        albums: [SyntheticLibrary.AlbumSpec] = SyntheticLibrary.standardAlbums,
+        editCatalog: (Data) throws -> Data = { $0 }
+    ) throws {
         let manager = FileManager.default
         let base = URL(
             fileURLWithPath: RebuildCommand.resolve(
@@ -43,7 +46,8 @@ struct StageFixture {
         var testing = Environment.testing
         let export = Run(["export", musicFolder.path, "-o", catalog.path], environment: testing)
         guard export.status == 0 else { throw CommandError.failure(export.errorText) }
-        let catalogData = try Data(contentsOf: catalog)
+        let catalogData = try editCatalog(Data(contentsOf: catalog))
+        try catalogData.write(to: catalog)
         let parsed = try #require(Catalog.validate(catalogData).catalog)
 
         let records = try FileInventory(root: musicFolder, extensions: ["m4a"]).records
@@ -299,6 +303,29 @@ struct StageFixture {
         #expect(add.errorText.contains("already exists in the media folder; nothing was added"))
         #expect(fixture.music.addCalls.count == calls)
         #expect(try Data(contentsOf: occupied) == Data("unrelated".utf8))
+    }
+
+    @Test func aCatalogWarningIsPrintedOncePerStage() throws {
+        let fixture = try StageFixture(editCatalog: { data in
+            var root = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            var albums = try #require(root["albums"] as? [[String: Any]])
+            albums[0]["copyright"] = "(P) 2026 Example Records"
+            root["albums"] = albums
+            return try JSONSerialization.data(withJSONObject: root)
+        })
+        defer { fixture.remove() }
+        let warning = "use the symbols"
+        func occurrences(_ run: Run) -> Int { run.errorText.components(separatedBy: warning).count - 1 }
+        #expect(fixture.run("stage").status == 0)
+        #expect(fixture.run("clear").status == 0)
+        let apply = fixture.run("apply")
+        #expect(apply.status == 0, "\(apply.errorText)")
+        #expect(occurrences(apply) == 1)
+        let add = fixture.run("add", ["--timestamps"])
+        #expect(add.status == 0 || add.status == 1, "\(add.errorText)")
+        #expect(occurrences(add) <= 1)
+        let plain = fixture.run("add")
+        #expect(occurrences(plain) <= 1)
     }
 
     @Test func applyRefusesACatalogThatChangedAfterPreparation() throws {

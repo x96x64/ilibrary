@@ -100,15 +100,15 @@ enum ApplyCommand {
 
     /// Matches the files under the paths to the catalog, plans every change, prints the plan, and changes nothing.
     static func prepare(
-        catalogPath: String, paths: [String], rename: Bool, timestamps: Bool, console: Console,
-        environment: Environment
+        catalogPath: String, loaded: (catalog: Catalog, directory: URL)? = nil, paths: [String], rename: Bool,
+        timestamps: Bool, console: Console, environment: Environment
     ) throws -> Prepared {
         let roots = directoryRoots(paths)
         if rename, roots.count != paths.count {
             throw CommandError.usage("apply: --rename requires every PATH to be a directory")
         }
         if timestamps, environment.setDates == nil { throw CommandError.timestampsRequireMacOS }
-        let (catalog, directory) = try loadCatalog(catalogPath, console: console)
+        let (catalog, directory) = try loaded ?? loadCatalog(catalogPath, console: console)
         let correspondence = try Correspondence.requireComplete(paths, catalog: catalog, console: console)
         var artwork: [Int: MetadataValue] = [:]
         for (index, path) in catalog.artworkPaths {
