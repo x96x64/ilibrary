@@ -93,28 +93,25 @@ extension Catalog {
         func warning(_ path: String, _ message: String) {
             diagnostics.append(CatalogDiagnostic(severity: .warning, path: path, message: message))
         }
-        let root: JSONValue
-        do {
-            root = try JSONDecoder().decode(JSONValue.self, from: data)
-        } catch {
-            return CatalogValidationResult(
-                catalog: nil,
-                diagnostics: [CatalogDiagnostic(severity: .error, path: "", message: "the document is not valid JSON")])
+        func rejected() -> CatalogValidationResult { CatalogValidationResult(catalog: nil, diagnostics: diagnostics) }
+        guard let root = try? JSONDecoder().decode(JSONValue.self, from: data) else {
+            error("", "the document is not valid JSON")
+            return rejected()
         }
         guard case .object(let object) = root else {
             error("", "the document must be a JSON object")
-            return CatalogValidationResult(catalog: nil, diagnostics: diagnostics)
+            return rejected()
         }
         switch object["format"] {
         case .string(Catalog.formatIdentifier)?:
             break
         case .string(let other)? where other.hasPrefix("ilibrary-catalog-"):
             error("format", "\"\(other)\" is not supported; this version reads \"\(Catalog.formatIdentifier)\"")
-            return CatalogValidationResult(catalog: nil, diagnostics: diagnostics)
+            return rejected()
         default:
             error(
                 "format", "the document is not an iLibrary catalog: \"format\" must be \"\(Catalog.formatIdentifier)\"")
-            return CatalogValidationResult(catalog: nil, diagnostics: diagnostics)
+            return rejected()
         }
 
         func checkObject(_ value: JSONValue, _ path: String, fields: [String], required: [String]) -> [String:
@@ -170,7 +167,7 @@ extension Catalog {
         }
 
         guard let root = checkObject(root, "", fields: CatalogFields.root, required: CatalogFields.rootRequired) else {
-            return CatalogValidationResult(catalog: nil, diagnostics: diagnostics)
+            return rejected()
         }
         if let rules = root["titleRules"] {
             _ = checkObject(rules, "titleRules", fields: CatalogFields.titleRules, required: [])
@@ -240,17 +237,12 @@ extension Catalog {
             error("albums", "must be an array, not \(albums.kind)")
         }
 
-        guard !diagnostics.contains(where: { $0.severity == .error }) else {
-            return CatalogValidationResult(catalog: nil, diagnostics: diagnostics)
+        guard diagnostics.allSatisfy({ $0.severity != .error }) else { return rejected() }
+        guard let catalog = try? JSONDecoder().decode(Catalog.self, from: data) else {
+            error("", "the catalog could not be decoded")
+            return rejected()
         }
-        do {
-            return CatalogValidationResult(
-                catalog: try JSONDecoder().decode(Catalog.self, from: data), diagnostics: diagnostics)
-        } catch {
-            diagnostics.append(
-                CatalogDiagnostic(severity: .error, path: "", message: "the catalog could not be decoded"))
-            return CatalogValidationResult(catalog: nil, diagnostics: diagnostics)
-        }
+        return CatalogValidationResult(catalog: catalog, diagnostics: diagnostics)
     }
 
     /// Encodes a catalog with sorted keys and two-space indentation, ending with a newline.
