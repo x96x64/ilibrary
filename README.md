@@ -60,7 +60,7 @@ The package declares macOS 14 as its deployment target, which is not a claim of 
 
 ## Installation
 
-The following commands install version 1.0.2, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+The following commands install version 1.0.3, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
 
 ### Homebrew
 
@@ -73,7 +73,7 @@ The formula in [x96x64/homebrew-tap](https://github.com/x96x64/homebrew-tap) dow
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@1.0.2
+npm install -g @x96_64/ilibrary@1.0.3
 ```
 
 The package contains the prebuilt executable, the license, and this project's package README, and declares `darwin` and `arm64` so that npm refuses it on other systems. It runs no installation script and needs no Swift toolchain. Releases are published from the release workflow with npm provenance, which links each version to the commit and workflow run that built it.
@@ -82,7 +82,7 @@ The package contains the prebuilt executable, the license, and this project's pa
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.2
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.3
 source .venv-ilibrary/bin/activate
 ```
 
