@@ -4,6 +4,22 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-23
+
+### Added
+
+- A catalog reference describing every field, the title rules, matching, the authoring workflow, and release dates, which replaces the shorter guide to completing catalogs with AI agents.
+
+### Changed
+
+- When the request that reads the addition dates of given tracks fails, `add` and `rebuild add` read them from the bulk library read, whose dates were measured to equal Music's, instead of stopping after the first album.
+- The production code was simplified without changes to commands, output, file formats, or safety checks: shared handling of paths, catalogs, and date plans, commands split into named steps, shared descriptor handling in the progress journal, and comments that referred to development history removed.
+- The README, the package description, and the roadmap describe the complete product.
+
+### Removed
+
+- Unused internal helpers with no caller in the product, including the album designation and naming review helpers of the catalog library.
+
 ## [0.3.0] - 2026-10-23
 
 ### Added
