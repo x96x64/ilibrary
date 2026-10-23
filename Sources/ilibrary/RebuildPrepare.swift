@@ -118,7 +118,6 @@ enum RebuildPrepare {
     ) throws -> Int32 {
         try preliminaryChecks(inputs, environment: environment)
 
-        // Step 1.
         let analysis = try analyzeFiles(inputs, console: console)
         let records = analysis.inventory.records
         let totalBytes = records.reduce(UInt64(0)) { $0 &+ $1.size }
@@ -130,13 +129,11 @@ enum RebuildPrepare {
             "Step 1 passed: \(records.count) files (\(totalBytes) bytes) match \(analysis.catalog.albums.count) albums "
                 + "of the catalog")
 
-        // Step 2.
         let library = try readLibrary(sourced, source: inputs.source, environment: environment)
         console.print(
             "Step 2 passed: \(library.registrations.count) registrations map one-to-one to the files; "
                 + "media folder \(library.mediaFolder)")
 
-        // Step 3.
         let locations = RebuildLocations(
             sources: [inputs.source], mediaFolder: library.mediaFolder, backupRoot: inputs.backup,
             restorationDirectory: inputs.restoration, stagingDirectory: inputs.staging,
@@ -144,7 +141,6 @@ enum RebuildPrepare {
         let capacity = try validatePlan(locations, totalBytes: totalBytes, environment: environment)
         console.print("Step 3 passed: the locations are separate and every volume has the capacity that the plan needs")
 
-        // Step 4.
         let backup = try verifyBackup(
             inputs, locations: locations, records: records, environment: environment)
         console.print(
@@ -161,14 +157,12 @@ enum RebuildPrepare {
             return 0
         }
 
-        // Step 5.
         let restoration = try restore(
             inputs, records: records, backup: backup, environment: environment, console: console, progress: progress)
         console.print(
             "Step 5 passed: \(records.count) files were restored and verified under the policy \(restoration.policy.rawValue)"
         )
 
-        // Step 6.
         let uuid = backup.report.volumeUUID ?? ""
         console.print("")
         console.print(
@@ -195,7 +189,6 @@ enum RebuildPrepare {
         let disconnectedAt = RecoveryRecord.timestampString(Date())
         console.print("Step 6 passed: the backup volume is no longer mounted")
 
-        // Step 7.
         let record = RecoveryRecord(
             createdAt: RecoveryRecord.timestampString(Date()), ilibraryVersion: version,
             catalogPath: inputs.catalogPath, catalogSHA256: analysis.catalogDigest, locations: locations,

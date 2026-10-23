@@ -43,7 +43,7 @@ struct StorageReport: Equatable, Sendable {
 
 /// Lossless conversion, available where AudioToolbox is (macOS).
 struct Converter: Sendable {
-    /// Checks that a source can be converted losslessly (decision 7).
+    /// Checks that a source can be converted losslessly and describes it.
     var preflight: @Sendable (URL) throws -> LosslessSource
     /// Converts to Apple Lossless at a path that must not exist, and verifies the result.
     var convert: @Sendable (URL, URL) throws -> Void
@@ -85,7 +85,7 @@ struct Environment: Sendable {
     var setDates: (@Sendable (URL, Date) throws -> Void)?
     /// Reads the creation and modification dates without following symbolic links.
     var readDates: (@Sendable (URL) throws -> (created: Date?, modified: Date?))?
-    /// The plain available capacity of the volume of a path, when known (decision 8).
+    /// The available capacity of the volume of a path, when known.
     var availableCapacity: @Sendable (URL) -> Int?
     /// An identifier of the volume of a path, when known, so that paths on one volume are checked together.
     var volumeIdentifier: @Sendable (URL) -> String? = Environment.volumeIdentifier

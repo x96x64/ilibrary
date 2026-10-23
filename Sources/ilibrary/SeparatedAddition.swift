@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Music exposes the date added in whole seconds and orders Recently Added by it; the order of albums that share a
 /// second is unknown. When each album was added only after the previous one had been confirmed and the clock had
-/// passed its latest second, every measured case showed the intended order (Measured Music Behavior).
+/// passed its latest second, every measured case showed the intended order.
 struct SeparatedAddition {
     /// The latest addition second of the previous album, or nil before the first.
     private(set) var latest: Int?

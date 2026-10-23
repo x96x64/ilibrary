@@ -25,10 +25,10 @@ struct TimestampPlan {
 }
 
 enum TimestampPlanner {
-    /// Plans dates at local midnight of each release date (decision 9). An album folder is dated when it holds
-    /// the files of exactly one album and lies inside a given directory; an artist folder is dated only when it is
-    /// named after the album artist, lies inside a given directory, and the catalog gives the artist a
-    /// `folderDate` (decision 15). Folders outside the given directories are never changed.
+    /// Plans dates at local midnight of each release date. An album folder is dated when it holds the files of
+    /// exactly one album and lies inside a given directory; an artist folder is dated only when it is named after
+    /// the album artist, lies inside a given directory, and the catalog gives the artist a `folderDate`. Folders
+    /// outside the given directories are never changed.
     static func plan(
         files: [(url: URL, track: ResolvedTrack)], catalog: Catalog, roots: [URL], timeZone: TimeZone
     ) -> TimestampPlan {

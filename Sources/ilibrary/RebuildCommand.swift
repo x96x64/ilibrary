@@ -153,7 +153,6 @@ enum RebuildCommand {
         subcommand.flatMap { subcommands[$0]?.usage } ?? syntax.usage
     }
 
-    /// The resolved workspace option of a stage.
     static func workspace(_ parsed: ParsedArguments, _ name: String) throws -> String {
         guard let option = parsed.value("--workspace") else {
             throw CommandError.usage("rebuild \(name): --workspace DIR is required")

@@ -398,7 +398,7 @@ enum AddCommand {
         }
     }
 
-    /// Adds the moved files and confirms one new track per file at each file's destination (Music Behavior, M2).
+    /// Adds the moved files and confirms one new track per file at each file's destination.
     static func confirm(_ entry: inout AddJournal.Entry, music: any MusicLibrary) throws {
         let destinations = entry.destinations.map { URL(fileURLWithPath: $0) }
         let tracks: [LibraryTrack]

@@ -182,8 +182,8 @@ enum CheckCommand {
         return findings
     }
 
-    /// Compares each file with the library track at its location, and reports library tracks of the same
-    /// albums whose files are missing (decision in AGENTS.md: Music caches metadata independently of files).
+    /// Compares each file with the library track at its location, and reports library tracks of the same albums
+    /// whose files are missing. Music caches metadata independently of files, so a track can disagree with its file.
     static func libraryFindings(
         _ files: [AudioFile], tracks: [LibraryTrack], roots: [URL], entireLibrary: Bool
     ) -> [Finding] {

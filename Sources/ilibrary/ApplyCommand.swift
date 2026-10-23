@@ -186,9 +186,9 @@ enum ApplyCommand {
         }
     }
 
-    /// Each rewrite writes a complete new copy of its file beside it before replacing it (decision 8). For every
-    /// volume, the capacity must hold the largest rewritten file plus the growth of all files on that volume, with
-    /// a margin of 1 MiB. Sizes come from the exact write plans, so that added artwork is counted.
+    /// Each rewrite writes a complete new copy of its file beside it before replacing it. For every volume, the
+    /// capacity must hold the largest rewritten file plus the growth of all files on that volume, with a margin of
+    /// 1 MiB. Sizes come from the exact write plans, so that added artwork is counted.
     static func checkFreeSpace(_ changed: [FilePlan], environment: Environment, console: Console) throws {
         struct Need {
             var folder: String
@@ -234,8 +234,6 @@ enum ApplyCommand {
                 throw CommandError.failure(
                     "\"\(plans[index].track.album)\" has no album artist, which --rename requires; nothing was changed")
             }
-            // A name that the file system cannot hold, or that would leave the directory, is refused before
-            // anything is written.
             for component in components {
                 if component.isEmpty || component == "." || component == ".." {
                     throw CommandError.failure(

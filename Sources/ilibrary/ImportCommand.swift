@@ -77,7 +77,6 @@ enum ImportCommand {
             }
         }
 
-        // Collect sources with the base that their output paths are relative to.
         var refused: [(String, String)] = []
         var candidates: [(source: URL, relative: String)] = []
         var untouched = 0
@@ -114,7 +113,6 @@ enum ImportCommand {
             }
         }
 
-        // Plan every item; any refusal changes nothing.
         var items: [Item] = []
         var claimed: [String: String] = [:]
         for (source, relative) in candidates.sorted(by: { $0.source.path < $1.source.path }) {
@@ -153,8 +151,8 @@ enum ImportCommand {
         guard refused.isEmpty else { throw CommandError.failure("some files are refused; nothing was changed") }
         guard !items.isEmpty else { throw CommandError.failure("no file to import was found") }
 
-        // The outputs accumulate on the volume of the output folder (decision 8). A converted file grows by the
-        // cover it carries, and writing its tags needs room for one further copy of the largest output.
+        // The outputs accumulate on the volume of the output folder. A converted file grows by the cover it
+        // carries, and writing its tags needs room for one further copy of the largest output.
         let sizes = items.map { item -> Int64 in
             switch item.action {
             case .convert(let source, let tags):

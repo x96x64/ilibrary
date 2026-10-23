@@ -41,7 +41,7 @@ import Testing
 }
 
 @Suite struct RoundTripTests {
-    /// The M3 gate: exporting a library and reapplying the catalog changes nothing.
+    /// Exporting a library and reapplying the catalog changes nothing.
     @Test func exportAndReapplicationChangeNothing() throws {
         let library = try SyntheticLibrary()
         defer { library.remove() }
@@ -258,7 +258,7 @@ import Testing
         before = try library.snapshot()
         let unmatched = Run(["apply", url.path, library.root.path])
         #expect(unmatched.status == 1)
-        #expect(unmatched.text.contains("unmatched Download Three/") || unmatched.text.contains("unmatched "))
+        #expect(unmatched.text.contains("unmatched "))
         #expect(try library.snapshot() == before)
 
         try catalog.encoded().write(to: url, options: [])

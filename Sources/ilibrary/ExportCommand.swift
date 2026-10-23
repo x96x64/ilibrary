@@ -69,7 +69,6 @@ enum ExportCommand {
             throw CommandError.failure("strict export refused; nothing was changed")
         }
 
-        // Every destination is checked before anything is written.
         if let artworkDirectory, pathKind(artworkDirectory) != .missing, pathKind(artworkDirectory) != .directory {
             throw CommandError.failure("\(artworkDirectory.path) exists and is not a directory")
         }
@@ -124,7 +123,6 @@ enum ExportCommand {
             }
             try catalog.encoded().write(to: output, options: .withoutOverwriting)
             written.append(output)
-            // Verify by reading every written file back.
             for cover in covers where (try? Data(contentsOf: cover.url)) != cover.data {
                 throw CommandError.failure("\(cover.url.path) did not read back as written")
             }
