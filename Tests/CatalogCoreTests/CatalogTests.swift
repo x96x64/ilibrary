@@ -107,6 +107,13 @@ func replacing(_ old: String, _ new: String) -> String {
         #expect(catalog.albums[0].discs[0].tracks[0].title == "a song for the road (2012 Remaster)")
     }
 
+    @Test func aTitleThatTheRulesWouldEmptyIsRejected() {
+        let result = validate(replacing(#""First Song""#, #""(2012 Remaster)""#))
+        #expect(result.errors.map(\.path) == ["albums[0].discs[0].tracks[0].title"])
+        #expect(result.errors.first?.message == "is empty after the title rules are applied")
+        #expect(result.catalog == nil)
+    }
+
     @Test func titleReviewsAreWarnings() throws {
         let text = replacing(#""case": "keep""#, #""case": "mla""#)
             .replacingOccurrences(of: #""First Song""#, with: #""turn on the lights""#)

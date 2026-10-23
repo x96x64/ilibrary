@@ -230,7 +230,13 @@ extension Catalog {
                         {
                             requireText(track, "title", trackPath)
                             if case .string(let title)? = track["title"] {
-                                for review in rules.apply(title).reviews {
+                                let result = rules.apply(title)
+                                if result.title.trimmingCharacters(in: .whitespaces).isEmpty,
+                                    !title.trimmingCharacters(in: .whitespaces).isEmpty
+                                {
+                                    error(join(trackPath, "title"), "is empty after the title rules are applied")
+                                }
+                                for review in result.reviews {
                                     warning(join(trackPath, "title"), "\(review); left unchanged for review")
                                 }
                             }
