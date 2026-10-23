@@ -71,7 +71,8 @@
                 """)
             let items = text.components(separatedBy: recordSeparator)
             guard items.count == persistentIDs.count else {
-                throw MusicAppError.unexpectedResult("\(items.count) dates were returned for \(persistentIDs.count) tracks")
+                throw MusicAppError.unexpectedResult(
+                    "\(items.count) dates were returned for \(persistentIDs.count) tracks")
             }
             var dates: [String: Int] = [:]
             for (id, item) in zip(persistentIDs, items) {

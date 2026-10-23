@@ -21,6 +21,10 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
     var failOnRemove: String?
     /// When set, every track added receives this addition second, as if albums shared one.
     var fixedDate: Int?
+    /// Whether the app runs: adding launches it, and quitting ends it.
+    var running = false
+    /// Tracks of the library that are not file tracks.
+    var otherTracks = 0
     private var counter = 0
 
     init(media: URL?) { self.media = media }
@@ -30,12 +34,14 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
     func tracks(album: String) throws -> [LibraryTrack] { library.filter { $0.album == album } }
     func librarySnapshot() throws -> LibrarySnapshot {
         LibrarySnapshot(
-            tracks: library, trackCount: library.count, fileTrackCount: library.count, dateAddedSeconds: [:])
+            tracks: library, trackCount: library.count + otherTracks, fileTrackCount: library.count,
+            dateAddedSeconds: dates.filter { id, _ in library.contains { $0.persistentID == id } })
     }
     func track(persistentID: String) throws -> LibraryTrack? { library.first { $0.persistentID == persistentID } }
 
     func add(_ files: [URL]) throws -> [LibraryTrack] {
         addCalls.append(files.map(\.lastPathComponent))
+        running = true
         if failOnAdd == addCalls.count { throw CocoaError(.fileReadUnknown) }
         return try files.map { file in
             if let existing = library.first(where: { $0.location == file.path }) { return existing }
@@ -78,7 +84,10 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
         removals.append(persistentID)
     }
 
-    func quit() throws { quitCalls += 1 }
+    func quit() throws {
+        quitCalls += 1
+        running = false
+    }
 }
 
 struct AddFixture {

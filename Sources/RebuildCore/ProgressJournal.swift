@@ -390,7 +390,7 @@ public enum ProgressJournal {
     }
 
     /// The stored spelling of a target: persistent IDs are compared case-insensitively and kept in uppercase.
-    static func canonicalTarget(_ operation: RebuildOperation, _ target: String) -> String {
+    public static func canonicalTarget(_ operation: RebuildOperation, _ target: String) -> String {
         operation == .removeRegistration ? target.uppercased() : target
     }
 
