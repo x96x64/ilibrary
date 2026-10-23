@@ -102,7 +102,7 @@ public struct TitleRules: Sendable {
     // MARK: - Nested Parentheticals
 
     /// Converts each top-level parenthetical that contains another parenthetical to square brackets:
-    /// `Under the Lights (Sam's Mix (Demo))` becomes `Under the Lights [Sam's Mix (Demo)]`.
+    /// `Song A (B's Mix (Demo))` becomes `Song A [B's Mix (Demo)]`.
     static func bracketingNested(_ title: String) -> (text: String, balanced: Bool) {
         var characters = Array(title)
         var stack: [(index: Int, nested: Bool)] = []

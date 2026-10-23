@@ -10,7 +10,7 @@ let exampleCatalog = #"""
         "case": "keep",
         "removeQualifiers": ["Remaster", "Remastered", "Remastered Version"],
         "bracketNested": true,
-        "preserve": ["HIStory", "XSCAPE", "P.Y.T."]
+        "preserve": ["SyNTH", "ABCDE", "X.Y.Z."]
       },
       "artists": { "Example Artist": { "folderDate": "1980-01-01" } },
       "albums": [
@@ -98,13 +98,13 @@ func replacing(_ old: String, _ new: String) -> String {
         let unchanged = try #require(validate(exampleCatalog).catalog)
         #expect(unchanged.resolvedTracks()[0].title == "First Song")
         let text = replacing(#""case": "keep""#, #""case": "mla""#)
-            .replacingOccurrences(of: #""First Song""#, with: #""a song for the road (2012 Remaster)""#)
+            .replacingOccurrences(of: #""First Song""#, with: #""song alpha for song bravo (2012 Remaster)""#)
         let result = validate(text)
         #expect(result.diagnostics.isEmpty)
         let catalog = try #require(result.catalog)
-        #expect(catalog.resolvedTracks()[0].title == "A Song for the Road")
-        #expect(catalog.resolve(TrackReference(album: 0, disc: 1, track: 1)).title == "A Song for the Road")
-        #expect(catalog.albums[0].discs[0].tracks[0].title == "a song for the road (2012 Remaster)")
+        #expect(catalog.resolvedTracks()[0].title == "Song Alpha for Song Bravo")
+        #expect(catalog.resolve(TrackReference(album: 0, disc: 1, track: 1)).title == "Song Alpha for Song Bravo")
+        #expect(catalog.albums[0].discs[0].tracks[0].title == "song alpha for song bravo (2012 Remaster)")
     }
 
     @Test func aTitleThatTheRulesWouldEmptyIsRejected() {
@@ -116,12 +116,12 @@ func replacing(_ old: String, _ new: String) -> String {
 
     @Test func titleReviewsAreWarnings() throws {
         let text = replacing(#""case": "keep""#, #""case": "mla""#)
-            .replacingOccurrences(of: #""First Song""#, with: #""turn on the lights""#)
+            .replacingOccurrences(of: #""First Song""#, with: #""song alpha on song bravo""#)
         let result = validate(text)
         #expect(result.errors.isEmpty)
         #expect(result.warnings.map(\.path) == ["albums[0].discs[0].tracks[0].title"])
         #expect(result.warnings.first?.message.hasPrefix("\"on\": MLA capitalization depends") == true)
-        #expect(try #require(result.catalog).resolvedTracks()[0].title == "Turn on the Lights")
+        #expect(try #require(result.catalog).resolvedTracks()[0].title == "Song Alpha on Song Bravo")
     }
 
     @Test func emptyValuesMeanUnknown() throws {
