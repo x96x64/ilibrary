@@ -200,8 +200,11 @@ import Testing
             #expect(pathKind(removed) == .missing)
             let release = Date(timeIntervalSince1970: -357_987_600)
             let song = library.root.appendingPathComponent("Download One/01-First Song_1001.m4a")
-            #expect(try dates(song) == (release, release))
-            #expect(try dates(library.root.appendingPathComponent("Download One")) == (release, release))
+            for url in [song, library.root.appendingPathComponent("Download One")] {
+                let (created, modified) = try dates(url)
+                #expect(created == release, "creation date of \(url.lastPathComponent)")
+                #expect(modified == release, "modification date of \(url.lastPathComponent)")
+            }
         }
     }
 #endif
