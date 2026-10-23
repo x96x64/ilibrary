@@ -130,6 +130,20 @@ class ReleaseBodyCheckTests(unittest.TestCase):
                 release_notes.main(["1.2"])
 
 
+class ReadmeLabelTests(unittest.TestCase):
+    """Labeled list items in the two READMEs end their label with a colon inside the bold text."""
+
+    def test_labeled_items_use_a_colon_inside_the_bold_label(self):
+        root = Path(release_notes.ROOT)
+        for name in ("README.md", "packaging/README.md"):
+            lines = (root / name).read_text().splitlines()
+            labeled = [line for line in lines if line.lstrip().startswith("- **")]
+            with self.subTest(readme=name):
+                self.assertTrue(labeled)
+                for line in labeled:
+                    self.assertRegex(line.lstrip(), r"^- \*\*[^*]+[^*\s.:]:\*\* \S", line[:60])
+
+
 class ReleaseGuardTests(unittest.TestCase):
     commit = "a" * 40
 
