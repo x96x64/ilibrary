@@ -3,7 +3,7 @@
     import AudioToolbox
     import Foundation
 
-    /// Encodes a PCM file to FLAC with Core Audio, so that the tests need no external encoder.
+    /// Encodes a PCM file to FLAC with Core Audio.
     public func encodeFLAC(_ source: URL, to destination: URL, bits: Int) throws {
         var reference: ExtAudioFileRef?
         guard ExtAudioFileOpenURL(source as CFURL, &reference) == noErr, let reader = reference else {

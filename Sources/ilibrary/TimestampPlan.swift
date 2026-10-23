@@ -25,10 +25,10 @@ struct TimestampPlan {
 }
 
 enum TimestampPlanner {
-    /// Plans dates at local midnight of each release date (decision 9). An album folder is dated when it holds
-    /// the files of exactly one album and lies inside a given directory; an artist folder is dated only when it is
-    /// named after the album artist, lies inside a given directory, and the catalog gives the artist a
-    /// `folderDate` (decision 15). Folders outside the given directories are never changed.
+    /// Plans dates at local midnight of each release date. An album folder is dated when it holds the files of
+    /// exactly one album and lies inside a given directory; an artist folder is dated only when it is named after
+    /// the album artist, lies inside a given directory, and the catalog gives the artist a `folderDate`. Folders
+    /// outside the given directories are never changed.
     static func plan(
         files: [(url: URL, track: ResolvedTrack)], catalog: Catalog, roots: [URL], timeZone: TimeZone
     ) -> TimestampPlan {
@@ -107,11 +107,16 @@ enum TimestampPlanner {
         return plan
     }
 
-    static func describe(_ target: DatedPath, timeZone: TimeZone, root: URL?) -> String {
+    /// Prints the planned dates, with paths relative to `root` when it is given, and the paths left unchanged.
+    static func printPlan(_ plan: TimestampPlan, timeZone: TimeZone, root: URL?, console: Console) {
         let formatter = ISO8601DateFormatter()
         formatter.timeZone = timeZone
-        let path = root.map { relativePath(target.url, from: $0) } ?? target.url.path
-        return "\(target.kind.rawValue) \(path): \(formatter.string(from: target.date))"
+        console.print("Dates: \(plan.targets.count) paths")
+        for target in plan.targets {
+            let path = root.map { relativePath(target.url, from: $0) } ?? target.url.path
+            console.print("  \(target.kind.rawValue) \(path): \(formatter.string(from: target.date))")
+        }
+        for note in plan.notes { console.print("  note: \(note)") }
     }
 
     /// A shell script that sets the same dates with SetFile and touch. Each path is checked first; a missing path

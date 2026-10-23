@@ -56,8 +56,8 @@ public struct MatchReport: Equatable, Sendable {
 
 /// Matches files to catalog tracks: by album name or alias, then by disc and track number, by numbering that
 /// continues across discs, and by title. Numbers whose title disagrees are accepted only when no track of the
-/// album carries the file's title, and only while more of the album's titles agree than differ: continuous
-/// numbering read as disc and track numbers applied metadata to the wrong tracks during manual curation.
+/// album carries the file's title, and only while more of the album's titles agree than differ, because
+/// continuous numbering read as disc and track numbers would apply metadata to the wrong tracks.
 /// Every match and every refusal is reported.
 public struct CatalogMatcher: Sendable {
     public let catalog: Catalog
@@ -155,9 +155,7 @@ public struct CatalogMatcher: Sendable {
         var byNumber: TrackReference?
         if let track = file.trackNumber {
             let disc = file.discNumber ?? 1
-            if (1...album.discs.count).contains(disc), (1...max(1, album.discs[disc - 1].tracks.count)).contains(track),
-                !album.discs[disc - 1].tracks.isEmpty
-            {
+            if album.discs.indices.contains(disc - 1), track >= 1, track <= album.discs[disc - 1].tracks.count {
                 byNumber = TrackReference(album: albumIndex, disc: disc, track: track)
             }
         }
@@ -183,23 +181,21 @@ public struct CatalogMatcher: Sendable {
         }
 
         if let byNumber {
-            switch titlesAgree(file.title, byNumber) {
-            case nil:
-                return .success(
-                    TrackMatch(file: file, reference: byNumber, method: .discAndTrack, titleConfirmed: false))
-            case true?:
-                return .success(
-                    TrackMatch(file: file, reference: byNumber, method: .discAndTrack, titleConfirmed: true))
-            case false?: break
-            }
-        }
-        if let continuous, continuous != byNumber, titlesAgree(file.title, continuous) != false {
-            let confirmed = titlesAgree(file.title, continuous) == true
-            // Without a title, continuous numbering is used only where disc and track numbers cannot apply.
-            if confirmed || byNumber == nil {
+            let agreement = titlesAgree(file.title, byNumber)
+            if agreement != false {
                 return .success(
                     TrackMatch(
-                        file: file, reference: continuous, method: .continuousNumbering, titleConfirmed: confirmed))
+                        file: file, reference: byNumber, method: .discAndTrack, titleConfirmed: agreement == true))
+            }
+        }
+        if let continuous, continuous != byNumber {
+            let agreement = titlesAgree(file.title, continuous)
+            // Without a title, continuous numbering is used only where disc and track numbers cannot apply.
+            if agreement == true || (agreement == nil && byNumber == nil) {
+                return .success(
+                    TrackMatch(
+                        file: file, reference: continuous, method: .continuousNumbering,
+                        titleConfirmed: agreement == true))
             }
         }
         if byTitle.count == 1 {

@@ -102,14 +102,17 @@ enum CheckCommand {
         return findings.isEmpty ? 0 : 1
     }
 
-    static func albumKey(_ file: AudioFile) -> String {
-        TitleRules.comparisonKey(file.tags.albumArtist ?? LibraryFiles.text(file.file, .artist) ?? "") + "\u{0}"
-            + TitleRules.comparisonKey(file.tags.album ?? "")
+    static func key(of file: AudioFile) -> String {
+        albumKey(
+            artist: file.tags.albumArtist ?? LibraryFiles.text(file.file, .artist) ?? "", album: file.tags.album ?? "")
     }
 
     static func fileFindings(_ files: [AudioFile], environment: Environment) -> [Finding] {
-        var findings: [Finding] = []
-        for file in files {
+        tagFindings(files) + duplicateFindings(files) + dateFindings(files, environment: environment)
+    }
+
+    static func tagFindings(_ files: [AudioFile]) -> [Finding] {
+        files.compactMap { file in
             var missing: [String] = []
             if file.tags.album == nil { missing.append("album") }
             if file.tags.albumArtist == nil && LibraryFiles.text(file.file, .artist) == nil {
@@ -117,17 +120,18 @@ enum CheckCommand {
             }
             if file.tags.title == nil { missing.append("title") }
             if file.tags.trackNumber == nil { missing.append("track number") }
-            if !missing.isEmpty {
-                findings.append(Finding(path: file.url.path, message: "no \(missing.joined(separator: ", ")) tag"))
-            }
+            return missing.isEmpty
+                ? nil : Finding(path: file.url.path, message: "no \(missing.joined(separator: ", ")) tag")
         }
-        for (_, album) in Dictionary(grouping: files.filter { $0.tags.album != nil }, by: albumKey) {
-            for (_, group) in Dictionary(
-                grouping: album.filter { $0.tags.trackNumber != nil },
-                by: {
-                    "\($0.tags.discNumber ?? 1)-\($0.tags.trackNumber!)"
-                }) where group.count > 1
-            {
+    }
+
+    /// Files of one album that share a disc and track number, or a title.
+    static func duplicateFindings(_ files: [AudioFile]) -> [Finding] {
+        var findings: [Finding] = []
+        for (_, album) in Dictionary(grouping: files.filter { $0.tags.album != nil }, by: key(of:)) {
+            let numbered = album.filter { $0.tags.trackNumber != nil }
+            let byNumber = Dictionary(grouping: numbered) { "\($0.tags.discNumber ?? 1)-\($0.tags.trackNumber!)" }
+            for group in byNumber.values where group.count > 1 {
                 for file in group {
                     findings.append(
                         Finding(
@@ -137,12 +141,9 @@ enum CheckCommand {
                         ))
                 }
             }
-            for (_, group) in Dictionary(
-                grouping: album.filter { $0.tags.title != nil },
-                by: {
-                    TitleRules.comparisonKey($0.tags.title!)
-                }) where group.count > 1
-            {
+            let titled = album.filter { $0.tags.title != nil }
+            let byTitle = Dictionary(grouping: titled) { TitleRules.comparisonKey($0.tags.title!) }
+            for group in byTitle.values where group.count > 1 {
                 for file in group {
                     findings.append(
                         Finding(
@@ -151,46 +152,44 @@ enum CheckCommand {
                 }
             }
         }
-        if let readDates = environment.readDates {
-            for file in files {
-                guard let date = LibraryFiles.text(file.file, .releaseDate).flatMap({ ReleaseDate(tagValue: $0) })
-                else {
-                    findings.append(
-                        Finding(path: file.url.path, message: "no complete release date; file dates cannot be checked"))
-                    continue
-                }
-                let values: (created: Date?, modified: Date?)
-                do { values = try readDates(file.url) } catch {
-                    findings.append(Finding(path: file.url.path, message: "file dates could not be read: \(error)"))
-                    continue
-                }
-                let expected = date.localStart(in: environment.timeZone).date
-                func differs(_ value: Date?) -> Bool { value.map { abs($0.timeIntervalSince(expected)) >= 1 } ?? true }
-                if differs(values.created) || differs(values.modified) {
-                    let formatter = ISO8601DateFormatter()
-                    formatter.timeZone = environment.timeZone
-                    func shown(_ value: Date?) -> String { value.map(formatter.string) ?? "unknown" }
-                    findings.append(
-                        Finding(
-                            path: file.url.path,
-                            message:
-                                "dates (created \(shown(values.created)), modified \(shown(values.modified))) differ from \(date) at local midnight"
-                        ))
-                }
-            }
-        }
         return findings
     }
 
-    /// Compares each file with the library track at its location, and reports library tracks of the same
-    /// albums whose files are missing (decision in AGENTS.md: Music caches metadata independently of files).
+    /// Files whose creation or modification date differs from their release date at local midnight.
+    static func dateFindings(_ files: [AudioFile], environment: Environment) -> [Finding] {
+        guard let readDates = environment.readDates else { return [] }
+        let formatter = ISO8601DateFormatter()
+        formatter.timeZone = environment.timeZone
+        return files.compactMap { file in
+            let path = file.url.path
+            guard let date = LibraryFiles.text(file.file, .releaseDate).flatMap({ ReleaseDate(tagValue: $0) }) else {
+                return Finding(path: path, message: "no complete release date; file dates cannot be checked")
+            }
+            let values: (created: Date?, modified: Date?)
+            do { values = try readDates(file.url) } catch {
+                return Finding(path: path, message: "file dates could not be read: \(error)")
+            }
+            let expected = date.localStart(in: environment.timeZone).date
+            func differs(_ value: Date?) -> Bool { value.map { abs($0.timeIntervalSince(expected)) >= 1 } ?? true }
+            guard differs(values.created) || differs(values.modified) else { return nil }
+            func shown(_ value: Date?) -> String { value.map(formatter.string) ?? "unknown" }
+            return Finding(
+                path: path,
+                message:
+                    "dates (created \(shown(values.created)), modified \(shown(values.modified))) differ from \(date) at local midnight"
+            )
+        }
+    }
+
+    /// Compares each file with the library track at its location, and reports library tracks of the same albums
+    /// whose files are missing. Music caches metadata independently of files, so a track can disagree with its file.
     static func libraryFindings(
         _ files: [AudioFile], tracks: [LibraryTrack], roots: [URL], entireLibrary: Bool
     ) -> [Finding] {
         var findings: [Finding] = []
-        let albums = Set(files.map(albumKey))
-        func standardized(_ path: String) -> String { URL(fileURLWithPath: path).standardizedFileURL.path }
-        let byLocation = Dictionary(grouping: tracks.filter { $0.location != nil }, by: { standardized($0.location!) })
+        let albums = Set(files.map(key(of:)))
+        let byLocation = Dictionary(
+            tracks.compactMap { track in track.standardizedLocation.map { ($0, [track]) } }, uniquingKeysWith: +)
         for file in files {
             let candidates = byLocation[file.url.standardizedFileURL.path] ?? []
             guard !candidates.isEmpty else {
@@ -207,8 +206,7 @@ enum CheckCommand {
             }
         }
         for track in tracks {
-            let artist = track.albumArtist.isEmpty ? track.artist : track.albumArtist
-            let key = TitleRules.comparisonKey(artist) + "\u{0}" + TitleRules.comparisonKey(track.album)
+            let key = albumKey(artist: track.effectiveAlbumArtist, album: track.album)
             let selected =
                 track.location.map { location in
                     roots.contains { isWithin(URL(fileURLWithPath: location), $0) }
@@ -227,7 +225,7 @@ enum CheckCommand {
                 findings.append(Finding(path: path, message: "a library track without a file"))
                 continue
             }
-            switch pathKind(URL(fileURLWithPath: location)) {
+            switch pathKind(location) {
             case .missing:
                 findings.append(Finding(path: location, message: "a library track whose file is missing"))
             case .symbolicLink:

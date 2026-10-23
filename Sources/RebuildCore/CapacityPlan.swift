@@ -52,15 +52,13 @@ public struct CapacityPlan: Equatable, Sendable {
         var refusals: [CapacityRefusal] = []
         var order: [String] = []
         var required: [String: UInt64] = [:]
-        var paths: [String: [String]] = [:]
-        var purposes: [String: [String]] = [:]
+        var contributors: [String: [(label: String, path: String)]] = [:]
 
         func add(volume: String, label: String, path: String, bytes: UInt64) {
             if required[volume] == nil { order.append(volume) }
             let (sum, overflow) = (required[volume] ?? 0).addingReportingOverflow(bytes)
             required[volume] = overflow ? UInt64.max : sum
-            paths[volume, default: []].append(path)
-            purposes[volume, default: []].append(label)
+            contributors[volume, default: []].append((label, path))
         }
 
         var sourceVolumes: [String] = []
@@ -99,16 +97,15 @@ public struct CapacityPlan: Equatable, Sendable {
         var accounting: [VolumeAccounting] = []
         for volume in order {
             let need = required[volume] ?? 0
+            let contributions = contributors[volume] ?? []
             var known: [UInt64] = []
             var unknown = false
-            for path in paths[volume] ?? [] {
+            for (label, path) in contributions {
                 if let bytes = availableBytes(path) {
                     known.append(bytes)
                 } else {
                     unknown = true
-                    refusals.append(
-                        .unknownCapacity(
-                            volume: volume, location: labelFor(path, in: locations)))
+                    refusals.append(.unknownCapacity(volume: volume, location: label))
                 }
             }
             let available = unknown ? nil : known.min()
@@ -117,14 +114,8 @@ public struct CapacityPlan: Equatable, Sendable {
             }
             accounting.append(
                 VolumeAccounting(
-                    volume: volume, required: need, available: available, purposes: purposes[volume] ?? []))
+                    volume: volume, required: need, available: available, purposes: contributions.map(\.label)))
         }
         return CapacityPlan(volumes: accounting, refusals: refusals)
-    }
-
-    private static func labelFor(_ path: String, in locations: RebuildLocations) -> String {
-        if path == locations.restorationDirectory { return "restoration-test directory" }
-        if path == locations.stagingDirectory { return "staging directory" }
-        return "workspace directory"
     }
 }

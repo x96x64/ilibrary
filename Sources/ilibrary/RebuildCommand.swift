@@ -153,7 +153,6 @@ enum RebuildCommand {
         subcommand.flatMap { subcommands[$0]?.usage } ?? syntax.usage
     }
 
-    /// The resolved workspace option of a stage.
     static func workspace(_ parsed: ParsedArguments, _ name: String) throws -> String {
         guard let option = parsed.value("--workspace") else {
             throw CommandError.usage("rebuild \(name): --workspace DIR is required")
@@ -223,7 +222,7 @@ enum RebuildCommand {
     /// The path itself when it exists, and otherwise its nearest existing ancestor.
     static func nearestExisting(_ path: String) -> String {
         var current = path
-        while current != "/", pathKind(URL(fileURLWithPath: current)) == .missing { current = parent(of: current) }
+        while current != "/", pathKind(current) == .missing { current = parent(of: current) }
         return current
     }
 
@@ -270,13 +269,10 @@ enum RebuildCommand {
 enum RebuildStatus {
     static func run(_ arguments: [String], console: Console) throws -> Int32 {
         let parsed = try RebuildCommand.statusSyntax.parse(arguments)
-        guard let workspaceOption = parsed.value("--workspace") else {
-            throw CommandError.usage("rebuild status: --workspace DIR is required")
-        }
-        let workspace = RebuildCommand.resolve(workspaceOption)
+        let workspace = RebuildCommand.resolve(try RebuildCommand.workspace(parsed, "status"))
         let recordPath = workspace + "/" + RecoveryRecord.fileName
         console.print("Workspace: \(workspace)")
-        guard pathKind(URL(fileURLWithPath: recordPath)) != .missing else {
+        guard pathKind(recordPath) != .missing else {
             console.error("there is no recovery record at \(recordPath)")
             throw CommandError.failure("rebuild status: no valid recovery record; nothing was changed")
         }
@@ -304,9 +300,12 @@ enum RebuildStatus {
         console.print(
             "Counts: \(record.inventory.count) files (\(bytes) bytes), \(record.registrations.count) registrations, "
                 + "\(record.additionList.count) albums")
+        func verification(_ summary: VerificationSummary?) -> String {
+            summary.map { $0.success ? "verified \($0.checkedCount) files" : "verification failed" } ?? "not verified"
+        }
         let backup = record.backup
         console.print(
-            "Backup: \(backup.verification.map { $0.success ? "verified \($0.checkedCount) files" : "verification failed" } ?? "not verified")"
+            "Backup: \(verification(backup.verification))"
                 + (backup.verifiedAt.map { " at \($0)" } ?? "")
                 + "; filesystem \(backup.filesystemType ?? "unknown"), timestamp policy \(backup.timestampPolicy.rawValue), "
                 + "volume UUID \(backup.volumeUUID ?? "unknown"); separate device confirmed by the maintainer: "
@@ -315,12 +314,12 @@ enum RebuildStatus {
             "Backup disconnected: \(backup.disconnectedAt.map { "yes, confirmed at \($0)" } ?? "not confirmed")")
         let restoration = record.restoration
         console.print(
-            "Restoration test: \(restoration.verification.map { $0.success ? "verified \($0.checkedCount) files" : "verification failed" } ?? "not verified")"
+            "Restoration test: \(verification(restoration.verification))"
                 + (restoration.verifiedAt.map { " at \($0)" } ?? "") + "; directory \(restoration.directory) (kept)")
         console.print("Record stage: \(record.stage.rawValue)")
         let journalPath = workspace + "/" + ProgressJournal.fileName
         var progress: RebuildProgress?
-        if pathKind(URL(fileURLWithPath: journalPath)) != .missing {
+        if pathKind(journalPath) != .missing {
             do {
                 let recordBytes = try ProgressJournalFile.loadRecord(from: URL(fileURLWithPath: workspace)).bytes
                 progress = try ProgressJournalFile.read(

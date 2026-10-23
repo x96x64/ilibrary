@@ -41,7 +41,7 @@ func replacing(_ old: String, _ new: String) -> String {
 }
 
 @Suite struct ValidationTests {
-    @Test func theExampleOfThePlanningStudyIsValid() throws {
+    @Test func theExampleCatalogIsValid() throws {
         let result = validate(exampleCatalog)
         #expect(result.diagnostics.isEmpty)
         let catalog = try #require(result.catalog)

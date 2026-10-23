@@ -1,5 +1,5 @@
 // The Automation permission for Music, read without prompting and without launching Music. Built only on
-// macOS. With Music not running, macOS cannot report the permission (architecture spike, S3: procNotFound).
+// macOS. With Music not running, macOS cannot report the permission and returns procNotFound.
 #if os(macOS)
     import AppKit
     import CoreServices

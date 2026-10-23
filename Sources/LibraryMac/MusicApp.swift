@@ -1,9 +1,9 @@
 // The Music app through Apple Events. Built only on macOS; on other platforms it is empty.
 //
-// The forms used here follow the live measurements of Music 1.7 in a separate macOS user (Music Behavior
-// report): the media-folder preference, `add` of a file list, the track description handler, and lookup by
-// album and by persistent ID. Reading the composer, genre, year, and track and disc numbers was not part of
-// those measurements. Track properties are never set, because Music then moves and renames files.
+// The script forms were measured with Music 1.7 on macOS 27: the media-folder preference, `add` of a file
+// list, the track description handler, and lookup by album and by persistent ID. Reading the composer, genre,
+// year, and track and disc numbers is unmeasured. Track properties are never set, because Music then moves
+// and renames files.
 #if os(macOS)
     import Foundation
 

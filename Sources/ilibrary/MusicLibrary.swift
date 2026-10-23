@@ -25,6 +25,13 @@ struct LibraryTrack: Equatable, Sendable {
     var cloudStatus: String = "unknown"
 }
 
+extension LibraryTrack {
+    /// The album artist, or the artist when the track has none.
+    var effectiveAlbumArtist: String { albumArtist.isEmpty ? artist : albumArtist }
+
+    var standardizedLocation: String? { location.map { URL(fileURLWithPath: $0).standardizedFileURL.path } }
+}
+
 /// The whole library as one read for a rebuild: the file tracks, the counts that reveal tracks that are not
 /// file tracks, and the date added of each file track in whole seconds since 1970-01-01T00:00:00Z.
 struct LibrarySnapshot: Equatable, Sendable {
@@ -35,7 +42,7 @@ struct LibrarySnapshot: Equatable, Sendable {
 }
 
 /// The operations on a Music library that iLibrary uses. Track properties are never set, because Music then
-/// moves and renames files (Music Behavior report, M7 and M8).
+/// moves and renames files.
 protocol MusicLibrary: Sendable {
     /// The media folder named by Music's preferences, or nil.
     func mediaFolder() -> URL?
@@ -43,7 +50,7 @@ protocol MusicLibrary: Sendable {
     func tracks(album: String) throws -> [LibraryTrack]
     /// All file tracks, for a location-based comparison even when cached album tags differ. The system
     /// implementation reads in bulk with a per-track fallback and is designed to return the tracks of the per-track
-    /// reader; their live equivalence was measured only for 12 synthetic tracks in the M11 qualification.
+    /// reader; the live equivalence of the two readers was measured only for 12 synthetic tracks.
     func allTracks() throws -> [LibraryTrack]
     /// Every file track, both track counts, and the dates added, read with a fixed number of requests. Reads only.
     func librarySnapshot() throws -> LibrarySnapshot

@@ -20,6 +20,8 @@ func pathKind(_ url: URL) -> PathKind {
     }
 }
 
+func pathKind(_ path: String) -> PathKind { pathKind(URL(fileURLWithPath: path)) }
+
 /// An M4A file and the tags that matching uses.
 struct AudioFile {
     var url: URL
@@ -128,6 +130,16 @@ func describe(_ values: [MetadataValue]) -> String {
         case .other(let type, let data): "type \(type), \(data.count) bytes"
         }
     }.joined(separator: ", ")
+}
+
+/// A key under which the albums of one artist are recognized across spellings.
+func albumKey(artist: String, album: String) -> String {
+    TitleRules.comparisonKey(artist) + "\u{0}" + TitleRules.comparisonKey(album)
+}
+
+/// The given paths that are directories, standardized; other paths are left out.
+func directoryRoots(_ paths: [String]) -> [URL] {
+    paths.map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }.filter { pathKind($0) == .directory }
 }
 
 /// Whether `url` lies inside `root` or is `root` itself.

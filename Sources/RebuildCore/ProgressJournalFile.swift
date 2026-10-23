@@ -116,11 +116,7 @@ public enum ProgressJournalFile {
     /// record, because the journal header binds the bytes.
     public static func loadRecord(from directory: URL) throws -> (record: RecoveryRecord, bytes: Data) {
         let path = directory.appendingPathComponent(RecoveryRecord.fileName).path
-        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
-        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
-        defer { close(descriptor) }
-        try requireRegular(descriptor, path: path)
-        let bytes = try Operations.system.readAll(descriptor)
+        let bytes = try readRegularFile(atPath: path)
         do {
             return (try RecoveryRecord.parse(bytes), bytes)
         } catch {
@@ -187,10 +183,8 @@ public enum ProgressJournalFile {
             guard try operations.readAll(reader) == line else {
                 throw ProgressJournalError.creationUncertain("the journal read back differently from the header")
             }
-        } catch let error as ProgressJournalError {
-            if case .creationUncertain = error { throw error }
-            throw ProgressJournalError.creationUncertain("\(error)")
         } catch {
+            if case ProgressJournalError.creationUncertain = error { throw error }
             throw ProgressJournalError.creationUncertain("\(error)")
         }
         return JournalHead(sequence: 0, checksum: entry.checksum)
@@ -203,24 +197,14 @@ public enum ProgressJournalFile {
     public static func read(in directory: URL, record: RecoveryRecord, recordBytes: Data) throws
         -> (entries: [JournalEntry], progress: RebuildProgress)
     {
-        let path = directory.appendingPathComponent(ProgressJournal.fileName).path
-        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
-        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
-        defer { close(descriptor) }
-        try requireRegular(descriptor, path: path)
-        let data = try Operations.system.readAll(descriptor)
+        let data = try readRegularFile(atPath: directory.appendingPathComponent(ProgressJournal.fileName).path)
         return try ProgressJournal.load(data: data, record: record, recordBytes: recordBytes)
     }
 
     /// Reads, parses, and replays the whole journal once, like `read`, and returns the progress with the byte count
     /// of the file, for the incremental `append(_:to:state:...)`.
     public static func readState(in directory: URL, record: RecoveryRecord, recordBytes: Data) throws -> JournalState {
-        let path = directory.appendingPathComponent(ProgressJournal.fileName).path
-        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
-        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
-        defer { close(descriptor) }
-        try requireRegular(descriptor, path: path)
-        let data = try Operations.system.readAll(descriptor)
+        let data = try readRegularFile(atPath: directory.appendingPathComponent(ProgressJournal.fileName).path)
         let loaded = try ProgressJournal.loadIndexed(data: data, record: record, recordBytes: recordBytes)
         return JournalState(progress: loaded.progress, byteCount: data.count, index: loaded.index)
     }
@@ -244,18 +228,8 @@ public enum ProgressJournalFile {
         recordedAt: Date = Date(), operations: Operations = .system
     ) throws -> JournalHead {
         let path = directory.appendingPathComponent(ProgressJournal.fileName).path
-        if let status = try? FileStatus.read(atPath: path), status.kind != .regular {
-            throw ProgressJournalError.notARegularFile(path: path)
-        }
-        let descriptor = open(path, O_RDWR | O_APPEND | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
-        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
+        let descriptor = try openLocked(atPath: path)
         defer { close(descriptor) }
-        try requireRegular(descriptor, path: path, strict: true)
-        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
-            // EWOULDBLOCK equals EAGAIN on Darwin and Linux; EAGAIN alone avoids depending on the alias.
-            if errno == EAGAIN { throw ProgressJournalError.locked(path: path) }
-            throw ProgressJournalError.unreadable(path: path, reason: "flock: errno \(errno)")
-        }
 
         let before = try operations.readAll(descriptor)
         let (_, progress, index) = try ProgressJournal.loadIndexed(
@@ -279,10 +253,8 @@ public enum ProgressJournalFile {
                 throw ProgressJournalError.appendUncertain(
                     "the journal after the append differs from the expected bytes")
             }
-        } catch let error as ProgressJournalError {
-            if case .appendUncertain = error { throw error }
-            throw ProgressJournalError.appendUncertain("\(error)")
         } catch {
+            if case ProgressJournalError.appendUncertain = error { throw error }
             throw ProgressJournalError.appendUncertain("\(error)")
         }
         return JournalHead(sequence: entry.sequence, checksum: entry.checksum)
@@ -311,18 +283,8 @@ public enum ProgressJournalFile {
     ) throws -> JournalState {
         guard state.index.recordChecksum == record.checksum else { throw ProgressJournalError.recordMismatch }
         let path = directory.appendingPathComponent(ProgressJournal.fileName).path
-        if let status = try? FileStatus.read(atPath: path), status.kind != .regular {
-            throw ProgressJournalError.notARegularFile(path: path)
-        }
-        let descriptor = open(path, O_RDWR | O_APPEND | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
-        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
+        let descriptor = try openLocked(atPath: path)
         defer { close(descriptor) }
-        try requireRegular(descriptor, path: path, strict: true)
-        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
-            // EWOULDBLOCK equals EAGAIN on Darwin and Linux; EAGAIN alone avoids depending on the alias.
-            if errno == EAGAIN { throw ProgressJournalError.locked(path: path) }
-            throw ProgressJournalError.unreadable(path: path, reason: "flock: errno \(errno)")
-        }
 
         let head = state.progress.head
         let size = try fileSize(descriptor, path: path)
@@ -349,10 +311,8 @@ public enum ProgressJournalFile {
                 throw ProgressJournalError.appendUncertain(
                     "the journal after the append differs from the expected bytes")
             }
-        } catch let error as ProgressJournalError {
-            if case .appendUncertain = error { throw error }
-            throw ProgressJournalError.appendUncertain("\(error)")
         } catch {
+            if case ProgressJournalError.appendUncertain = error { throw error }
             throw ProgressJournalError.appendUncertain("\(error)")
         }
         var progress = state.progress
@@ -360,10 +320,41 @@ public enum ProgressJournalFile {
         return JournalState(progress: progress, byteCount: expectedSize, index: state.index)
     }
 
-    // MARK: Descriptor checks
+    // MARK: Descriptors
 
     /// The head reported when the final line of the journal cannot be read or parsed.
     private static let unreadableHead = JournalHead(sequence: -1, checksum: "")
+
+    /// Opens the regular file at `path` without following a symbolic link and returns its bytes.
+    private static func readRegularFile(atPath path: String) throws -> Data {
+        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
+        defer { close(descriptor) }
+        try requireRegular(descriptor, path: path)
+        return try Operations.system.readAll(descriptor)
+    }
+
+    /// Opens the journal for appending without following a symbolic link, requires a safe regular file, and takes
+    /// the exclusive non-blocking advisory lock. Closing the returned descriptor releases the lock.
+    private static func openLocked(atPath path: String) throws -> Int32 {
+        if let status = try? FileStatus.read(atPath: path), status.kind != .regular {
+            throw ProgressJournalError.notARegularFile(path: path)
+        }
+        let descriptor = open(path, O_RDWR | O_APPEND | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
+        do {
+            try requireRegular(descriptor, path: path, strict: true)
+            guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
+                // EWOULDBLOCK equals EAGAIN on Darwin and Linux; EAGAIN alone avoids depending on the alias.
+                if errno == EAGAIN { throw ProgressJournalError.locked(path: path) }
+                throw ProgressJournalError.unreadable(path: path, reason: "flock: errno \(errno)")
+            }
+        } catch {
+            close(descriptor)
+            throw error
+        }
+        return descriptor
+    }
 
     private static func fileSize(_ descriptor: Int32, path: String) throws -> Int {
         var buffer = stat()

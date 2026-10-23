@@ -8,7 +8,7 @@ public enum MP4Error: Error, Equatable, Sendable, CustomStringConvertible {
     case trailingBytes(container: String, offset: Int)
     case chunkOffsetOutsideFile(UInt64)
     case chunkOffsetInRewrittenBox(offset: UInt64, box: String)
-    /// Version 0.1.0 refuses rather than converts to `co64` (decision 5).
+    /// A 32-bit offset table is never widened to `co64`; the rewrite refuses instead.
     case chunkOffsetsExceed32Bits
     case encrypted(sampleEntry: String)
     case protectedFile(path: String)

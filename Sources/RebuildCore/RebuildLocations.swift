@@ -123,25 +123,18 @@ public struct RebuildLocations: Codable, Equatable, Sendable {
                 let first = valid[i]
                 let second = valid[j]
                 let relation = PathKey.relation(first.path, second.path)
-                if relation == .disjoint { continue }
                 let text: String
                 switch relation {
+                case .disjoint: continue
                 case .equal: text = "are equal after normalization and case folding"
                 case .firstInsideSecond: text = "overlap: the first lies inside the second"
                 case .firstContainsSecond: text = "overlap: the first contains the second"
-                case .disjoint: continue
                 }
-                if isSource(first.label) && isSource(second.label) {
-                    refusals.append(.overlap(first: describe(first), second: describe(second), relationship: text))
-                } else if isSource(first.label) && second.label == "media folder" {
-                    // Sources equal to or inside the media folder are expected.
-                    if relation == .firstContainsSecond {
-                        refusals.append(
-                            .overlap(first: describe(first), second: describe(second), relationship: text))
-                    }
-                } else {
-                    refusals.append(.overlap(first: describe(first), second: describe(second), relationship: text))
+                // A source equal to or inside the media folder holds the library's own files.
+                if isSource(first.label) && second.label == "media folder" && relation != .firstContainsSecond {
+                    continue
                 }
+                refusals.append(.overlap(first: describe(first), second: describe(second), relationship: text))
             }
         }
         return refusals

@@ -88,6 +88,14 @@ struct ImportTags: Equatable {
         picturesDropped = metadata.pictures.count - (pictureCarried ? 1 : 0)
     }
 
+    /// The size in bytes of the front cover that conversion adds to the output.
+    var coverSize: Int64 {
+        items.filter { $0.key == .artwork }.flatMap(\.values).reduce(0) { total, value in
+            if case .image(let data, _) = value { return total + Int64(data.count) }
+            return total
+        }
+    }
+
     var summary: String {
         var parts = ["\(items.filter { $0.key != .artwork }.count) tags carried"]
         if pictureCarried { parts.append("front cover carried") }

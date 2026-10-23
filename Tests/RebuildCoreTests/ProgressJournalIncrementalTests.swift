@@ -122,9 +122,9 @@ import Testing
         #expect(state == (try readState(workspace)))
         #expect(state.progress.stopCount == 200)
         #expect(state.byteCount == workspace.data.count)
-        let legacy = try ProgressJournalFile.read(
+        let whole = try ProgressJournalFile.read(
             in: workspace.url, record: workspace.record, recordBytes: workspace.bytes)
-        #expect(legacy.progress == state.progress)
+        #expect(whole.progress == state.progress)
         var buffer = stat()
         #expect(stat(workspace.journalPath, &buffer) == 0 && buffer.st_mode & 0o777 == 0o600)
     }
@@ -158,13 +158,13 @@ import Testing
             failure { try append(.stopped(reason: "late"), workspace, stale) }
                 == .concurrentModification(expected: stale.progress.head, found: newer.progress.head))
         #expect(workspace.data == bytes)
-        // The writer using the legacy interface is detected in the same way.
-        let legacy = try workspace.append(.stopped(reason: "legacy"), head: newer.progress.head)
-        let legacyBytes = workspace.data
+        // A writer that appends by expected head is detected in the same way.
+        let byHead = try workspace.append(.stopped(reason: "by head"), head: newer.progress.head)
+        let byHeadBytes = workspace.data
         #expect(
             failure { try append(.stopped(reason: "late"), workspace, newer) }
-                == .concurrentModification(expected: newer.progress.head, found: legacy))
-        #expect(workspace.data == legacyBytes)
+                == .concurrentModification(expected: newer.progress.head, found: byHead))
+        #expect(workspace.data == byHeadBytes)
         // A refreshed state is accepted.
         let refreshed = try readState(workspace)
         let accepted = try append(.stopped(reason: "again"), workspace, refreshed)

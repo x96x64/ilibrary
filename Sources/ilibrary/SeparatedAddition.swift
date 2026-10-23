@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Music exposes the date added in whole seconds and orders Recently Added by it; the order of albums that share a
 /// second is unknown. When each album was added only after the previous one had been confirmed and the clock had
-/// passed its latest second, every measured case showed the intended order (Measured Music Behavior).
+/// passed its latest second, every measured case showed the intended order.
 struct SeparatedAddition {
     /// The latest addition second of the previous album, or nil before the first.
     private(set) var latest: Int?
@@ -21,7 +21,7 @@ struct SeparatedAddition {
         latest = (try? music.datesAdded(persistentIDs))?.values.max()
     }
 
-    /// Waits until the next album can be added.
+    /// Waits until the clock is the margin past the end of the previous album's latest second.
     func waitForNext(environment: Environment) {
         guard let latest else { return }
         let ready = TimeInterval(latest) + 1 + SeparatedAddition.margin

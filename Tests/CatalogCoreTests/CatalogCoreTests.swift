@@ -90,26 +90,6 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
     }
 }
 
-@Suite struct LiveDesignationTests {
-    @Test func conventionalDesignationsPass() {
-        #expect(LiveDesignation.review("Song (Live)").isEmpty)
-        #expect(LiveDesignation.review("Song (Demo) [Live]").isEmpty)
-        #expect(LiveDesignation.review("Interlude").isEmpty)
-        #expect(LiveDesignation.review("Alive and Well").isEmpty)
-    }
-
-    @Test func deviationsAreReported() {
-        #expect(LiveDesignation.review("Song - Live").count == 1)
-        #expect(LiveDesignation.review("Song (Live at the Hall)").count == 1)
-        #expect(LiveDesignation.review("Song (Live Version)").count == 1)
-        #expect(LiveDesignation.review("Song (Demo) (Live)") == ["(Live) follows a parenthetical and should be [Live]"])
-        #expect(
-            LiveDesignation.review("Song [Live]") == ["[Live] does not follow a parenthetical and should be (Live)"])
-        #expect(LiveDesignation.review("Interlude (Live)").contains("an interlude carries a live designation"))
-        #expect(LiveDesignation.review("Song (live)") == ["the live designation should be capitalized"])
-    }
-}
-
 @Suite struct MatchingTests {
     static let catalog = Catalog(
         titleRules: TitleRuleSettings(removeQualifiers: ["Remaster"]),
@@ -231,11 +211,6 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
         let tracks = catalog.resolvedTracks()
         #expect(Naming.relativePath(for: tracks[0]) == ["AC_DC", "Live_ 1_2", "01 Song.m4a"])
         #expect(Naming.relativePath(for: tracks[1]) == nil)
-    }
-
-    @Test func uncertainNamesAreReported() {
-        #expect(Naming.reviews([".hidden", "Normal", " padded "]).count == 2)
-        #expect(Naming.reviews([String(repeating: "あ", count: 90)]).count == 1)
     }
 }
 

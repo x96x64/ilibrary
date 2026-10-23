@@ -96,10 +96,9 @@ public struct RegistrationClassificationError: Error, Equatable, Sendable {
 }
 
 public enum RegistrationClassification {
-    /// The cloud status texts admitted by default: the empty string and "unknown" only.
-    ///
-    /// The values that Music reports for local-only files while iCloud Music Library is off are unmeasured. The
-    /// qualification records the observed values. Any other value is refused until evidence justifies admitting it.
+    /// The cloud status texts admitted by default: the empty string and "unknown" only. The values that Music
+    /// reports for local-only files while iCloud Music Library is off have not been measured; any other value is
+    /// refused until evidence justifies admitting it.
     public static let defaultAllowedCloudStatuses: Set<String> = ["", "unknown"]
 
     /// Classifies the library registrations against the inventory and returns the one-to-one mapping between the
@@ -158,15 +157,13 @@ public enum RegistrationClassification {
         for entry in inventory {
             let key = PathKey.key(entry.absolutePath)
             inventoryKeys.insert(key)
-            switch byKey[key]?.count ?? 0 {
-            case 0: refusals.append(.unregisteredFile(path: entry.absolutePath))
-            case 1:
-                if let registration = byKey[key]?.first {
-                    mapping.append(
-                        RegistrationMapping(location: entry.absolutePath, persistentID: registration.persistentID))
-                }
-            default: break  // Reported as a duplicate location.
+            let group = byKey[key] ?? []
+            if group.isEmpty {
+                refusals.append(.unregisteredFile(path: entry.absolutePath))
+            } else if group.count == 1 {
+                mapping.append(RegistrationMapping(location: entry.absolutePath, persistentID: group[0].persistentID))
             }
+            // A larger group was reported as a duplicate location.
         }
         for key in keyOrder where !inventoryKeys.contains(key) {
             for registration in byKey[key] ?? [] {

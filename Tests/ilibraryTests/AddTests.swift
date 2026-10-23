@@ -4,9 +4,9 @@ import Testing
 
 @testable import ilibrary
 
-/// A substitute Music library that behaves as Music 1.7 was measured to behave (Music Behavior report):
-/// files inside the media folder are added in place, a file already in the library is returned as its existing
-/// track, and files outside the media folder are copied into it.
+/// A substitute Music library that behaves as Music 1.7 was measured to behave: files inside the media folder are
+/// added in place, a file already in the library is returned as its existing track, and files outside the media
+/// folder are copied into it.
 final class FakeMusic: MusicLibrary, @unchecked Sendable {
     let media: URL?
     var library: [LibraryTrack] = []

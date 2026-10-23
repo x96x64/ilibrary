@@ -4,18 +4,18 @@ import Foundation
 let version = "0.3.0"
 
 enum CommandLineInterface {
-    static let commands: [(name: String, summary: String, implemented: Bool)] = [
-        ("export", "write a catalog from the tags of existing files", true),
-        ("prompt", "write instructions for completing a catalog with an AI agent or chat", true),
-        ("schema", "print the JSON Schema of the catalog format", true),
-        ("validate", "check a catalog and, optionally, its correspondence with files", true),
-        ("apply", "apply a catalog to files, optionally renaming them and setting their dates", true),
-        ("timestamps", "set file and folder dates to release dates", true),
-        ("import", "convert or copy downloads into a staging folder without loss", true),
-        ("add", "add albums to Music one at a time, in order", true),
-        ("rebuild", "prepare and verify the rebuilding of a library (prepare and status only)", true),
-        ("check", "report problems of files and compare them with the library", true),
-        ("doctor", "report the environment and how to fix its problems", true),
+    static let commands: [(name: String, summary: String)] = [
+        ("export", "write a catalog from the tags of existing files"),
+        ("prompt", "write instructions for completing a catalog with an AI agent or chat"),
+        ("schema", "print the JSON Schema of the catalog format"),
+        ("validate", "check a catalog and, optionally, its correspondence with files"),
+        ("apply", "apply a catalog to files, optionally renaming them and setting their dates"),
+        ("timestamps", "set file and folder dates to release dates"),
+        ("import", "convert or copy downloads into a staging folder without loss"),
+        ("add", "add albums to Music one at a time, in order"),
+        ("rebuild", "prepare and verify the rebuilding of a library (prepare and status only)"),
+        ("check", "report problems of files and compare them with the library"),
+        ("doctor", "report the environment and how to fix its problems"),
     ]
 
     static var overview: String {
@@ -74,10 +74,11 @@ enum CommandLineInterface {
             guard let syntax = syntaxes[topic] else { throw CommandError.usage("no help for \(topic)") }
             console.print(topic == "rebuild" ? RebuildCommand.usage(for: rest.dropFirst().first) : syntax.usage)
             return 0
+        case "rebuild":
+            return try RebuildCommand.run(rest, console: console, environment: environment)
         default:
             break
         }
-        if command == "rebuild" { return try RebuildCommand.run(rest, console: console, environment: environment) }
         if rest.contains("--help") || rest.contains("-h"), let syntax = syntaxes[command] {
             console.print(syntax.usage)
             return 0
@@ -94,49 +95,7 @@ enum CommandLineInterface {
         case "check": return try CheckCommand.run(rest, console: console, environment: environment)
         case "doctor": return try DoctorCommand.run(rest, console: console, environment: environment)
         default:
-            if commands.contains(where: { $0.name == command }) {
-                throw CommandError.usage("\(command) is planned and not implemented in version \(version)")
-            }
             throw CommandError.usage("unknown command \(command)\n\n\(overview)")
         }
-    }
-}
-
-/// Loads and validates a catalog, printing its diagnostics. Errors end the command.
-func loadCatalog(_ path: String, console: Console) throws -> (catalog: Catalog, directory: URL) {
-    let url = URL(fileURLWithPath: path).standardizedFileURL
-    guard pathKind(url) == .file else {
-        throw CommandError.failure(
-            pathKind(url) == .symbolicLink ? "\(path) is a symbolic link" : "\(path) is not a file")
-    }
-    let data: Data
-    do {
-        data = try Data(contentsOf: url)
-    } catch {
-        throw CommandError.failure("\(path) cannot be read: \(error.localizedDescription)")
-    }
-    let result = Catalog.validate(data)
-    for diagnostic in result.diagnostics {
-        if diagnostic.severity == .error {
-            console.error("\(path): \(diagnostic.path.isEmpty ? "catalog" : diagnostic.path): \(diagnostic.message)")
-        } else {
-            console.warning("\(path): \(diagnostic.path.isEmpty ? "catalog" : diagnostic.path): \(diagnostic.message)")
-        }
-    }
-    guard let catalog = result.catalog else {
-        throw CommandError.failure("\(path) is not a valid catalog (\(result.errors.count) errors)")
-    }
-    return (catalog, url.deletingLastPathComponent())
-}
-
-enum SchemaCommand {
-    static let syntax = CommandSyntax(
-        name: "schema", usage: "Usage: ilibrary schema\n\nPrints the JSON Schema of the ilibrary-catalog-1 format.",
-        positionals: 0...0)
-
-    static func run(_ arguments: [String], console: Console) throws -> Int32 {
-        _ = try syntax.parse(arguments)
-        console.print(Catalog.jsonSchema)
-        return 0
     }
 }

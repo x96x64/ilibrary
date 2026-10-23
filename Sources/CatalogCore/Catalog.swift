@@ -159,8 +159,6 @@ public struct ResolvedTrack: Equatable, Sendable {
 }
 
 extension Catalog {
-    func album(at reference: TrackReference) -> Album { albums[reference.album] }
-
     public func track(_ reference: TrackReference) -> Track {
         albums[reference.album].discs[reference.disc - 1].tracks[reference.track - 1]
     }

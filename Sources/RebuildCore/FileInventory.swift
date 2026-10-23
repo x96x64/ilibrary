@@ -93,7 +93,7 @@ public struct FileInventory: Equatable, Sendable {
         try FileInventory.checkRoot(root)
         let wanted = FileInventory.normalizedExtensions(extensions)
         var found: [String] = []
-        if let problem = try FileInventory.walk(root: root.path, prefix: "", extensions: wanted, into: &found) {
+        if let problem = FileInventory.walk(root: root.path, prefix: "", extensions: wanted, into: &found) {
             throw problem
         }
         self = try FileInventory.build(root: root, relativePaths: found, afterHash: nil)
@@ -198,7 +198,7 @@ public struct FileInventory: Equatable, Sendable {
     /// Lists matching entries recursively. Returns a refusal for a symbolic link or a matching non-regular entry.
     private static func walk(
         root: String, prefix: String, extensions: Set<String>, into found: inout [String]
-    ) throws -> FileInventoryError? {
+    ) -> FileInventoryError? {
         let directory = prefix.isEmpty ? root : root + "/" + prefix
         let names: [String]
         do {
@@ -217,7 +217,7 @@ public struct FileInventory: Equatable, Sendable {
             switch status.kind {
             case .symbolicLink: return .symbolicLink(path: relative)
             case .directory:
-                if let problem = try walk(root: root, prefix: relative, extensions: extensions, into: &found) {
+                if let problem = walk(root: root, prefix: relative, extensions: extensions, into: &found) {
                     return problem
                 }
             case .regular:
@@ -395,19 +395,11 @@ public struct FileInventory: Equatable, Sendable {
         for name in names where !name.hasPrefix(".") {
             let relative = normalize(prefix.isEmpty ? name : prefix + "/" + name)
             guard let status = try? FileStatus.read(atPath: root + "/" + relative) else { continue }
-            let matches = hasExtension(name, in: ["m4a"])
-            switch status.kind {
-            case .directory: collectExtras(root: root, prefix: relative, known: known, issues: &issues)
-            case .symbolicLink:
-                if matches && !known.contains(relative) {
-                    issues.append(
-                        VerificationMismatch(path: relative, kind: .extraFile, detail: "unexpected symbolic link"))
-                }
-            default:
-                if matches && !known.contains(relative) {
-                    issues.append(
-                        VerificationMismatch(path: relative, kind: .extraFile, detail: "not in the expected set"))
-                }
+            if status.kind == .directory {
+                collectExtras(root: root, prefix: relative, known: known, issues: &issues)
+            } else if hasExtension(name, in: ["m4a"]) && !known.contains(relative) {
+                let detail = status.kind == .symbolicLink ? "unexpected symbolic link" : "not in the expected set"
+                issues.append(VerificationMismatch(path: relative, kind: .extraFile, detail: detail))
             }
         }
     }

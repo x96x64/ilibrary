@@ -137,7 +137,7 @@ extension MP4File {
             relocatedChunkOffsets: relocated, absorbedIntoPadding: absorbed)
     }
 
-    /// Maps one chunk offset. A 32-bit table is never widened to `co64` in this version (decision 5).
+    /// Maps one chunk offset. A 32-bit table is never widened to `co64`; an offset beyond 32 bits is an error.
     static func relocated(_ offset: UInt64, width: Int, through map: LayoutMap) throws -> UInt64 {
         let moved = try map.map(offset)
         if width == 4 && moved > UInt64(UInt32.max) { throw MP4Error.chunkOffsetsExceed32Bits }

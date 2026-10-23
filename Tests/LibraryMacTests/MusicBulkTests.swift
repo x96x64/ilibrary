@@ -3,7 +3,7 @@
     import Testing
     @testable import LibraryMac
 
-    /// These tests send no Apple Event. Live equivalence with the per-track reader is not measured here.
+    /// These tests send no Apple Event; they check parsing and selection logic, not the behavior of Music.
     @Suite struct MusicBulkTests {
         typealias Fields = [String]
 

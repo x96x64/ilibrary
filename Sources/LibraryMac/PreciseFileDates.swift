@@ -1,5 +1,5 @@
-// Nanosecond modification and creation times on macOS, for the M11 backup restoration. The target is built only
-// on macOS; on other platforms it is empty.
+// Nanosecond modification and creation times on macOS, for restoring backed-up files. Built only on macOS; on
+// other platforms it is empty.
 #if os(macOS)
     import Darwin
     import Foundation
