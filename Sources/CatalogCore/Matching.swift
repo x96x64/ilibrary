@@ -120,7 +120,7 @@ public struct CatalogMatcher: Sendable {
         }
         // An album with as many differing titles as agreeing ones is refused as a whole: its numbering,
         // or the release that the catalog describes, may differ from the files.
-        for album in Set(report.matches.map(\.reference.album)) {
+        for album in Set(report.matches.map(\.reference.album)).sorted() {
             let matches = report.matches.filter { $0.reference.album == album }
             // Only titles that agree support the numbering; files without a title tag support nothing.
             let differing = matches.filter(\.titleDiffers).count
