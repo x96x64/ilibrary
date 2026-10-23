@@ -12,12 +12,12 @@ The document holds `albums` and, optionally, `titleRules` and `artists`. Each al
   "titleRules": { "case": "keep", "removeQualifiers": ["Remaster"], "bracketNested": true },
   "albums": [
     {
-      "album": "Bad",
-      "aliases": ["Bad (Remastered)"],
-      "albumArtist": "Michael Jackson",
-      "copyright": "℗ 1987 MJJ Productions, Inc.",
-      "releaseDate": "1987-08-31",
-      "discs": [{ "tracks": [{ "title": "Bad", "composer": "Michael Jackson" }] }]
+      "album": "Album A",
+      "aliases": ["Album A (Remastered)"],
+      "albumArtist": "Artist A",
+      "copyright": "℗ 2009 Label A",
+      "releaseDate": "2009-06-25",
+      "discs": [{ "tracks": [{ "title": "Song A", "composer": "Composer A" }] }]
     }
   ]
 }
@@ -52,7 +52,7 @@ Validation reports unknown fields, wrong types, missing titles, invalid dates, a
 
 A file is matched to an album by its album tag, compared with the album name and its aliases, and to a track by its disc and track numbers, by numbering that continues across discs, and by title. Every match and every refusal is reported, and `apply` changes nothing while any selected file is unmatched.
 
-A file whose title differs from the catalog at its disc and track numbers is matched there, so that the catalog corrects the title, only when no other track carries the file's title and more of the album's files have agreeing titles than differing ones; files without a title tag do not count. Otherwise the file is reported as unmatched. Names follow the Music app: `NN Title.m4a` on single-disc albums and `D-NN Title.m4a` on multi-disc albums, with `_` in place of `:` and `/`, inside `Album Artist/Album/`.
+A file whose title differs from the catalog at its disc and track numbers is matched there, so that the catalog corrects the title, only when no other track carries the file's title and more of the album's files have agreeing titles than differing ones; files without a title tag do not count. Otherwise the file is reported as unmatched. Names follow the Music app: `NN Song.m4a` on single-disc albums and `D-NN Song.m4a` on multi-disc albums, with `_` in place of `:` and `/`, inside `Album Artist/Album/`.
 
 ## Authoring a Catalog
 

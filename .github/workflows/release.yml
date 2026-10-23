@@ -14,10 +14,15 @@ on:
         description: SHA-256 of the release's SHA256SUMS file (not used by release)
         required: false
       publish:
-        description: release builds and creates the GitHub release; the others verify it or publish its packages
+        description: >-
+          release builds and creates the GitHub release; describe replaces its description; the others verify it or
+          publish its packages
         type: choice
-        options: [verify, release, npm, pypi, both]
+        options: [verify, release, describe, npm, pypi, both]
         default: verify
+      notes:
+        description: The new description of an existing release, in the common layout (describe only)
+        required: false
 
 permissions:
   contents: read
@@ -65,6 +70,31 @@ jobs:
             --title "iLibrary: $TAG, Catalog-Driven Music Libraries for Apple Music on macOS" artifacts/release/*
           echo "SHA256SUMS digest: $(shasum -a 256 artifacts/release/SHA256SUMS | cut -d ' ' -f 1)" \
             >> "$GITHUB_STEP_SUMMARY"
+
+  describe:
+    if: inputs.publish == 'describe' && github.repository == 'x96x64/ilibrary' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Check and replace the description of the published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          python3 packaging/check_release.py "$TAG" "$COMMIT"
+          printf '%s\n' "$NOTES" > notes.md
+          python3 packaging/release_notes.py --check "${TAG#v}" notes.md
+          gh release edit "$TAG" --notes-file notes.md
+          gh release view "$TAG" --json body --jq .body > published.md
+          python3 packaging/release_notes.py --check "${TAG#v}" published.md
 
   verify:
     if: >-

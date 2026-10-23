@@ -28,8 +28,8 @@ let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) + Data(count: 1
             comments: [
                 "TITLE=Synthetic Song", "ARTIST=Example Artist", "ARTIST=Guest Artist", "ALBUM ARTIST=Example Artist",
                 "ALBUM=Synthetic Album", "GENRE=Pop", "COMPOSER=Example Writer",
-                "COPYRIGHT=℗ 1980 Example Records, Inc.",
-                "DATE=1980-06-01", "TRACKNUMBER=3", "TRACKTOTAL=9", "DISCNUMBER=1/2", "COMMENT=remove me",
+                "COPYRIGHT=℗ 2009 Example Records, Inc.",
+                "DATE=2009-06-25", "TRACKNUMBER=3", "TRACKTOTAL=9", "DISCNUMBER=1/2", "COMMENT=remove me",
                 "ORGANIZATION=Example Records", "X-SYNTHETIC-IDENTIFIER=00000000", "ANOTHER_UNKNOWN=value",
             ], pictures: [(3, "image/png", png), (4, "image/png", png)])
         let tags = ImportTags(metadata)
@@ -41,7 +41,7 @@ let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) + Data(count: 1
         let values = Dictionary(uniqueKeysWithValues: tags.items.map { ($0.key, $0.values) })
         #expect(values[.artist] == [.text("Example Artist, Guest Artist")])
         #expect(values[.albumArtist] == [.text("Example Artist")])
-        #expect(values[.releaseDate] == [.text("1980-06-01T00:00:00Z")])
+        #expect(values[.releaseDate] == [.text("2009-06-25T00:00:00Z")])
         #expect(values[.trackNumber] == [.pair(number: 3, total: 9)])
         #expect(values[.discNumber] == [.pair(number: 1, total: 2)])
         #expect(values[.artwork] == [.image(png, .png)])
@@ -53,9 +53,9 @@ let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) + Data(count: 1
     }
 
     @Test func partialDatesAndNumbersAreKeptOrDropped() throws {
-        let tags = ImportTags(try flacMetadata(comments: ["DATE=1980", "TRACKNUMBER=x", "DISCNUMBER=2"]))
+        let tags = ImportTags(try flacMetadata(comments: ["DATE=2009", "TRACKNUMBER=x", "DISCNUMBER=2"]))
         let values = Dictionary(uniqueKeysWithValues: tags.items.map { ($0.key, $0.values) })
-        #expect(values[.releaseDate] == [.text("1980")])
+        #expect(values[.releaseDate] == [.text("2009")])
         #expect(values[.trackNumber] == nil)
         #expect(values[.discNumber] == [.pair(number: 2, total: 0)])
         #expect(!tags.pictureCarried)
@@ -294,7 +294,7 @@ struct ImportFolder {
                 comments: [
                     "TITLE=First Song", "ARTIST=Example Artist", "ALBUM=Synthetic Album", "TRACKNUMBER=1",
                     "TRACKTOTAL=2",
-                    "DATE=1980-06-01", "COMMENT=remove me", "X-SYNTHETIC-IDENTIFIER=00000000",
+                    "DATE=2009-06-25", "COMMENT=remove me", "X-SYNTHETIC-IDENTIFIER=00000000",
                 ], pictures: [(3, "image/png", png)]
             ).write(to: album.appendingPathComponent("01-First Song_1001.flac"))
             try SyntheticAudio(seed: 4).wave().write(to: album.appendingPathComponent("02-Second Song.wav"))
@@ -332,7 +332,7 @@ struct ImportFolder {
                 contentsOf: folder.staging.appendingPathComponent("Synthetic Album/01-First Song_1001.m4a"))
             #expect(first.metadataValues(.title) == [.text("First Song")])
             #expect(first.metadataValues(.trackNumber) == [.pair(number: 1, total: 2)])
-            #expect(first.metadataValues(.releaseDate) == [.text("1980-06-01T00:00:00Z")])
+            #expect(first.metadataValues(.releaseDate) == [.text("2009-06-25T00:00:00Z")])
             #expect(first.metadataValues(.artwork) == [.image(png, .png)])
             #expect(first.metadataValues(.comment).isEmpty)
             #expect(try folder.snapshot(folder.downloads) == before)

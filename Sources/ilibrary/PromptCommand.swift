@@ -32,7 +32,7 @@ enum PromptCommand {
         3. Record your evidence for copyright lines and release dates in `notes` and `sources` (URLs) of the
            album. These fields are ignored when the catalog is applied.
            （著作権表示とリリース日の根拠は、アルバムの `notes` と `sources`（URL）に記録してください。適用時には無視されます。）
-        4. Write copyright lines with the symbols ℗ and ©, as in `℗ 1980 Example Records, Inc.`, not (P) or (C).
+        4. Write copyright lines with the symbols ℗ and ©, as in `℗ 2009 Example Records, Inc.`, not (P) or (C).
            （著作権表示は (P) や (C) ではなく、記号 ℗ と © で書いてください。）
         5. Write release dates as `YYYY-MM-DD`. Set a track's `releaseDate` only when it differs from the album's.
            （リリース日は `YYYY-MM-DD` 形式で書き、曲ごとの値はアルバムと異なる場合だけ設定してください。）
@@ -42,7 +42,7 @@ enum PromptCommand {
            複数の場合は「, 」で区切ってください。）
         7. Keep the capitalization of the source titles; iLibrary applies `titleRules` when the catalog is
            applied. A parenthetical that contains another parenthetical is written with square brackets, as in
-           `Under the Lights [Sam's Mix (Demo)]`.
+           `Song A [B's Mix (Demo)]`.
            （曲名は元の大文字小文字のままにしてください。`titleRules` はカタログの適用時に iLibrary が適用します。括弧の中に
            さらに括弧がある場合は、外側を角括弧にしてください。）
         8. Live recordings carry `(Live)`, or `[Live]` when the title already ends with a parenthetical.

@@ -24,7 +24,7 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
 
     @Test func nestedParentheticalsBecomeSquareBrackets() {
         let bracket = rules(bracket: true)
-        #expect(bracket.apply("Under the Lights (Sam's Mix (Demo))").title == "Under the Lights [Sam's Mix (Demo)]")
+        #expect(bracket.apply("Song A (B's Mix (Demo))").title == "Song A [B's Mix (Demo)]")
         #expect(bracket.apply("Song (Demo)").title == "Song (Demo)")
         let unbalanced = bracket.apply("Song (Demo")
         #expect(unbalanced.title == "Song (Demo")
@@ -32,27 +32,31 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
     }
 
     @Test func mlaAndAPADifferForLongPrepositions() {
-        #expect(rules(.mla).apply("walk with you").title == "Walk with You")
-        #expect(rules(.apa).apply("walk with you").title == "Walk With You")
-        #expect(rules(.start).apply("walk with you").title == "Walk With You")
-        #expect(rules(.keep).apply("walk with you").title == "walk with you")
+        #expect(rules(.mla).apply("song alpha with song bravo").title == "Song Alpha with Song Bravo")
+        #expect(rules(.apa).apply("song alpha with song bravo").title == "Song Alpha With Song Bravo")
+        #expect(rules(.start).apply("song alpha with song bravo").title == "Song Alpha With Song Bravo")
+        #expect(rules(.keep).apply("song alpha with song bravo").title == "song alpha with song bravo")
     }
 
     @Test func mlaLowercasesMinorWordsExceptFirstAndLast() {
         let mla = rules(.mla)
-        #expect(mla.apply("the way the river runs").title == "The Way the River Runs")
-        #expect(mla.apply("a Song For The Lovers And The Thieves").title == "A Song for the Lovers and the Thieves")
-        #expect(mla.apply("what dreams are made of").title == "What Dreams Are Made Of")
-        #expect(mla.apply("rock-a-bye baby").title == "Rock-a-Bye Baby")
-        #expect(mla.apply("songs from the road: live at the hall").title == "Songs from the Road: Live at the Hall")
+        #expect(mla.apply("the song alpha of the song bravo").title == "The Song Alpha of the Song Bravo")
+        #expect(
+            mla.apply("a Song Alpha For The Song Bravo And The Song Charlie").title
+                == "A Song Alpha for the Song Bravo and the Song Charlie")
+        #expect(mla.apply("what song alpha is made of").title == "What Song Alpha Is Made Of")
+        #expect(mla.apply("alpha-a-bravo song").title == "Alpha-a-Bravo Song")
+        #expect(
+            mla.apply("song alpha from the song bravo: live at the song charlie").title
+                == "Song Alpha from the Song Bravo: Live at the Song Charlie")
     }
 
     @Test func roleDependentWordsAreLeftUnchangedAndReported() {
-        let mla = rules(.mla).apply("turn it up tonight")
-        #expect(mla.title == "Turn It up Tonight")
+        let mla = rules(.mla).apply("song alpha up song bravo")
+        #expect(mla.title == "Song Alpha up Song Bravo")
         #expect(mla.reviews.map(\.word) == ["up"])
-        let apa = rules(.apa).apply("turn it up")
-        #expect(apa.title == "Turn It up")
+        let apa = rules(.apa).apply("song alpha up")
+        #expect(apa.title == "Song Alpha up")
         #expect(apa.reviews.map(\.word) == ["up"])
     }
 
@@ -61,31 +65,32 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
         #expect(mla.apply("HIGHway and ZENITH").title == "HIGHway and ZENITH")
         #expect(mla.apply("Q.R.S. (quiet river song)").title == "Q.R.S. (Quiet River Song)")
         #expect(mla.apply("iTunes in the city").title == "iTunes in the City")
-        #expect(mla.apply("君の名は").title == "君の名は")
+        #expect(mla.apply("曲名A").title == "曲名A")
         #expect(mla.apply("song for 東京").title == "Song for 東京")
         #expect(mla.apply("song for café").title == "Song for Café")
     }
 
     @Test func apostrophesStayWithinWords() {
-        #expect(rules(.start).apply("don't wait 'til morning comes").title == "Don't Wait 'Til Morning Comes")
-        let mla = rules(.mla).apply("Don't Wait 'Til Morning Comes")
-        #expect(mla.title == "Don't Wait 'Til Morning Comes")
+        #expect(rules(.start).apply("don't song alpha 'til song bravo").title == "Don't Song Alpha 'Til Song Bravo")
+        let mla = rules(.mla).apply("Don't Song Alpha 'Til Song Bravo")
+        #expect(mla.title == "Don't Song Alpha 'Til Song Bravo")
         #expect(mla.reviews.map(\.word) == ["'Til"])
     }
 
     @Test func parentheticalsAndBracketsStartNewSegments() {
         #expect(
-            rules(.start).apply("under the lights [sam's mix (demo)]").title == "Under The Lights [Sam's Mix (Demo)]")
-        #expect(rules(.mla).apply("song of the year (the remix)").title == "Song of the Year (The Remix)")
+            rules(.start).apply("song a [b's mix (demo)]").title == "Song A [B's Mix (Demo)]")
+        #expect(
+            rules(.mla).apply("song alpha of song bravo (the remix)").title == "Song Alpha of Song Bravo (The Remix)")
     }
 
     @Test func matchingKeysIgnoreQualifiersCaseWidthAndDiacritics() {
         let key = rules(remove: ["Remaster"])
-        #expect(key.matchingKey("Midnight Garden (2012 Remaster)") == key.matchingKey("MIDNIGHT GARDEN"))
+        #expect(key.matchingKey("Song A (2012 Remaster)") == key.matchingKey("SONG A"))
         #expect(key.matchingKey("Mix [Demo]") == key.matchingKey("mix (demo)"))
         #expect(key.matchingKey("Don\u{2019}t") == key.matchingKey("Don't"))
         #expect(key.matchingKey("ＡＢＣ  Song") == key.matchingKey("abc song"))
-        #expect(key.matchingKey("Beyoncé") == key.matchingKey("Beyonce"))
+        #expect(key.matchingKey("Café") == key.matchingKey("Cafe"))
         #expect(key.matchingKey("Song A") != key.matchingKey("Song B"))
     }
 }
@@ -206,7 +211,7 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
 
 @Suite struct NamingTests {
     @Test func fileNamesFollowTheMusicApp() {
-        #expect(Naming.fileName(title: "Walk with You", disc: 1, track: 3, discCount: 1) == "03 Walk with You.m4a")
+        #expect(Naming.fileName(title: "Song A", disc: 1, track: 3, discCount: 1) == "03 Song A.m4a")
         #expect(Naming.fileName(title: "First Song", disc: 2, track: 1, discCount: 2) == "2-01 First Song.m4a")
         #expect(Naming.fileName(title: "Title: Part 1/2", disc: 1, track: 12, discCount: 1) == "12 Title_ Part 1_2.m4a")
         #expect(Naming.fileName(title: "Long", disc: 1, track: 100, discCount: 1) == "100 Long.m4a")
@@ -214,22 +219,22 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
 
     @Test func pathsUseTheAlbumArtistAndAlbum() throws {
         let catalog = Catalog(albums: [
-            Album(album: "Live: 1/2", albumArtist: "AC/DC", discs: [Disc(tracks: [Track(title: "Song")])]),
+            Album(album: "Live: 1/2", albumArtist: "Artist/A", discs: [Disc(tracks: [Track(title: "Song")])]),
             Album(album: "No Artist", discs: [Disc(tracks: [Track(title: "Song")])]),
         ])
         let tracks = catalog.resolvedTracks()
-        #expect(Naming.relativePath(for: tracks[0]) == ["AC_DC", "Live_ 1_2", "01 Song.m4a"])
+        #expect(Naming.relativePath(for: tracks[0]) == ["Artist_A", "Live_ 1_2", "01 Song.m4a"])
         #expect(Naming.relativePath(for: tracks[1]) == nil)
     }
 }
 
 @Suite struct OrderingTests {
     static let catalog = Catalog(albums: [
-        Album(album: "Bravo", albumArtist: "Beta", releaseDate: "1982-11-30", discs: []),
-        Album(album: "Alpha", albumArtist: "Beta", releaseDate: "1979-08-10", discs: []),
-        Album(album: "Charlie", albumArtist: "alpha", releaseDate: "1987-08-31", discs: []),
+        Album(album: "Bravo", albumArtist: "Beta", releaseDate: "2009-06-25", discs: []),
+        Album(album: "Alpha", albumArtist: "Beta", releaseDate: "2008-06-25", discs: []),
+        Album(album: "Charlie", albumArtist: "alpha", releaseDate: "2010-06-25", discs: []),
         Album(album: "Delta", albumArtist: "Älpha", discs: []),
-        Album(album: "Echo", albumArtist: "Gamma", releaseDate: "1979-08-10", discs: []),
+        Album(album: "Echo", albumArtist: "Gamma", releaseDate: "2008-06-25", discs: []),
     ])
 
     @Test func releaseOrder() {

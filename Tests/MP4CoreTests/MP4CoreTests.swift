@@ -83,9 +83,9 @@ let descriptiveItems = [
 
 @Suite struct RewriteTests {
     func tagged(_ file: inout MP4File) throws {
-        try file.setMetadata(.title, .text("Under the Lights [Synthetic Mix (Demo)]"))
-        try file.setMetadata(.copyright, .text("℗ 1980 Example Records, Inc."))
-        try file.setMetadata(.releaseDate, .text("1980-06-01T00:00:00Z"))
+        try file.setMetadata(.title, .text("Song A [Synthetic Mix (Demo)]"))
+        try file.setMetadata(.copyright, .text("℗ 2009 Example Records, Inc."))
+        try file.setMetadata(.releaseDate, .text("2009-06-25T00:00:00Z"))
         try file.setMetadata(.trackNumber, .pair(number: 3, total: 9))
         try file.setMetadata(.discNumber, .pair(number: 1, total: 2))
         try file.setMetadata(.composer, .text("作曲者, Second Writer"))

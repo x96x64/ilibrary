@@ -143,7 +143,7 @@ With `--dry-run`, steps 1 to 4 run, the complete plan is printed, and the comman
 
 #### rebuild apply
 
-`apply` writes the catalog recorded by `prepare` to the staged files and arranges them as `Album Artist/Album/NN Title.m4a` in the staging directory, exactly as `ilibrary apply --rename` would, and with `--timestamps` sets file dates to release dates at local midnight. Folder dates are set by `rebuild add --timestamps`, because the folders that remain are those in the media folder. Music must stay closed. The catalog must still have the SHA-256 recorded by `prepare`, every file in the staging directory must be one that the record lists, and every written file is read back. With `--dry-run`, the tag changes, moves, and dates are listed.
+`apply` writes the catalog recorded by `prepare` to the staged files and arranges them as `Album Artist/Album/NN Song.m4a` in the staging directory, exactly as `ilibrary apply --rename` would, and with `--timestamps` sets file dates to release dates at local midnight. Folder dates are set by `rebuild add --timestamps`, because the folders that remain are those in the media folder. Music must stay closed. The catalog must still have the SHA-256 recorded by `prepare`, every file in the staging directory must be one that the record lists, and every written file is read back. With `--dry-run`, the tag changes, moves, and dates are listed.
 
 #### rebuild add
 
@@ -238,7 +238,7 @@ Sets the creation and modification dates to each release date at local midnight,
 Folders outside the given directories are never changed. Where a time zone skips midnight, the first instant of the day is used and reported. Every path is checked before any date is set: a missing path is reported and never created, and a symbolic link is refused. Each date is read back after it is set. Setting creation dates requires macOS; elsewhere, use `--dry-run`, optionally with `--script`.
 
 - `--dry-run` lists the planned dates and leaves dates unchanged. With an explicit `--script FILE`, the script is still written; omit that option for a preview that creates no files.
-- `--script FILE` also writes an equivalent shell script. The script sets the time zone, checks that each path exists and is not a symbolic link before it calls `SetFile -d` and `touch -c -m -t`, reports and skips other paths, and exits with status 1 when any path was skipped. An existing file is never overwritten.
+- `--script FILE` also writes an equivalent shell script. The script sets the time zone, checks that each path exists and is not a symbolic link before it calls `SetFile -d` and `touch -c -m -t`, reports and skips other paths, and exits with status 1 when any path was skipped. `SetFile` stores a creation date as an unsigned 32-bit count of seconds since 1970 and was measured to wrap an earlier date into the future, so the script reports and skips every path dated before 1970, and `timestamps` warns when it writes such a script; `ilibrary timestamps` on macOS sets those dates directly. An existing file is never overwritten.
 
 ### check
 

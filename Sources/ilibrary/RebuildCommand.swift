@@ -63,7 +63,7 @@ enum RebuildCommand {
             Usage: ilibrary rebuild apply --workspace DIR [--timestamps] [--dry-run]
 
             Writes the recorded catalog to the staged files, as 'ilibrary apply --rename' does, and arranges them
-            as Album Artist/Album/NN Title.m4a in the staging directory. Music must stay closed. The catalog must be
+            as Album Artist/Album/NN Song.m4a in the staging directory. Music must stay closed. The catalog must be
             the file that rebuild prepare recorded. Requires a completed clear.
 
             Options:

@@ -42,7 +42,7 @@ ilibrary apply catalog.json ./staging --dry-run
 - **Ordered addition to Music.** `add` moves each album into the Music media folder, adds it there in place, and confirms one track per file before the next album, in release or artist order. Each album is added only after the clock has passed the previous album's addition second, so that Recently Added shows the intended order. It stops when the library already holds a matching track, never changes a track in Music, and resumes an interrupted run.
 - **Lossless import.** `import` converts FLAC, WAV, and AIFF downloads to Apple Lossless through AudioToolbox, verified by decoded PCM equality, and copies iTunes Store files without re-encoding while removing purchase metadata. Standard FLAC tags and the front cover are carried; with `--delete-originals`, originals are moved to the Trash only after every output has been verified.
 - **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files. `export --strict` refuses, without writing, an export that is not a complete inventory. Every planned change is listed first; `--dry-run` stops there, and every written file is read back and compared with the plan.
-- **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Title.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
+- **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Song.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
 - **MP4 metadata without re-encoding.** `MP4Core` reads and writes the item list of M4A files, rebuilds only the movie box, copies the audio data unchanged, relocates chunk offsets, and replaces items in place, so that repeated application yields identical bytes. Every rewrite goes through a hidden partial file that is parsed again and compared with the source before it replaces the destination.
 - **Removal of iTunes Store purchase metadata.** The purchaser's account, name, purchase date, store identifiers, and purchase information are removed, padding is zeroed, and the gapless information is kept. Encrypted files (`.m4p` and `drms` sample entries) are refused.
 - **FLAC metadata.** `FLACCore` reads stream information, Vorbis comments, and pictures without decoding audio, and rejects truncated metadata.
@@ -60,7 +60,7 @@ The package declares macOS 14 as its deployment target, which is not a claim of 
 
 ## Installation
 
-The following commands install version 1.0.1, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+The following commands install version 1.0.2, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
 
 ### Homebrew
 
@@ -73,7 +73,7 @@ The formula in [x96x64/homebrew-tap](https://github.com/x96x64/homebrew-tap) dow
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@1.0.1
+npm install -g @x96_64/ilibrary@1.0.2
 ```
 
 The package contains the prebuilt executable, the license, and this project's package README, and declares `darwin` and `arm64` so that npm refuses it on other systems. It runs no installation script and needs no Swift toolchain. Releases are published from the release workflow with npm provenance, which links each version to the commit and workflow run that built it.
@@ -82,7 +82,7 @@ The package contains the prebuilt executable, the license, and this project's pa
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.1
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.2
 source .venv-ilibrary/bin/activate
 ```
 

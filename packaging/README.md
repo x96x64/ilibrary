@@ -16,7 +16,7 @@ iLibrary prepares downloaded music for a local Apple Music library and adds it i
 - **Ordered addition to Music.** `add` moves each album into the Music media folder, adds it there in place, and confirms one track per file before the next album, in release or artist order. Each album is added only after the clock has passed the previous album's addition second, so that Recently Added shows the intended order. It stops when the library already holds a matching track, never changes a track in Music, and resumes an interrupted run.
 - **Lossless import.** `import` converts FLAC, WAV, and AIFF downloads to Apple Lossless, verified by decoded PCM equality, and copies iTunes Store files without re-encoding while removing purchase metadata. With `--delete-originals`, originals are moved to the Trash only after every output has been verified.
 - **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files without re-encoding audio. `export --strict` refuses, without writing, an export that is not a complete inventory.
-- **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Title.m4a`, and `timestamps` sets file and folder dates to release dates. Missing paths are never created, and symbolic links are refused.
+- **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Song.m4a`, and `timestamps` sets file and folder dates to release dates. Missing paths are never created, and symbolic links are refused.
 - **Library rebuilding.** `rebuild prepare` inventories the selected files and Music registrations, verifies a backup on separate storage, performs a restoration test, confirms that the backup volume is ejected, and writes a private recovery record. `rebuild stage` then moves the files out of the media folder, `rebuild clear` removes exactly the recorded registrations and confirms that Music reports no tracks, `rebuild apply` writes the catalog to the files while Music is closed, and `rebuild add` adds the albums again in the chosen order. Every stage records its progress, resumes after an interruption, and refuses to run out of order.
 - **Checks and diagnostics.** `check` reports missing tags, duplicate tracks, and incorrect dates; `check --library` compares files with Music by location. `doctor` reports environment problems and recovery steps without launching Music or reading its library.
 
@@ -32,7 +32,7 @@ The package declares macOS 14 as its deployment target, which is not a claim of 
 
 ## Installation
 
-The following commands install version 1.0.1. Choose one channel, and use only that channel in a given shell or environment, so that updating it updates the command you run. Every channel installs the same command, `ilibrary`. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects, and PyPI does not support npm scopes.
+The following commands install version 1.0.2. Choose one channel, and use only that channel in a given shell or environment, so that updating it updates the command you run. Every channel installs the same command, `ilibrary`. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects, and PyPI does not support npm scopes.
 
 ### Homebrew
 
@@ -46,7 +46,7 @@ The formula downloads the release source archive, which Homebrew checks against 
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@1.0.1
+npm install -g @x96_64/ilibrary@1.0.2
 ilibrary --version
 ```
 
@@ -58,7 +58,7 @@ Install in a virtual environment to avoid changing the system Python:
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.1
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.2
 .venv-ilibrary/bin/ilibrary --version
 source .venv-ilibrary/bin/activate
 ```

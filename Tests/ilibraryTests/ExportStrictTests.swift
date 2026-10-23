@@ -142,10 +142,10 @@ import Testing
 
     @Test func aYearOnlyDateIsRefusedStrictlyAndExportedWithoutIt() throws {
         var albums = SyntheticLibrary.standardAlbums
-        albums[0].date = "1980"
+        albums[0].date = "2009"
         let library = try SyntheticLibrary(albums: albums)
         defer { library.remove() }
-        try expectRefusal(library, contains: "has the release date \"1980\", which is not a full YYYY-MM-DD date")
+        try expectRefusal(library, contains: "has the release date \"2009\", which is not a full YYYY-MM-DD date")
         let url = library.root.appendingPathComponent("catalog.json")
         let plain = Run(["export", library.root.path, "-o", url.path])
         #expect(plain.status == 0, "\(plain.errorText)")
@@ -156,10 +156,10 @@ import Testing
 
     @Test func aMalformedDateIsRefused() throws {
         var albums = SyntheticLibrary.standardAlbums
-        albums[1].date = "1982-13-40"
+        albums[1].date = "2009-13-40"
         let library = try SyntheticLibrary(albums: albums)
         defer { library.remove() }
-        try expectRefusal(library, contains: "has the release date \"1982-13-40\"")
+        try expectRefusal(library, contains: "has the release date \"2009-13-40\"")
     }
 
     @Test func anAbsentDateIsPermitted() throws {
@@ -180,7 +180,7 @@ import Testing
 
     @Test func everyReasonIsListedAndRemainingWarningsStayWarnings() throws {
         var albums = SyntheticLibrary.standardAlbums
-        albums[0].date = "1980"
+        albums[0].date = "2009"
         albums[0].tracks.remove(at: 1)
         albums[2].tracks[1].artist = "Second Guest"
         let library = try SyntheticLibrary(albums: albums)
@@ -190,7 +190,7 @@ import Testing
         let run = Run(["export", library.root.path, "-o", catalog.path, "--strict"])
         #expect(run.status == 1)
         #expect(run.errorText.contains("has no album tag"))
-        #expect(run.errorText.contains("has the release date \"1980\""))
+        #expect(run.errorText.contains("has the release date \"2009\""))
         #expect(run.errorText.contains("has track numbers [1, 3]"))
         #expect(pathKind(catalog) == .missing)
     }

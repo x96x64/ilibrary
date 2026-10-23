@@ -11,7 +11,7 @@
             return url
         }
 
-        @Test(arguments: [-372_000_000.0, 328_633_200.0, 1_760_000_000.0])
+        @Test(arguments: [-372_000_000.0, 86_400.0, 1_760_000_000.0])
         func datesAreSetOnFilesAndFolders(seconds: Double) throws {
             let root = try directory()
             defer { try? FileManager.default.removeItem(at: root) }

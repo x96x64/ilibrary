@@ -14,7 +14,8 @@ enum TimestampsCommand {
 
             Options:
               --dry-run       list the planned dates and change nothing
-              --script FILE   also write an equivalent shell script that uses SetFile and touch
+              --script FILE   also write an equivalent shell script that uses SetFile and touch; it skips
+                              dates before 1970, which SetFile cannot store
             """, valued: ["--script": []], flags: ["--dry-run"], positionals: 2...Int.max)
 
     static func run(_ arguments: [String], console: Console, environment: Environment) throws -> Int32 {
@@ -39,6 +40,12 @@ enum TimestampsCommand {
             try TimestampPlanner.script(plan, timeZone: environment.timeZone).write(
                 to: script, atomically: false, encoding: .utf8)
             console.print("Wrote the equivalent script \(script.path)")
+            let refused = plan.targets.filter { !TimestampPlanner.scriptableDates.contains($0.date) }.count
+            if refused > 0 {
+                console.warning(
+                    "the script skips \(refused) paths whose dates SetFile cannot store, such as dates before 1970; "
+                        + "'ilibrary timestamps' on macOS sets them directly")
+            }
         }
         if dryRun {
             console.print("Dry run: no date was changed.")

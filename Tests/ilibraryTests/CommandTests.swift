@@ -86,7 +86,7 @@ import Testing
         let catalog = try #require(Catalog.validate(try Data(contentsOf: url)).catalog)
         let first = try #require(catalog.albums.first { $0.album == "Synthetic Album" })
         #expect(first.artist == "Example Artist")
-        #expect(first.releaseDate == "1980-06-01")
+        #expect(first.releaseDate == "2009-06-25")
         #expect(first.composer == nil)
         #expect(first.discs[0].tracks.map(\.composer) == ["Example Writer", "Second Writer", "Example Writer"])
         let tribute = try #require(catalog.albums.first { $0.album == "Tribute Collection" })
@@ -180,7 +180,7 @@ import Testing
         defer { try? FileManager.default.removeItem(at: url) }
         let album = try #require(catalog.albums.firstIndex { $0.album == "Synthetic Album" })
         catalog.albums[album].discs[0].tracks[0].title = "First Song (Revised)"
-        catalog.albums[album].copyright = "℗ 1981 Example Records, Inc."
+        catalog.albums[album].copyright = "℗ 2010 Example Records, Inc."
         catalog.albums[album].genre = ""
         try write(catalog, to: url)
         let original = try library.snapshot()
@@ -204,7 +204,7 @@ import Testing
         }
         let changed = try MP4File(contentsOf: try #require(files.first { $0.lastPathComponent.hasPrefix("01-First") }))
         #expect(changed.metadataValues(.title) == [.text("First Song (Revised)")])
-        #expect(changed.metadataValues(.copyright) == [.text("℗ 1981 Example Records, Inc.")])
+        #expect(changed.metadataValues(.copyright) == [.text("℗ 2010 Example Records, Inc.")])
         #expect(changed.metadataValues(.genre) == [.text("Pop")])
 
         let settled = try library.snapshot()
@@ -244,17 +244,17 @@ import Testing
         defer { try? FileManager.default.removeItem(at: url) }
         let album = try #require(catalog.albums.firstIndex { $0.album == "Synthetic Album" })
         catalog.titleRules = TitleRuleSettings(caseStyle: .start, removeQualifiers: ["Remaster"], bracketNested: true)
-        catalog.albums[album].discs[0].tracks[0].title = "first song (Sam's Mix (Demo)) (2012 Remaster)"
+        catalog.albums[album].discs[0].tracks[0].title = "first song (B's Mix (Demo)) (2012 Remaster)"
         try write(catalog, to: url)
 
         let preview = Run(["apply", url.path, library.root.path, "--rename", "--dry-run"])
         #expect(preview.status == 0, "\(preview.errorText)")
-        #expect(preview.text.contains("title: \"First Song\" -> \"First Song [Sam's Mix (Demo)]\""))
+        #expect(preview.text.contains("title: \"First Song\" -> \"First Song [B's Mix (Demo)]\""))
         let apply = Run(["apply", url.path, library.root.path, "--rename"])
         #expect(apply.status == 0, "\(apply.errorText)")
         let renamed = library.root.appendingPathComponent(
-            "Example Artist/Synthetic Album/01 First Song [Sam's Mix (Demo)].m4a")
-        #expect(try MP4File(contentsOf: renamed).metadataValues(.title) == [.text("First Song [Sam's Mix (Demo)]")])
+            "Example Artist/Synthetic Album/01 First Song [B's Mix (Demo)].m4a")
+        #expect(try MP4File(contentsOf: renamed).metadataValues(.title) == [.text("First Song [B's Mix (Demo)]")])
         let again = Run(["apply", url.path, library.root.path, "--rename"])
         #expect(again.text.contains("Tag changes: 0 of 9 files"))
         #expect(again.text.contains("Moves: 0 of 9 files"))

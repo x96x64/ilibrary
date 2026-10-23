@@ -57,7 +57,9 @@ Every GitHub release of iLibrary uses exactly this title, with only `X.Y.Z` repl
 iLibrary: vX.Y.Z, Catalog-Driven Music Libraries for Apple Music on macOS
 ```
 
-Every release body follows the layout of the 0.1.0 release: an introductory paragraph, an important notice, a Highlights section, a paragraph on verification and limits, an Installing and Upgrading section, and a closing paragraph that links to the changelog, distribution, and license. `packaging/release_notes.py` generates this layout, with the version's changelog entries as its highlights, and the published body may then be refined to describe the version's evidence and limits more precisely. New capabilities are described in the body and in [CHANGELOG.md](../CHANGELOG.md), never in the title.
+Every release body has the same layout: an introductory paragraph, an important notice, a Highlights section, a paragraph on verification and limits, an Installing and Upgrading section, and a closing paragraph that links to the version's changelog, the distribution guide, and the license. Each highlight begins with a specific label whose colon lies inside the bold text, as in `- **Title Rules Applied:** ...`; category names such as Added or Fixed are not labels. `packaging/release_notes.py` generates the body from the version's changelog section, whose entries therefore carry these labels, and refuses an entry without one. New capabilities are described in the body and in [CHANGELOG.md](../CHANGELOG.md), never in the title.
+
+A published description may be corrected later without touching the tag, the files, or the packages: the `Publish Reviewed Packages` workflow with the choice `describe`, the tag, its commit, and the new text checks that the release is published and that its tag still points at that commit on `main`, checks the text with `release_notes.py --check`, and replaces only the description.
 
 ## Publication
 

@@ -16,7 +16,7 @@ enum ApplyCommand {
 
             Options:
               --dry-run      list the planned changes and change nothing
-              --rename       move each file to PATH/Album Artist/Album/NN Title.m4a (PATH must be a directory)
+              --rename       move each file to PATH/Album Artist/Album/NN Song.m4a (PATH must be a directory)
               --timestamps   afterwards, set file and folder dates to release dates at local midnight (macOS)
             """, flags: ["--dry-run", "--rename", "--timestamps"], positionals: 2...Int.max)
 
