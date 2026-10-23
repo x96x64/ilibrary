@@ -13,7 +13,6 @@ import Testing
 /// not validated, so that a test can assemble an invalid sequence and observe the refusal of the replay.
 struct JournalBuilder {
     static let time = "2026-10-21T00:00:00Z"
-    static let gui: Set<String> = ["test-detector"]
 
     let record: RecoveryRecord
     let recordBytes: Data
@@ -47,9 +46,8 @@ struct JournalBuilder {
 
     var data: Data { entries.reduce(Data()) { $0 + (try! $1.line()) } }
 
-    func replay(accepted: Set<String> = []) throws -> RebuildProgress {
-        try ProgressJournal.replay(
-            record: record, recordBytes: recordBytes, entries: entries, acceptedGUIEmptinessMethods: accepted)
+    func replay() throws -> RebuildProgress {
+        try ProgressJournal.replay(record: record, recordBytes: recordBytes, entries: entries)
     }
 
     func inventory(_ sourcePath: String) -> FileRecord {
@@ -92,7 +90,6 @@ struct JournalBuilder {
     mutating func clearingThroughTermination() {
         removeAll()
         operation(.confirmLibraryEmpty, "", JournalObservation(registrationCount: 0))
-        operation(.establishGUIEmptiness, "", JournalObservation(method: "test-detector"))
         operation(.terminateMusic, "", JournalObservation(musicRunning: false))
     }
 
@@ -116,11 +113,10 @@ struct JournalBuilder {
         }
     }
 
-    mutating func displayBoth() {
+    mutating func displayOrder() {
         add(.stageBegan(.display))
-        for target in ["before-relaunch", "after-relaunch"] {
-            operation(.confirmDisplay, target, JournalObservation(observed: record.expectedDisplayList))
-        }
+        operation(
+            .confirmDisplay, ProgressJournal.displayTarget, JournalObservation(observed: record.expectedDisplayList))
     }
 
     mutating func completeThroughEvacuation() {
@@ -128,7 +124,7 @@ struct JournalBuilder {
         add(.stageCompleted(.evacuation))
     }
 
-    /// A complete journal, which is reachable only with an injected accepted GUI method.
+    /// A complete journal.
     static func complete() throws -> JournalBuilder {
         var builder = try make()
         builder.completeThroughEvacuation()
@@ -138,7 +134,7 @@ struct JournalBuilder {
         builder.add(.stageCompleted(.application))
         builder.addAll()
         builder.add(.stageCompleted(.addition))
-        builder.displayBoth()
+        builder.displayOrder()
         builder.add(.stageCompleted(.display))
         return builder
     }
@@ -148,9 +144,9 @@ struct JournalBuilder {
     typealias Builder = JournalBuilder
 
     /// The transition problem that a replay reports, or nil when it succeeds or fails otherwise.
-    func transition(_ builder: Builder, accepted: Set<String> = []) -> TransitionProblem? {
+    func transition(_ builder: Builder) -> TransitionProblem? {
         do {
-            _ = try builder.replay(accepted: accepted)
+            _ = try builder.replay()
             return nil
         } catch ProgressJournalError.invalidTransition(_, let problem) {
             return problem
@@ -283,50 +279,61 @@ struct JournalBuilder {
         #expect(progress.verifiedTargets[.confirmLibraryEmpty] == [""])
     }
 
-    @Test func theGUIEmptinessGateRefusesEveryIntentAndThereforeTerminationAndClearingCompletion() throws {
+    @Test func musicMayBeTerminatedAfterTheLibraryIsConfirmedEmptyWithoutAnyGraphicalStep() throws {
         var builder = try Builder.make()
         builder.completeThroughEvacuation()
         builder.removeAll()
         builder.operation(.confirmLibraryEmpty, "", JournalObservation(registrationCount: 0))
-        var gui = builder
-        gui.add(.intent(operation: .establishGUIEmptiness, target: ""))
-        #expect(transition(gui) == .guiEmptinessMethodNotQualified)
-        #expect(ProgressJournal.qualifiedGUIEmptinessMethods.isEmpty)
-        var terminate = builder
-        terminate.add(.intent(operation: .terminateMusic, target: ""))
+        builder.operation(.terminateMusic, "", JournalObservation(musicRunning: false))
+        let progress = try builder.replay()
+        #expect(progress.verifiedTargets[.terminateMusic] == [""])
+        // Termination is refused until the emptiness of the library has been confirmed.
+        var early = try Builder.make()
+        early.completeThroughEvacuation()
+        early.removeAll()
+        early.add(.intent(operation: .terminateMusic, target: ""))
         #expect(
-            transition(terminate)
-                == .prerequisiteMissing(operation: .terminateMusic, requires: "establishGUIEmptiness"))
-        var complete = builder
-        complete.add(.stageCompleted(.clearing))
-        #expect(
-            transition(complete)
-                == .stageIncomplete(stage: .clearing, missing: ["establishGUIEmptiness", "terminateMusic"]))
+            transition(early)
+                == .prerequisiteMissing(operation: .terminateMusic, requires: "confirmLibraryEmpty"))
     }
 
-    @Test func aMethodOutsideTheAcceptedSetIsRefusedEvenWhenAnotherIsAccepted() throws {
+    @Test func theClearingStageCompletesOnlyWithEveryRemovalTheEmptyLibraryAndTheTermination() throws {
         var builder = try Builder.make()
         builder.completeThroughEvacuation()
         builder.removeAll()
         builder.operation(.confirmLibraryEmpty, "", JournalObservation(registrationCount: 0))
-        builder.operation(.establishGUIEmptiness, "", JournalObservation(method: "manual"))
-        #expect(transition(builder, accepted: Builder.gui) == .guiEmptinessMethodNotQualified)
+        var unfinished = builder
+        unfinished.add(.stageCompleted(.clearing))
+        #expect(transition(unfinished) == .stageIncomplete(stage: .clearing, missing: ["terminateMusic"]))
+        var partial = try Builder.make()
+        partial.completeThroughEvacuation()
+        partial.add(.stageBegan(.clearing))
+        partial.add(.stageCompleted(.clearing))
+        #expect(
+            transition(partial)
+                == .stageIncomplete(
+                    stage: .clearing,
+                    missing: partial.record.mapping.map { $0.persistentID.uppercased() }
+                        + ["confirmLibraryEmpty", "terminateMusic"]))
+        builder.operation(.terminateMusic, "", JournalObservation(musicRunning: false))
+        builder.add(.stageCompleted(.clearing))
+        let progress = try builder.replay()
+        #expect(progress.completedStages == [.evacuation, .clearing])
+        #expect(progress.currentStage == nil && progress.canProceed)
     }
 
-    @Test func theLaterStagesAreAcceptedWithATestOnlyAcceptedMethod() throws {
+    @Test func aCompleteJournalIsAcceptedAndOnlyAStopMayFollowTheLastStage() throws {
         let builder = try Builder.complete()
-        let progress = try builder.replay(accepted: Builder.gui)
+        let progress = try builder.replay()
         #expect(progress.completedStages == RebuildStage.allCases)
         #expect(progress.currentStage == nil && progress.canProceed)
         #expect(progress.newPersistentIDs == (0..<3).map { Builder.newID($0) })
-        // The same journal is refused by the production rules, which accept no method.
-        #expect(transition(builder) == .guiEmptinessMethodNotQualified)
         // After the last stage only a stop may follow.
         var after = builder
         after.add(.stopped(reason: "done"))
-        #expect(try after.replay(accepted: Builder.gui).stopCount == 1)
+        #expect(try after.replay().stopCount == 1)
         after.add(.stageBegan(.evacuation))
-        #expect(transition(after, accepted: Builder.gui) == .entryAfterFinalStage)
+        #expect(transition(after) == .entryAfterFinalStage)
     }
 
     // MARK: Transition refusals
@@ -498,7 +505,7 @@ struct JournalBuilder {
                 observation: JournalObservation(
                     musicRunning: true, result: ObservedFile(builder.inventory(builder.record.evacuation[0].sourcePath))
                 )))
-        #expect(transition(truncated, accepted: Builder.gui) == .musicRunning(operation: .applyFile))
+        #expect(transition(truncated) == .musicRunning(operation: .applyFile))
     }
 
     @Test func albumsMustBeAddedInOrderWithFreshWellFormedIDs() throws {
@@ -515,16 +522,16 @@ struct JournalBuilder {
         var outOfOrder = try prefix()
         outOfOrder.add(.intent(operation: .addAlbum, target: "a2"))
         #expect(
-            transition(outOfOrder, accepted: Builder.gui)
+            transition(outOfOrder)
                 == .targetOutOfOrder(operation: .addAlbum, expected: "a1", found: "a2"))
         var unknown = try prefix()
         unknown.add(.intent(operation: .addAlbum, target: "zz"))
         #expect(
-            transition(unknown, accepted: Builder.gui) == .targetNotInPlan(operation: .addAlbum, target: "zz"))
+            transition(unknown) == .targetNotInPlan(operation: .addAlbum, target: "zz"))
         func verdict(_ build: (inout Builder) -> Void) throws -> TransitionProblem? {
             var builder = try prefix()
             build(&builder)
-            return transition(builder, accepted: Builder.gui)
+            return transition(builder)
         }
         let fresh = Builder.newID(0)
         #expect(
@@ -588,25 +595,163 @@ struct JournalBuilder {
             return builder
         }
         var wrong = try prefix()
-        wrong.operation(.confirmDisplay, "before-relaunch", JournalObservation(observed: ["a1", "a2", "a3"]))
+        wrong.operation(
+            .confirmDisplay, ProgressJournal.displayTarget, JournalObservation(observed: ["a1", "a2", "a3"]))
         #expect(
-            transition(wrong, accepted: Builder.gui)
+            transition(wrong)
                 == .displayListDiffers(expected: ["a3", "a2", "a1"], found: ["a1", "a2", "a3"]))
-        var order = try prefix()
-        order.add(.intent(operation: .confirmDisplay, target: "after-relaunch"))
-        #expect(
-            transition(order, accepted: Builder.gui)
-                == .prerequisiteMissing(operation: .confirmDisplay, requires: "before-relaunch"))
-        var target = try prefix()
-        target.add(.intent(operation: .confirmDisplay, target: "later"))
-        #expect(
-            transition(target, accepted: Builder.gui) == .targetNotInPlan(operation: .confirmDisplay, target: "later"))
+        for old in ["before-relaunch", "after-relaunch", "later"] {
+            var refused = try prefix()
+            refused.add(.intent(operation: .confirmDisplay, target: old))
+            #expect(transition(refused) == .targetNotInPlan(operation: .confirmDisplay, target: old), "\(old)")
+        }
         var incomplete = try prefix()
-        incomplete.operation(.confirmDisplay, "before-relaunch", JournalObservation(observed: ["a3", "a2", "a1"]))
         incomplete.add(.stageCompleted(.display))
         #expect(
-            transition(incomplete, accepted: Builder.gui)
-                == .stageIncomplete(stage: .display, missing: ["after-relaunch"]))
+            transition(incomplete)
+                == .stageIncomplete(stage: .display, missing: [ProgressJournal.displayTarget]))
+        var duplicate = try prefix()
+        duplicate.operation(
+            .confirmDisplay, ProgressJournal.displayTarget, JournalObservation(observed: ["a3", "a2", "a1"]))
+        duplicate.add(.intent(operation: .confirmDisplay, target: ProgressJournal.displayTarget))
+        #expect(
+            transition(duplicate)
+                == .duplicateOperation(operation: .confirmDisplay, target: ProgressJournal.displayTarget))
+        var complete = try prefix()
+        complete.operation(
+            .confirmDisplay, ProgressJournal.displayTarget, JournalObservation(observed: ["a3", "a2", "a1"]))
+        complete.add(.stageCompleted(.display))
+        #expect(try complete.replay().completedStages == RebuildStage.allCases)
+        #expect(ProgressJournal.displayTarget == "date-added-order")
+    }
+
+    // MARK: Result Paths
+
+    /// A journal that has begun the application stage, and the staging paths of the first two planned files.
+    func applicationStart() throws -> (builder: Builder, first: String, second: String) {
+        var builder = try Builder.make()
+        builder.completeThroughEvacuation()
+        builder.clearingThroughTermination()
+        builder.add(.stageCompleted(.clearing))
+        builder.add(.stageBegan(.application))
+        return (builder, builder.record.evacuation[0].stagingPath, builder.record.evacuation[1].stagingPath)
+    }
+
+    func apply(_ builder: Builder, _ index: Int, resultPath: String?) -> Builder {
+        var copy = builder
+        let entry = copy.record.evacuation[index]
+        copy.operation(
+            .applyFile, entry.stagingPath,
+            JournalObservation(
+                musicRunning: false, result: ObservedFile(copy.inventory(entry.sourcePath)), resultPath: resultPath))
+        return copy
+    }
+
+    @Test func aResultPathInsideTheStagingDirectoryIsAcceptedAndRecorded() throws {
+        let start = try applicationStart()
+        let renamed = "/st/stage/A/1-tagged.m4a"
+        var builder = apply(start.builder, 0, resultPath: renamed)
+        builder = apply(builder, 1, resultPath: nil)
+        let progress = try builder.replay()
+        #expect(progress.appliedPaths == [start.first: renamed, start.second: start.second])
+        #expect(progress.isVerified(.applyFile, start.first) && progress.isVerified(.applyFile, start.second))
+        // The target itself is an acceptable result path.
+        let same = apply(start.builder, 0, resultPath: start.first)
+        #expect(try same.replay().appliedPaths == [start.first: start.first])
+        // A complete journal records each target as its own result.
+        let complete = try Builder.complete().replay()
+        #expect(complete.appliedPaths.count == 2 && complete.appliedPaths.allSatisfy { $0.key == $0.value })
+        // A journal before any application records none.
+        #expect(try start.builder.replay().appliedPaths.isEmpty)
+    }
+
+    @Test func aResultPathOutsideTheStagingDirectoryIsRefused() throws {
+        let start = try applicationStart()
+        for path in [
+            "/st/other/1.m4a", "/st/stage", "/st/stage2/1.m4a", "/lib/media/Music/A/1.m4a", "/", "/st",
+        ] {
+            let found = transition(apply(start.builder, 0, resultPath: path))
+            #expect(found == .resultPathInvalid(target: start.first, resultPath: path), "\(path)")
+        }
+    }
+
+    @Test func aResultPathThatIsNotAbsoluteAndNormalizedIsRefused() throws {
+        let start = try applicationStart()
+        for path in [
+            "", "A/1.m4a", "st/stage/A/1.m4a", "/st/stage/./A/1.m4a", "/st/stage/../stage/A/1.m4a",
+            "/st/stage//A/1.m4a",
+            "/st/stage/A/1.m4a/", "/st/stage/A/1\u{0}.m4a",
+        ] {
+            let found = transition(apply(start.builder, 0, resultPath: path))
+            #expect(found == .resultPathInvalid(target: start.first, resultPath: path), "\(path)")
+        }
+    }
+
+    @Test func aResultPathMayNotCollideWithAnotherResultOrAnotherStagingPath() throws {
+        let start = try applicationStart()
+        // The staging path of another planned file, whether or not it has been applied.
+        let other = apply(start.builder, 0, resultPath: start.second)
+        #expect(transition(other) == .resultPathInvalid(target: start.first, resultPath: start.second))
+        let folded = apply(start.builder, 0, resultPath: start.second.uppercased())
+        #expect(transition(folded) == .resultPathInvalid(target: start.first, resultPath: start.second.uppercased()))
+        // The result of an earlier application.
+        let renamed = "/st/stage/A/shared.m4a"
+        let first = apply(start.builder, 0, resultPath: renamed)
+        #expect(try first.replay().appliedPaths[start.first] == renamed)
+        let again = apply(first, 1, resultPath: renamed)
+        #expect(transition(again) == .resultPathInvalid(target: start.second, resultPath: renamed))
+        let cased = apply(first, 1, resultPath: renamed.uppercased())
+        #expect(transition(cased) == .resultPathInvalid(target: start.second, resultPath: renamed.uppercased()))
+        // A later file may not claim the result path of an earlier file that kept its own staging path.
+        let kept = apply(start.builder, 0, resultPath: nil)
+        let claim = apply(kept, 1, resultPath: start.first)
+        #expect(transition(claim) == .resultPathInvalid(target: start.second, resultPath: start.first))
+    }
+
+    @Test func aResultPathIsRefusedForEveryOperationOtherThanApplyFile() throws {
+        let stray = "/st/stage/A/1.m4a"
+        var evacuation = try Builder.make()
+        evacuation.add(.stageBegan(.evacuation))
+        let source = evacuation.record.evacuation[0].sourcePath
+        let file = ObservedFile(evacuation.inventory(source))
+        evacuation.operation(
+            .evacuateFile, source,
+            JournalObservation(method: "rename", staged: file, sourcePresent: false, resultPath: stray))
+        #expect(
+            transition(evacuation)
+                == .observationShape(operation: .evacuateFile, missing: [], unexpected: ["resultPath"]))
+        var removal = try Builder.make()
+        removal.completeThroughEvacuation()
+        removal.add(.stageBegan(.clearing))
+        let id = removal.record.mapping[0].persistentID
+        let remaining = removal.record.mapping.dropFirst().map(\.persistentID)
+        removal.operation(.removeRegistration, id, JournalObservation(remaining: Array(remaining), resultPath: stray))
+        #expect(
+            transition(removal)
+                == .observationShape(operation: .removeRegistration, missing: [], unexpected: ["resultPath"]))
+        var display = try Builder.make()
+        display.completeThroughEvacuation()
+        display.clearingThroughTermination()
+        display.add(.stageCompleted(.clearing))
+        display.applyAll()
+        display.add(.stageCompleted(.application))
+        display.addAll()
+        display.add(.stageCompleted(.addition))
+        display.add(.stageBegan(.display))
+        display.operation(
+            .confirmDisplay, ProgressJournal.displayTarget,
+            JournalObservation(resultPath: stray, observed: display.record.expectedDisplayList))
+        #expect(
+            transition(display)
+                == .observationShape(operation: .confirmDisplay, missing: [], unexpected: ["resultPath"]))
+    }
+
+    @Test func aResultPathSurvivesTheCanonicalEncodingOfTheJournal() throws {
+        let start = try applicationStart()
+        let builder = apply(start.builder, 0, resultPath: "/st/stage/A/1-tagged.m4a")
+        let parsed = try ProgressJournal.parse(builder.data)
+        #expect(parsed == builder.entries)
+        #expect(String(decoding: builder.data, as: UTF8.self).contains("\"resultPath\":\"/st/stage/A/1-tagged.m4a\""))
     }
 
     // MARK: Open operations
@@ -1006,7 +1151,7 @@ struct JournalBuilder {
         var upToTermination = try Builder.make()
         upToTermination.completeThroughEvacuation()
         upToTermination.clearingThroughTermination()
-        let progress = try upToTermination.replay(accepted: Builder.gui)
+        let progress = try upToTermination.replay()
         let running = snapshot(builder.record, evacuated: [0, 1], ids: [], music: true)
         #expect(
             ProgressJournal.reconcile(record: builder.record, progress: progress, snapshot: running)
@@ -1016,7 +1161,7 @@ struct JournalBuilder {
                 record: builder.record, progress: progress,
                 snapshot: snapshot(builder.record, evacuated: [0, 1], ids: [], music: false)
             ).isEmpty)
-        let full = try builder.replay(accepted: Builder.gui)
+        let full = try builder.replay()
         let added = Set(full.newPersistentIDs)
         #expect(
             ProgressJournal.reconcile(
@@ -1215,7 +1360,7 @@ struct JournalBuilder {
             error { try workspace.append(.stageBegan(.clearing), head: head) }
                 == .invalidEntry([.stageOutOfOrder(expected: .evacuation, found: .clearing)]))
         #expect(
-            error { try workspace.append(.intent(operation: .establishGUIEmptiness, target: ""), head: head) }
+            error { try workspace.append(.intent(operation: .terminateMusic, target: ""), head: head) }
                 == .invalidEntry([.noStageBegun]))
         #expect(workspace.data == bytes)
     }

@@ -16,7 +16,6 @@ public enum RebuildOperation: String, Codable, CaseIterable, Hashable, Sendable 
     case evacuateFile
     case removeRegistration
     case confirmLibraryEmpty
-    case establishGUIEmptiness
     case terminateMusic
     case applyFile
     case addAlbum
@@ -25,7 +24,7 @@ public enum RebuildOperation: String, Codable, CaseIterable, Hashable, Sendable 
     public var stage: RebuildStage {
         switch self {
         case .evacuateFile: .evacuation
-        case .removeRegistration, .confirmLibraryEmpty, .establishGUIEmptiness, .terminateMusic: .clearing
+        case .removeRegistration, .confirmLibraryEmpty, .terminateMusic: .clearing
         case .applyFile: .application
         case .addAlbum: .addition
         case .confirmDisplay: .display
@@ -62,7 +61,7 @@ public struct ObservedFile: Codable, Equatable, Sendable {
 /// What was observed after an operation. Which fields are present depends on the operation; any other
 /// combination is refused by the transition rules.
 public struct JournalObservation: Codable, Equatable, Sendable {
-    /// `evacuateFile`: "rename" or "copy". `establishGUIEmptiness`: the qualified method.
+    /// `evacuateFile`: "rename" or "copy".
     public var method: String?
     public var staged: ObservedFile?
     public var sourcePresent: Bool?
@@ -71,14 +70,20 @@ public struct JournalObservation: Codable, Equatable, Sendable {
     public var registrationCount: Int?
     public var musicRunning: Bool?
     public var result: ObservedFile?
+    /// `applyFile`, optional: the absolute path of the file after the application, strictly inside the staging
+    /// directory. When absent, the result is at the staging path that is the target.
+    public var resultPath: String?
     public var newPersistentIDs: [String]?
     public var laterThanPreviousAlbum: Bool?
+    /// `confirmDisplay`: the order of the albums' exposed addition dates, newest first. It is not an observation of
+    /// the Music window.
     public var observed: [String]?
 
     public init(
         method: String? = nil, staged: ObservedFile? = nil, sourcePresent: Bool? = nil, source: ObservedFile? = nil,
         remaining: [String]? = nil, registrationCount: Int? = nil, musicRunning: Bool? = nil,
-        result: ObservedFile? = nil, newPersistentIDs: [String]? = nil, laterThanPreviousAlbum: Bool? = nil,
+        result: ObservedFile? = nil, resultPath: String? = nil, newPersistentIDs: [String]? = nil,
+        laterThanPreviousAlbum: Bool? = nil,
         observed: [String]? = nil
     ) {
         self.method = method
@@ -89,6 +94,7 @@ public struct JournalObservation: Codable, Equatable, Sendable {
         self.registrationCount = registrationCount
         self.musicRunning = musicRunning
         self.result = result
+        self.resultPath = resultPath
         self.newPersistentIDs = newPersistentIDs
         self.laterThanPreviousAlbum = laterThanPreviousAlbum
         self.observed = observed
@@ -105,6 +111,7 @@ public struct JournalObservation: Codable, Equatable, Sendable {
         if registrationCount != nil { names.insert("registrationCount") }
         if musicRunning != nil { names.insert("musicRunning") }
         if result != nil { names.insert("result") }
+        if resultPath != nil { names.insert("resultPath") }
         if newPersistentIDs != nil { names.insert("newPersistentIDs") }
         if laterThanPreviousAlbum != nil { names.insert("laterThanPreviousAlbum") }
         if observed != nil { names.insert("observed") }

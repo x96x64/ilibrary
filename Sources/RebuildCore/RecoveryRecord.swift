@@ -6,10 +6,8 @@ import Foundation
     import Glibc
 #endif
 
-/// The stage of a rebuild. Only `prepared` is reachable in M11.
-///
-/// Later stages are reserved for M12 and M13 and are intentionally not declared: evacuating, evacuated, clearing,
-/// cleared, adding, added, verified, and completed. A record naming any of them is refused by this version.
+/// The stage of a rebuild as recorded in the recovery record. Only `prepared` is recorded in the record; later
+/// progress is recorded in the progress journal. A record naming any other stage is refused.
 public enum RecoveryStage: String, Codable, Equatable, Sendable {
     case prepared
 }
