@@ -96,10 +96,9 @@ public struct RegistrationClassificationError: Error, Equatable, Sendable {
 }
 
 public enum RegistrationClassification {
-    /// The cloud status texts admitted by default: the empty string and "unknown" only.
-    ///
-    /// The values that Music reports for local-only files while iCloud Music Library is off are unmeasured. The
-    /// qualification records the observed values. Any other value is refused until evidence justifies admitting it.
+    /// The cloud status texts admitted by default: the empty string and "unknown" only. The values that Music
+    /// reports for local-only files while iCloud Music Library is off have not been measured; any other value is
+    /// refused until evidence justifies admitting it.
     public static let defaultAllowedCloudStatuses: Set<String> = ["", "unknown"]
 
     /// Classifies the library registrations against the inventory and returns the one-to-one mapping between the

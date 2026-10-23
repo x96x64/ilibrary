@@ -14,8 +14,7 @@ public struct EvacuationObservation: Equatable, Sendable {
     }
 }
 
-/// External state as observed by a future adapter. It is synthetic in this phase: nothing in this module reads
-/// the filesystem or Music to produce it.
+/// External state as observed by the caller. Nothing in this module reads the filesystem or Music to produce it.
 public struct ReconciliationSnapshot: Equatable, Sendable {
     public let evacuation: [EvacuationObservation]
     /// The persistent IDs of every registration in the library.

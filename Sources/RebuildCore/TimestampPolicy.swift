@@ -13,10 +13,8 @@ public enum TimestampComparison: Equatable, Sendable {
 
 /// The timestamp precision of a supported backup filesystem and the comparison that follows from it.
 ///
-/// The precision values are the coordinator's specification for M11 (Decision E); they have not been established by
-/// iLibrary measurements. Live behavior of copies onto real APFS and HFS+ media must still be verified in the
-/// maintainer's qualification before a verification result is relied upon. The policy never widens a tolerance to
-/// make a comparison pass.
+/// The precisions are taken from the filesystem specifications and have not been measured by iLibrary. The policy
+/// never widens a tolerance to make a comparison pass.
 public enum TimestampPolicy: String, Codable, Equatable, Hashable, Sendable, CaseIterable {
     /// APFS stores nanoseconds: modification and creation times must be equal exactly.
     case apfs

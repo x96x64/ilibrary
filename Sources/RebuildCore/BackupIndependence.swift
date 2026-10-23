@@ -1,7 +1,3 @@
-// Decision on whether a backup location may be treated as physically independent of the locations it
-// protects. The function is pure so that every refusal is testable on any platform. It never asserts
-// independence from missing information: an unknown identifier, flag, or filesystem results in refusal.
-
 /// Facts about the storage that holds one location. A nil value means that the fact could not be determined.
 public struct StorageFacts: Equatable, Sendable {
     /// Identifier of the physical whole disk, such as "disk0".
@@ -58,10 +54,11 @@ public enum IndependenceVerdict: Equatable, Sendable {
     public var isIndependent: Bool { self == .independent }
 }
 
+/// Decides whether a backup location may be treated as physically independent of the locations that it protects.
+/// The decision is pure, so that every refusal is testable on any platform, and it never asserts independence from
+/// missing information: an unknown identifier, flag, or filesystem results in refusal.
 public enum BackupIndependence {
-    /// Evaluates the backup against every other location. The verdict is independent only if the backup's
-    /// physical disk is known, every other physical disk is known and different, the backup is local, is not
-    /// a disk image, has filesystem type apfs or hfs, and the maintainer confirmed. All reasons are listed.
+    /// Evaluates the backup against every other location and lists every reason for refusal.
     public static func evaluate(
         backup: StorageFacts, others: [StorageFacts], maintainerConfirmed: Bool
     ) -> IndependenceVerdict {

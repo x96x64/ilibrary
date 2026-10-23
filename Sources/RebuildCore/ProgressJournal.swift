@@ -101,8 +101,8 @@ public struct OpenOperation: Equatable, Sendable {
     public let operation: RebuildOperation
     public let target: String
     public let returned: Bool
-    /// True when the recorded return reported failure. This phase offers no entry that resolves such an
-    /// operation in this format, so the journal cannot proceed past it.
+    /// True when the recorded return reported failure. No entry resolves such an operation, so the journal cannot
+    /// proceed past it.
     public let returnFailed: Bool
 }
 
@@ -138,8 +138,7 @@ public struct RebuildProgress: Equatable, Sendable {
     /// False when an operation is open or unresolved.
     public var canProceed: Bool { openOperation == nil }
 
-    /// True when `target` (in its canonical form) has been verified for `operation`. The cost is constant in
-    /// expectation.
+    /// True when `target` (in its canonical form) has been verified for `operation`.
     public func isVerified(_ operation: RebuildOperation, _ target: String) -> Bool {
         verifiedSets[operation]?.contains(target) ?? false
     }
@@ -290,9 +289,8 @@ public enum ProgressJournal {
     /// Every reason for which `entry` may not follow `progress`. The replay and the writer share this function,
     /// so the writer refuses an invalid entry before anything is written.
     ///
-    /// This entry point indexes the record on every call, at a cost proportional to the size of the record. A
-    /// caller that checks many entries uses the replay or `ProgressJournalFile.append(_:to:state:...)`, which build
-    /// the index once.
+    /// Each call indexes the record at a cost proportional to its size; the replay and
+    /// `ProgressJournalFile.append(_:to:state:...)` build the index once for many entries.
     public static func nextEntryProblems(record: RecoveryRecord, progress: RebuildProgress, entry: JournalEntry)
         -> [TransitionProblem]
     {

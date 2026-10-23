@@ -255,9 +255,9 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
     }
 
     /// True when `text` is a UTC ISO 8601 time with a "Z" suffix. The exact form "YYYY-MM-DDTHH:MM:SSZ" naming a
-    /// valid calendar instant of the years 1900 to 2999 is recognized directly, because creating a formatter for
-    /// each of the tens of thousands of entries of a journal dominated its parsing; every other text is decided by
-    /// the formatter as before.
+    /// valid calendar instant of the years 1900 to 2999 is recognized without a formatter, because a journal checks
+    /// one time per entry and creating a formatter for each of tens of thousands of entries dominates its parsing;
+    /// every other text is decided by `ISO8601DateFormatter`.
     static func isUTCTimestamp(_ text: String) -> Bool {
         if isPlainUTCInstant(text) { return true }
         let formatter = ISO8601DateFormatter()
@@ -368,8 +368,6 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
         }
         if !sortedOK { found.append(.inventoryUnsorted) }
         let sourceCount = inventoryKeys.count
-        // A collision between files of different case under one root is reported above; collisions across
-        // normalization are caught by the key as well.
 
         // Registrations and mapping.
         var ids = Set<String>()
@@ -493,9 +491,8 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
             throw RecoveryRecordError.malformed("not a recovery record: \(error)")
         }
         guard header.format == formatIdentifier else { throw RecoveryRecordError.wrongFormat(header.format) }
-        // A stage that this version does not know, such as one reserved for a later version, is named in the
-        // diagnostic instead of being reported as a generic decoding failure. It remains a `malformed` error, so
-        // that the error type and the diagnostics of `rebuild status` are unchanged.
+        // A stage that this version does not know is named in the diagnostic instead of being reported as a
+        // generic decoding failure; it remains a `malformed` error.
         struct StageHeader: Decodable { let stage: String? }
         if let stage = (try? decoder.decode(StageHeader.self, from: data))?.stage,
             RecoveryStage(rawValue: stage) == nil
