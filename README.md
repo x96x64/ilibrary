@@ -18,7 +18,7 @@ ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary 0.2.0 is experimental. The source tree implements every planned command, including the staged rebuilding of an existing Music library, as the [Roadmap](docs/roadmap.md) describes. File processing is verified with synthetic tests, and Music operations are tested with a substitute library. The Music requests that iLibrary sends use forms measured in a separate macOS user on macOS 27.0.1 with Music 1.7, but the rebuilding stages have not been run against the Music application. Begin with copies and keep independent backups of your library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary 0.3.0 is experimental. The source tree implements every planned command, including the staged rebuilding of an existing Music library, as the [Roadmap](docs/roadmap.md) describes. File processing is verified with synthetic tests, and Music operations are tested with a substitute library. The Music requests that iLibrary sends use forms measured in a separate macOS user on macOS 27.0.1 with Music 1.7, but the rebuilding stages have not been run against the Music application. Begin with copies and keep independent backups of your library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 >
 > A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a library or backup medium can be recovered. iLibrary does not prevent Apple Music cloud matching.
 
@@ -64,7 +64,7 @@ The package declares macOS 14 as its deployment target; the current local verifi
 
 ## Installation
 
-The following commands install version 0.2.0, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version, such as 0.1.0, is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+The following commands install version 0.3.0, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version, such as 0.1.0, is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
 
 ### Homebrew
 
@@ -77,14 +77,14 @@ Homebrew builds from source and requires Swift 6.
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@0.2.0
+npm install -g @x96_64/ilibrary@0.3.0
 ```
 
 ### PyPI (pip)
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.2.0
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.3.0
 source .venv-ilibrary/bin/activate
 ```
 

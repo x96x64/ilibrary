@@ -4,13 +4,16 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-23
+
 ### Added
 
-- `rebuild stage`, `rebuild clear`, `rebuild apply`, and `rebuild add`: the staged rebuilding of an existing Music library from a recovery record. `stage` moves the inventoried files from the media folder to the staging directory; `clear` removes exactly the recorded registrations, one persistent ID per request, confirms that Music reports no tracks, and quits Music; `apply` writes the recorded catalog, names, and optional dates to the staged files while Music is closed; and `add` adds the albums in the recorded order and compares their addition dates with the expected Recently Added order. Every stage offers `--dry-run`, records its operations in an append-only progress journal, resumes after an interruption, and refuses to run out of order. `rebuild status` reports the journal.
+- `rebuild stage`, `rebuild clear`, `rebuild apply`, and `rebuild add`: the staged rebuilding of an existing Music library from a recovery record. `stage` moves the inventoried files from the media folder to the staging directory; `clear` removes exactly the recorded registrations, one persistent ID per request, confirms that Music reports no tracks, and quits Music; `apply` writes the recorded catalog, names, and optional dates to the staged files while Music is closed; and `add` adds the albums in the recorded order and compares their addition dates with the expected Recently Added order. Every stage offers `--dry-run`, records its operations in an append-only progress journal, resumes after an interruption, and refuses to run out of order. `rebuild status` reports the journal. The stages are tested with a substitute library and have not been run against the Music application.
 - A security policy describing supported versions and private reporting.
 
 ### Changed
 
+- Releases are built, verified, and created on a GitHub macOS runner by the `Publish Reviewed Packages` workflow; registry publication keeps its protected environments.
 - `add` adds each album only after the clock has passed the latest addition second of the album before it, and stops when Music reports an addition second for the album that does not follow it, because Recently Added orders albums by their exposed addition seconds.
 
 ### Removed

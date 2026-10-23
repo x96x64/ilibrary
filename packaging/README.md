@@ -9,7 +9,7 @@
 
 iLibrary prepares downloaded music for a local Apple Music library and adds it in a controlled order. It converts lossless downloads to Apple Lossless, copies iTunes Store purchases without their purchase metadata, applies metadata from a catalog file without re-encoding, names files as the Music app does, and sets file dates to release dates. It adds albums to Music one at a time and diagnoses differences between files and library records. This package description is condensed from the [iLibrary README](https://github.com/x96x64/ilibrary#readme), which is the complete reference.
 
-> **Important:** iLibrary 0.2.0 is experimental. File processing is verified with synthetic tests, and Music operations are tested with a substitute library. The Music requests that iLibrary sends use forms measured in a separate macOS user on macOS 27.0.1 with Music 1.7, but the rebuilding stages have not been run against the Music application. Begin with copies and keep independent backups of your library. iLibrary does not prevent Apple Music cloud matching. It is not affiliated with, endorsed by, or sponsored by Apple.
+> **Important:** iLibrary 0.3.0 is experimental. File processing is verified with synthetic tests, and Music operations are tested with a substitute library. The Music requests that iLibrary sends use forms measured in a separate macOS user on macOS 27.0.1 with Music 1.7, but the rebuilding stages have not been run against the Music application. Begin with copies and keep independent backups of your library. iLibrary does not prevent Apple Music cloud matching. It is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Features
 
@@ -32,7 +32,7 @@ The package declares macOS 14 as its deployment target; local verification used 
 
 ## Installation
 
-The following commands install version 0.2.0. Choose one channel, and use only that channel in a given shell or environment, so that updating it updates the command you run. Every channel installs the same command, `ilibrary`. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects, and PyPI does not support npm scopes.
+The following commands install version 0.3.0. Choose one channel, and use only that channel in a given shell or environment, so that updating it updates the command you run. Every channel installs the same command, `ilibrary`. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects, and PyPI does not support npm scopes.
 
 ### Homebrew
 
@@ -46,7 +46,7 @@ Homebrew builds from source and requires Swift 6.
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@0.2.0
+npm install -g @x96_64/ilibrary@0.3.0
 ilibrary --version
 ```
 
@@ -56,7 +56,7 @@ Install in a virtual environment to avoid changing the system Python:
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.2.0
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.3.0
 .venv-ilibrary/bin/ilibrary --version
 source .venv-ilibrary/bin/activate
 ```
