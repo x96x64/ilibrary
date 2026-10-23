@@ -266,6 +266,25 @@ struct StageFixture {
         #expect(Set(fixture.music.removals).count == 9)
     }
 
+    @Test func aResumedClearReadsTheLibraryAgain() throws {
+        let fixture = try StageFixture()
+        defer { fixture.remove() }
+        #expect(fixture.run("stage").status == 0)
+        fixture.music.ignoreQuit = true
+        let first = fixture.run("clear")
+        #expect(first.status == 1)
+        #expect(first.errorText.contains("Music did not quit"))
+        #expect(fixture.progress?.isVerified(.confirmLibraryEmpty, "") == true)
+        fixture.music.ignoreQuit = false
+        fixture.music.library.append(
+            LibraryTrack(
+                persistentID: "00000000000000FE", name: "Later", album: "Later", artist: "Other", albumArtist: ""))
+        let second = fixture.run("clear")
+        #expect(second.status == 1)
+        #expect(second.errorText.contains("which the record does not plan to remove"))
+        #expect(fixture.progress?.completedStages.contains(.clearing) == false)
+    }
+
     @Test func addRefusesADestinationThatIsAlreadyOccupied() throws {
         let fixture = try StageFixture()
         defer { fixture.remove() }

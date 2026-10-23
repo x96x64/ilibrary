@@ -289,7 +289,9 @@ enum RebuildStages {
         for entry in record.evacuation where !stillStaged(entry, inventory[entry.sourcePath]!) {
             problems.append("\(entry.stagingPath) is missing or changed, or \(entry.sourcePath) exists again")
         }
-        if !pending.isEmpty || !session.verified(.confirmLibraryEmpty, "") {
+        // The library is read on every run, including a resumed one, so that a track added since an earlier
+        // confirmation is found; reading it launches Music, which is quit again below.
+        do {
             let pendingIDs = Set(pending.map { $0.uppercased() })
             let snapshot = try music.librarySnapshot()
             let present = Set(snapshot.tracks.map { $0.persistentID.uppercased() })
@@ -376,8 +378,9 @@ enum RebuildStages {
                     return JournalObservation(musicRunning: false)
                 })
         }
+        if !(try musicClosed(environment)) { try? music.quit() }
         guard try waitUntilClosed(environment) else {
-            throw CommandError.failure("Music is running again; quit it and run rebuild clear again")
+            throw CommandError.failure("Music did not quit; quit it and run rebuild clear again")
         }
         try session.complete(.clearing)
         console.print(

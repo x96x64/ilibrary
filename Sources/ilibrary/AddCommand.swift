@@ -163,6 +163,19 @@ enum AddCommand {
             return 0
         }
 
+        // A run stops right after an album whose addition dates did not follow the album before it, and the album
+        // is recorded as added; that boundary is checked again so that a later run does not continue past it.
+        let addedEntries = journal.entries.filter { $0.state == .added }
+        if addedEntries.count >= 2 {
+            var separation = SeparatedAddition()
+            separation.follow(addedEntries[addedEntries.count - 2].persistentIDs, music: music)
+            if separation.latest != nil, try !separation.confirm(addedEntries.last!.persistentIDs, music: music) {
+                throw CommandError.failure(
+                    "\"\(addedEntries.last!.album)\" does not follow the album before it in addition dates, so this "
+                        + "run cannot continue in order; move the albums that remain to a new staging folder to add "
+                        + "them in a new run")
+            }
+        }
         // Albums interrupted after their move are confirmed or added first, each after the album before it.
         for index in journal.entries.indices where journal.entries[index].state == .moving {
             var separation = SeparatedAddition()

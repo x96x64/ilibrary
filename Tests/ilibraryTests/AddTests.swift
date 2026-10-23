@@ -35,7 +35,8 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
     func allTracks() throws -> [LibraryTrack] { library }
     func tracks(album: String) throws -> [LibraryTrack] { library.filter { $0.album == album } }
     func librarySnapshot() throws -> LibrarySnapshot {
-        LibrarySnapshot(
+        running = true
+        return LibrarySnapshot(
             tracks: library, trackCount: library.count + otherTracks, fileTrackCount: library.count,
             dateAddedSeconds: dates.filter { id, _ in library.contains { $0.persistentID == id } })
     }
@@ -87,9 +88,12 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
         if failAfterRemove == persistentID { throw CocoaError(.fileWriteUnknown) }
     }
 
+    /// When set, a request to quit is answered but Music keeps running.
+    var ignoreQuit = false
+
     func quit() throws {
         quitCalls += 1
-        running = false
+        if !ignoreQuit { running = false }
     }
 }
 
@@ -236,6 +240,10 @@ struct AddFixture {
         #expect(run.status == 1)
         #expect(run.errorText.contains("its addition dates do not follow those of the album before it"))
         #expect(fixture.journal.entries.map(\.state) == [.added, .added])
+        #expect(fixture.music.addCalls.count == 2)
+        let again = fixture.run([])
+        #expect(again.status == 1)
+        #expect(again.errorText.contains("this run cannot continue in order"))
         #expect(fixture.music.addCalls.count == 2)
     }
 
