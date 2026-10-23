@@ -41,6 +41,11 @@ struct StorageReport: Equatable, Sendable {
     var facts: StorageFacts
 }
 
+/// Sets the modification and creation times (path, modification, creation) of an existing file with nanosecond
+/// precision and returns the stored values.
+typealias PreciseDateSetter =
+    @Sendable (String, FileTimestamp, FileTimestamp) throws -> (modification: FileTimestamp, creation: FileTimestamp?)
+
 /// Lossless conversion, available where AudioToolbox is (macOS).
 struct Converter: Sendable {
     /// Checks that a source can be converted losslessly and describes it.
@@ -106,14 +111,8 @@ struct Environment: Sendable {
     /// Copies a regular file (source, destination, restoration root) exclusively and without its dates; nil where
     /// unavailable.
     var restoreCopy: (@Sendable (URL, URL, URL) throws -> Void)? = Environment.systemRestoreCopy
-    /// Sets the modification and creation times (path, modification, creation) of an existing file with
-    /// nanosecond precision and returns the stored values; nil where unavailable.
-    var setPreciseDates:
-        (
-            @Sendable (String, FileTimestamp, FileTimestamp) throws -> (
-                modification: FileTimestamp, creation: FileTimestamp?
-            )
-        )? = Environment.systemPreciseDates
+    /// Sets nanosecond-precision dates; nil where unavailable.
+    var setPreciseDates: PreciseDateSetter? = Environment.systemPreciseDates
     /// Waits until the volume with a UUID is confirmed to be no longer mounted, for at most the given seconds. It
     /// never unmounts anything; nil where unavailable.
     var waitUntilUnmounted: (@Sendable (String, TimeInterval) -> DisconnectionCheck)? = Environment.systemUnmountWait
@@ -197,13 +196,7 @@ struct Environment: Sendable {
         #endif
     }
 
-    static var systemPreciseDates:
-        (
-            @Sendable (String, FileTimestamp, FileTimestamp) throws -> (
-                modification: FileTimestamp, creation: FileTimestamp?
-            )
-        )?
-    {
+    static var systemPreciseDates: PreciseDateSetter? {
         #if canImport(LibraryMac) && os(macOS)
             return { path, modification, creation in
                 let stored = try PreciseFileDates.set(path: path, modification: modification, creation: creation)
@@ -264,4 +257,12 @@ struct CommandError: Error, Equatable {
 
     static func usage(_ message: String) -> CommandError { CommandError(message: message, status: 2) }
     static func failure(_ message: String) -> CommandError { CommandError(message: message, status: 1) }
+
+    static let timestampsRequireMacOS = CommandError.failure(
+        "--timestamps requires macOS, where creation dates can be set; nothing was changed")
+}
+
+extension Error {
+    /// The message of a `CommandError`, and the description of any other error.
+    var commandMessage: String { (self as? CommandError)?.message ?? "\(self)" }
 }

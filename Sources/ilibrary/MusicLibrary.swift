@@ -25,6 +25,13 @@ struct LibraryTrack: Equatable, Sendable {
     var cloudStatus: String = "unknown"
 }
 
+extension LibraryTrack {
+    /// The album artist, or the artist when the track has none.
+    var effectiveAlbumArtist: String { albumArtist.isEmpty ? artist : albumArtist }
+
+    var standardizedLocation: String? { location.map { URL(fileURLWithPath: $0).standardizedFileURL.path } }
+}
+
 /// The whole library as one read for a rebuild: the file tracks, the counts that reveal tracks that are not
 /// file tracks, and the date added of each file track in whole seconds since 1970-01-01T00:00:00Z.
 struct LibrarySnapshot: Equatable, Sendable {

@@ -91,8 +91,7 @@ enum ApplyCommand {
             written += 1
         }
         let moved = try executeMoves(prepared.moves, console: console, shown: prepared.shown)
-        var dated = 0
-        if let datePlan = prepared.datePlan { dated = try TimestampPlanner.execute(datePlan, environment: environment) }
+        let dated = try prepared.datePlan.map { try TimestampPlanner.execute($0, environment: environment) } ?? 0
         console.print(
             "Applied: \(written) files rewritten and verified, \(moved) moved\(timestamps ? ", \(dated) paths dated" : "")"
         )
@@ -104,41 +103,31 @@ enum ApplyCommand {
         catalogPath: String, paths: [String], rename: Bool, timestamps: Bool, console: Console,
         environment: Environment
     ) throws -> Prepared {
-        let roots = paths.map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }.filter {
-            pathKind($0) == .directory
-        }
+        let roots = directoryRoots(paths)
         if rename, roots.count != paths.count {
             throw CommandError.usage("apply: --rename requires every PATH to be a directory")
         }
-        if timestamps, environment.setDates == nil {
-            throw CommandError.failure(
-                "--timestamps requires macOS, where creation dates can be set; nothing was changed")
-        }
+        if timestamps, environment.setDates == nil { throw CommandError.timestampsRequireMacOS }
         let (catalog, directory) = try loadCatalog(catalogPath, console: console)
-        let correspondence = try Correspondence.build(paths, catalog: catalog)
-        guard correspondence.print(to: console, catalog: catalog) else {
-            throw CommandError.failure("some files are unmatched or refused; nothing was changed")
-        }
+        let correspondence = try Correspondence.requireComplete(paths, catalog: catalog, console: console)
         var artwork: [Int: MetadataValue] = [:]
-        for (index, album) in catalog.albums.enumerated() {
-            if let path = album.artwork, !path.isEmpty {
-                artwork[index] = try loadArtwork(path, catalogDirectory: directory)
-            }
+        for (index, path) in catalog.artworkPaths {
+            artwork[index] = try loadArtwork(path, catalogDirectory: directory)
         }
         var plans: [FilePlan] = correspondence.matchedFiles.map { file, match in
             let track = catalog.resolve(match.reference)
             let values = plannedValues(
                 track, album: catalog.albums[match.reference.album], artwork: artwork[match.reference.album])
-            let changes = values.compactMap { value -> (PlannedValue, [MetadataValue])? in
+            let changes = values.compactMap { value -> (value: PlannedValue, old: [MetadataValue])? in
                 let old = file.file.metadataValues(value.key)
                 return old == value.values ? nil : (value, old)
             }
-            return FilePlan(
-                file: file, track: track, values: values, changes: changes.map { ($0.0, $0.1) }, destination: nil)
+            return FilePlan(file: file, track: track, values: values, changes: changes, destination: nil)
         }
         plans.sort { $0.file.url.path < $1.file.url.path }
         if rename { try planMoves(&plans, roots: roots) }
-        try checkFreeSpace(plans.filter { !$0.changes.isEmpty }, environment: environment, console: console)
+        let changed = plans.filter { !$0.changes.isEmpty }
+        try checkFreeSpace(changed, environment: environment, console: console)
         let finalFiles = plans.map { ($0.destination ?? $0.file.url, $0.track) }
         let datePlan =
             timestamps
@@ -146,7 +135,6 @@ enum ApplyCommand {
             : nil
         let root = roots.count == 1 ? roots[0] : nil
         let shown: (URL) -> String = { url in root.map { relativePath(url, from: $0) } ?? url.path }
-        let changed = plans.filter { !$0.changes.isEmpty }
         console.print("Tag changes: \(changed.count) of \(plans.count) files")
         for plan in changed {
             console.print("  \(shown(plan.file.url))")
@@ -160,11 +148,7 @@ enum ApplyCommand {
             for plan in moves { console.print("  \(shown(plan.file.url)) -> \(shown(plan.destination!))") }
         }
         if let datePlan {
-            console.print("Dates: \(datePlan.targets.count) paths")
-            for target in datePlan.targets {
-                console.print("  " + TimestampPlanner.describe(target, timeZone: environment.timeZone, root: root))
-            }
-            for note in datePlan.notes { console.print("  note: \(note)") }
+            TimestampPlanner.printPlan(datePlan, timeZone: environment.timeZone, root: root, console: console)
         }
         return Prepared(plans: plans, changed: changed, moves: moves, datePlan: datePlan, shown: shown)
     }
@@ -302,63 +286,5 @@ enum ApplyCommand {
             }
         }
         return moved
-    }
-}
-
-enum TimestampsCommand {
-    static let syntax = CommandSyntax(
-        name: "timestamps",
-        usage: """
-            Usage: ilibrary timestamps CATALOG.json PATH... [--dry-run] [--script FILE]
-
-            Sets the creation and modification dates of the matched .m4a files to their release dates at local
-            midnight, then of album folders that hold one album, then of artist folders for which the catalog
-            gives a folderDate. A missing path is reported and never created; symbolic links are refused. Each
-            date is read back after it is set. Setting creation dates requires macOS.
-
-            Options:
-              --dry-run       list the planned dates and change nothing
-              --script FILE   also write an equivalent shell script that uses SetFile and touch
-            """, valued: ["--script": []], flags: ["--dry-run"], positionals: 2...Int.max)
-
-    static func run(_ arguments: [String], console: Console, environment: Environment) throws -> Int32 {
-        let parsed = try syntax.parse(arguments)
-        let dryRun = parsed.flag("--dry-run")
-        let paths = Array(parsed.positionals.dropFirst())
-        let roots = paths.map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }.filter {
-            pathKind($0) == .directory
-        }
-        if !dryRun, environment.setDates == nil {
-            throw CommandError.failure("setting creation dates is supported only on macOS; use --dry-run or --script")
-        }
-        let script = parsed.value("--script").map { URL(fileURLWithPath: $0).standardizedFileURL }
-        if let script, pathKind(script) != .missing {
-            throw CommandError.failure("\(script.path) already exists; it is not overwritten")
-        }
-        let (catalog, _) = try loadCatalog(parsed.positionals[0], console: console)
-        let correspondence = try Correspondence.build(paths, catalog: catalog)
-        guard correspondence.print(to: console, catalog: catalog) else {
-            throw CommandError.failure("some files are unmatched or refused; nothing was changed")
-        }
-        let files = correspondence.matchedFiles.map { ($0.file.url, catalog.resolve($0.match.reference)) }
-        let plan = TimestampPlanner.plan(files: files, catalog: catalog, roots: roots, timeZone: environment.timeZone)
-        let root = roots.count == 1 ? roots[0] : nil
-        console.print("Dates: \(plan.targets.count) paths")
-        for target in plan.targets {
-            console.print("  " + TimestampPlanner.describe(target, timeZone: environment.timeZone, root: root))
-        }
-        for note in plan.notes { console.print("  note: \(note)") }
-        if let script {
-            try TimestampPlanner.script(plan, timeZone: environment.timeZone).write(
-                to: script, atomically: false, encoding: .utf8)
-            console.print("Wrote the equivalent script \(script.path)")
-        }
-        if dryRun {
-            console.print("Dry run: no date was changed.")
-            return 0
-        }
-        let dated = try TimestampPlanner.execute(plan, environment: environment)
-        console.print("Dated and verified: \(dated) paths")
-        return 0
     }
 }

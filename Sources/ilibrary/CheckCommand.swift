@@ -102,9 +102,9 @@ enum CheckCommand {
         return findings.isEmpty ? 0 : 1
     }
 
-    static func albumKey(_ file: AudioFile) -> String {
-        TitleRules.comparisonKey(file.tags.albumArtist ?? LibraryFiles.text(file.file, .artist) ?? "") + "\u{0}"
-            + TitleRules.comparisonKey(file.tags.album ?? "")
+    static func key(of file: AudioFile) -> String {
+        albumKey(
+            artist: file.tags.albumArtist ?? LibraryFiles.text(file.file, .artist) ?? "", album: file.tags.album ?? "")
     }
 
     static func fileFindings(_ files: [AudioFile], environment: Environment) -> [Finding] {
@@ -121,7 +121,7 @@ enum CheckCommand {
                 findings.append(Finding(path: file.url.path, message: "no \(missing.joined(separator: ", ")) tag"))
             }
         }
-        for (_, album) in Dictionary(grouping: files.filter { $0.tags.album != nil }, by: albumKey) {
+        for (_, album) in Dictionary(grouping: files.filter { $0.tags.album != nil }, by: key(of:)) {
             for (_, group) in Dictionary(
                 grouping: album.filter { $0.tags.trackNumber != nil },
                 by: {
@@ -188,9 +188,9 @@ enum CheckCommand {
         _ files: [AudioFile], tracks: [LibraryTrack], roots: [URL], entireLibrary: Bool
     ) -> [Finding] {
         var findings: [Finding] = []
-        let albums = Set(files.map(albumKey))
-        func standardized(_ path: String) -> String { URL(fileURLWithPath: path).standardizedFileURL.path }
-        let byLocation = Dictionary(grouping: tracks.filter { $0.location != nil }, by: { standardized($0.location!) })
+        let albums = Set(files.map(key(of:)))
+        let byLocation = Dictionary(
+            tracks.compactMap { track in track.standardizedLocation.map { ($0, [track]) } }, uniquingKeysWith: +)
         for file in files {
             let candidates = byLocation[file.url.standardizedFileURL.path] ?? []
             guard !candidates.isEmpty else {
@@ -207,8 +207,7 @@ enum CheckCommand {
             }
         }
         for track in tracks {
-            let artist = track.albumArtist.isEmpty ? track.artist : track.albumArtist
-            let key = TitleRules.comparisonKey(artist) + "\u{0}" + TitleRules.comparisonKey(track.album)
+            let key = albumKey(artist: track.effectiveAlbumArtist, album: track.album)
             let selected =
                 track.location.map { location in
                     roots.contains { isWithin(URL(fileURLWithPath: location), $0) }
@@ -227,7 +226,7 @@ enum CheckCommand {
                 findings.append(Finding(path: path, message: "a library track without a file"))
                 continue
             }
-            switch pathKind(URL(fileURLWithPath: location)) {
+            switch pathKind(location) {
             case .missing:
                 findings.append(Finding(path: location, message: "a library track whose file is missing"))
             case .symbolicLink:
