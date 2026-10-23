@@ -92,8 +92,16 @@ protocol MusicLibrary: Sendable {
             try MusicApp.track(persistentID: persistentID).map(Self.convert)
         }
         func add(_ files: [URL]) throws -> [LibraryTrack] { try MusicApp.add(files).map(Self.convert) }
+        /// Reads the dates of the given tracks, or, when that request fails, the dates of the whole library by the
+        /// bulk read, whose dates were measured to equal Music's.
         func datesAdded(_ persistentIDs: [String]) throws -> [String: Int] {
-            try MusicApp.datesAdded(persistentIDs: persistentIDs)
+            if let dates = try? MusicApp.datesAdded(persistentIDs: persistentIDs) { return dates }
+            let wanted = Set(persistentIDs.map { $0.uppercased() })
+            let dates = try MusicApp.librarySnapshot().dateAddedSeconds.filter { wanted.contains($0.key.uppercased()) }
+            guard dates.count == wanted.count else {
+                throw MusicAppError.unexpectedResult("Music did not report the date added of every track")
+            }
+            return dates
         }
         func remove(persistentID: String, name: String, album: String, artist: String) throws {
             try MusicApp.remove(persistentID: persistentID, name: name, album: album, artist: artist)
