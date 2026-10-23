@@ -6,18 +6,34 @@ A catalog is a UTF-8 JSON document that states the intended metadata of a set of
 
 The document holds `albums` and, optionally, `titleRules` and `artists`. Each album holds `discs`, each disc holds `tracks`, and discs and tracks are numbered by their position. Album-level values apply to every track and may be overridden by the same field on a track. An empty string means that a value is unknown and leaves the file's value unchanged; a value is never invented to fill the field.
 
+The example below is a complete catalog for the eleven-track CD edition of *Bad*, whose tracks M1 to M11 are the eleven objects of its single disc in order; the original vinyl edition omits the eleventh track. Disc and track numbers come from the positions, so the catalog states only the titles.
+
 ```json
 {
   "format": "ilibrary-catalog-1",
   "titleRules": { "case": "keep", "removeQualifiers": ["Remaster"], "bracketNested": true },
   "albums": [
     {
-      "album": "Album A",
-      "aliases": ["Album A (Remastered)"],
-      "albumArtist": "Artist A",
-      "copyright": "℗ 2009 Label A",
-      "releaseDate": "2009-06-25",
-      "discs": [{ "tracks": [{ "title": "Song A", "composer": "Composer A" }] }]
+      "album": "Bad",
+      "albumArtist": "Michael Jackson",
+      "releaseDate": "1987-08-31",
+      "discs": [
+        {
+          "tracks": [
+            { "title": "Bad" },
+            { "title": "The Way You Make Me Feel" },
+            { "title": "Speed Demon" },
+            { "title": "Liberian Girl" },
+            { "title": "Just Good Friends" },
+            { "title": "Another Part Of Me" },
+            { "title": "Man In The Mirror" },
+            { "title": "I Just Can't Stop Loving You" },
+            { "title": "Dirty Diana" },
+            { "title": "Smooth Criminal" },
+            { "title": "Leave Me Alone" }
+          ]
+        }
+      ]
     }
   ]
 }
