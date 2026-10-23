@@ -4,6 +4,14 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-23
+
+### Changed
+
+- **PyPI Version Badge:** The README and the package description read the PyPI version from PyPI's JSON API through a dynamic badge, because the badge service's PyPI version badge was cached for six hours and kept showing 1.0.0 after 1.0.2 was published.
+- **Labeled Feature Lists:** Labeled list items in the README and the package description end their label with a colon inside the bold text, and a packaging test checks this form.
+- **Catalog Example:** The catalog reference shows a complete catalog of the eleven-track CD edition of *Bad*.
+
 ## [1.0.2] - 2026-10-23
 
 ### Fixed

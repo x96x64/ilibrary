@@ -29,7 +29,7 @@ Development and automated agents never operate on the maintainer's personal Musi
 
 ## Scope and Rights
 
-Do not incorporate proprietary Apple assets, private frameworks, store artwork, commercial recordings, credentials, Apple Account identifiers, or private library data. Public fixtures, examples, and tests use original synthetic albums and generated audio. Protected audio (`.m4p`) is out of scope, and iLibrary does not download audio.
+Do not incorporate proprietary Apple assets, private frameworks, store artwork, commercial recordings, credentials, Apple Account identifiers, or private library data. Public fixtures, examples, and tests use original synthetic albums and generated audio. The maintainer has authorized two exceptions, the *Bad* examples in `README.md` and in `docs/catalogs.md`, which state only the album's published metadata; these exceptions do not extend to tests, fixtures, or other documents. Protected audio (`.m4p`) is out of scope, and iLibrary does not download audio.
 
 Keep real purchased or downloaded files, library exports, and their derivatives under the ignored `reference-private/` directory, and keep generated outputs and machine-specific logs under the ignored `artifacts/` directory. Record hardware and toolchain context without hostnames, serial numbers, device identifiers, Apple Account details, or personal paths. The software is licensed under the Apache License, Version 2.0.
 
