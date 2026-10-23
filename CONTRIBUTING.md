@@ -1,8 +1,14 @@
 # Contributing to iLibrary
 
+## Before You Start
+
+iLibrary changes music files and an Apple Music library, so every contribution is judged first by whether it keeps those safe. Read [AGENTS.md](AGENTS.md) for the engineering constraints and [docs/roadmap.md](docs/roadmap.md) for the plan before proposing a larger change. Open an issue to discuss new commands, catalog-format changes, or anything that alters how files are moved, rewritten, or removed.
+
+Bug reports are most useful when they include a synthetic reproduction. Do not attach real catalogs, journals, recovery records, command output, or audio files without reviewing them: they can contain titles, paths, persistent IDs, and copyrighted material. Report security problems as described in [SECURITY.md](SECURITY.md) rather than in a public issue.
+
 ## Development Setup
 
-Read [AGENTS.md](AGENTS.md), [Roadmap](docs/roadmap.md), and the historical [Technical Planning Study](docs/planning-study.md) before architectural changes. Work in this repository and use a focused branch. The source build requires Swift 6; current verification uses Apple Swift 6.4 on macOS and Swift 6.4 on Linux.
+The source build requires Swift 6 and no other dependency. Verification currently uses Apple Swift 6.4 on macOS and Swift 6.4 on Linux.
 
 ```sh
 swift build -c release
@@ -10,34 +16,28 @@ scripts/test.sh
 swift format lint --strict --recursive Sources Tests Package.swift scripts
 ```
 
-The test wrapper supplies Swift Testing discovery paths when the selected Command Line Tools require them. It does not open Music. Core logic and portable commands build on Linux; Apple frameworks remain in `ConversionMac` and `LibraryMac`. No external tool or package dependency is required at runtime.
+`scripts/test.sh` runs the whole test suite and supplies the Swift Testing discovery paths that some Command Line Tools installations omit. On Linux, only the Foundation-only targets and the command logic build; run them with `swift test --disable-xctest --filter 'MP4CoreTests|FLACCoreTests|CatalogCoreTests|RebuildCoreTests|ilibraryTests'`. The [`swift:6.4-noble`](https://hub.docker.com/_/swift) image used by CI reproduces that environment.
 
-## Verification
+## Project Layout
 
-Use generated audio and original synthetic metadata for public tests. Tests must work without private files, network access, an Apple Music subscription, or a populated library. Check decoding and PCM equality for lossless conversion, and audio-stream preservation for metadata rewrites. Test refusal paths and unchanged originals as well as successful writes.
+`MP4Core`, `FLACCore`, `CatalogCore`, and `RebuildCore` hold the portable logic: MP4 boxes and item lists, FLAC metadata, the catalog format with matching, naming, ordering, and title rules, and the backup inventory, recovery record, and progress journal of a rebuild. `ConversionMac` converts audio through AudioToolbox, and `LibraryMac` sets file dates and talks to Music through Apple Events. The `ilibrary` target parses commands, builds plans, and prints reports.
 
-On macOS, additional verification is available:
+Command logic reaches Music only through the `MusicLibrary` protocol and reaches the file system through small injectable operations. Tests use the substitute library in `Tests/ilibraryTests` and the generated media in `Tests/SyntheticMedia`, so that the suite needs no Music library, network access, private files, or Apple Music subscription.
 
-```sh
-scripts/validation/catalog-commands.sh
-scripts/validation/import.sh
-scripts/validation/library-commands.sh --prepare-only
-```
+## Writing Tests
 
-The first two scripts use independent reference tools, including FFmpeg・ffprobe, exiftool, and FLAC tools, in addition to Apple's command-line tools. Those tools are verification dependencies only. The preparation-only script uses generated audio and never queries Music. Outputs stay under ignored `artifacts/`. Do not run `--run-live` in a personal user: follow [Test Library Validation](docs/test-library-validation.md). Reference-validation scripts require explicit permission and ignored local inputs; they are not part of the public suite.
+Use generated audio and original synthetic metadata. Check decoded PCM equality for lossless conversion and audio-stream preservation for metadata rewrites. Test refusal paths and unchanged originals as well as successful writes, and add a regression test with every safety fix. Keep tests proportional to the changed behavior.
 
-## Changes and Evidence
+A substitute library shows how iLibrary reacts to the answers Music gives; it does not show what Music does. Describe behavior of the real application as measured only when it was observed in Music, and state the macOS and Music versions. Independent tools such as FFmpeg, ffprobe, or exiftool may be used to cross-check results during development, but no test or command may depend on them.
 
-Distribution changes also require the offline package checks and isolated installation procedure in [Distribution](docs/distribution.md). Do not publish from a development test. Registry publication uses only explicitly reviewed release files; ordinary pushes and tag events do not publish packages.
+## Changes to Commands
 
-Every mutating command must offer a dry run, print a plan before changes, and verify results. Retain verified originals until the selected operation permits removal; do not introduce automatic library cleanup. Keep tests proportional to the changed behavior and include regression cases for safety fixes.
+Every mutating command offers `--dry-run`, prints its plan before changing anything, and verifies its result afterwards. Keep originals until the selected operation permits their removal, and never introduce automatic library cleanup outside `rebuild clear`. Update the command help, [docs/command-line-interface.md](docs/command-line-interface.md), and the README together when behavior or options change.
 
-Classify evidence as **measured**, **inferred**, or **unknown**. A test double does not measure Music, and an older application probe does not qualify a new command. Preserve completed engineering reports; add a new report for subsequent findings. Use MLA title case for English documentation titles and headings while retaining command and API capitalization. In newly written English prose, use straight quotation marks (U+0027 and U+0022) rather than typographic ones; leave code, literal data, fixtures, and historical quotations unchanged.
+Distribution changes also require the offline package checks in [docs/distribution.md](docs/distribution.md). Ordinary pushes and tags never publish packages; registry publication uses only reviewed release files.
 
 ## Commits and Pull Requests
 
-Use small Conventional Commits: `type(scope): imperative subject`, in formal English. Preserve the human author and committer. Add the supported co-author trailers required by AGENTS.md only for material contributions. Avoid generated files, personal paths, credentials, commercial titles, or private metadata in commits and messages.
+Use small [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): imperative subject` in lowercase, without a trailing period, with a body only for rationale and consequences. Keep the human author and committer. Add a `Co-Authored-By` trailer only for a material contribution by an AI assistant. Never commit generated files, personal paths, credentials, commercial recordings, or private metadata, and confirm that `reference-private/` and `artifacts/` remain ignored.
 
-Before a commit, review staged changes and run appropriate checks. Before publication, inspect the proposed history, untracked and ignored-file categories, and every staged path. Confirm that `reference-private/` and generated output remain ignored. Never publish the contents of those directories.
-
-Describe the problem, resulting behavior, relevant tests, and remaining uncertainty in the pull request. Milestones integrate through pull requests. Update Current Status at each milestone so another agent can resume from the repository. Pushes, releases, tags, and package publication require authorization in the active conversation; existing authorization covers only its stated scope. Show changed-document previews, the principal summary, verification results, and the privacy check, in English, before each push.
+Describe the problem, the resulting behavior, the tests, and any remaining uncertainty in the pull request. Both CI jobs must pass before merging. Use MLA title case for documentation headings, and straight quotation marks (U+0027 and U+0022) in new prose.

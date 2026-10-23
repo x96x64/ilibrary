@@ -9,7 +9,7 @@
 
 iLibrary prepares downloaded music for a local Apple Music library and adds it in a controlled order. It converts lossless downloads to Apple Lossless, copies iTunes Store purchases without their purchase metadata, applies metadata from a catalog file without re-encoding, names files as the Music app does, and sets file dates to release dates. It adds albums to Music one at a time and diagnoses differences between files and library records. This package description is condensed from the [iLibrary README](https://github.com/x96x64/ilibrary#readme), which is the complete reference.
 
-> **Important:** iLibrary 0.2.0 is experimental. Within `rebuild`, only `prepare` and `status` are implemented; the staged rebuilding of a Music library is not implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](https://github.com/x96x64/ilibrary/blob/main/docs/reports/library-command-validation.md), and the [copy qualification](https://github.com/x96x64/ilibrary/blob/main/docs/reports/library-qualification.md) of 301 real-file copies found no file diagnostic and left the originals unchanged; these results do not establish behavior on every macOS version or in a cloud library. Start with copies, and follow [Test Library Validation](https://github.com/x96x64/ilibrary/blob/main/docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary does not prevent Apple Music cloud matching. It is not affiliated with, endorsed by, or sponsored by Apple.
+> **Important:** iLibrary 0.2.0 is experimental. Within `rebuild`, only `prepare` and `status` are implemented; the staged rebuilding of a Music library is planned for version 0.3.0. File processing is verified with synthetic tests, and Music operations are tested with a substitute library; the Music commands were also exercised in a separate macOS user on macOS 27.0.1 with Music 1.7. Begin with copies and keep independent backups of your library. iLibrary does not prevent Apple Music cloud matching. It is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Features
 
@@ -96,7 +96,7 @@ ilibrary apply catalog.json ./staging --rename --timestamps
 ilibrary check ./staging
 ```
 
-For the remaining Music step, use the [separate-user validation procedure](https://github.com/x96x64/ilibrary/blob/main/docs/test-library-validation.md). In that test user, preview `ilibrary add ./staging --order release --dry-run` before running without `--dry-run`, then compare the added files with `check --library`. `add` moves selected files out of staging; it retains a progress journal there. See [Library Operations and Recovery](https://github.com/x96x64/ilibrary/blob/main/docs/library-operations.md) before resuming an interrupted run.
+For the remaining Music step, preview `ilibrary add ./staging --order release --dry-run` before running without `--dry-run`, then compare the added files with `check --library`. `add` moves selected files out of staging; it retains a progress journal there. See [Library Operations and Recovery](https://github.com/x96x64/ilibrary/blob/main/docs/library-operations.md) before resuming an interrupted run.
 
 ## Usage
 
@@ -134,14 +134,14 @@ Albums imported into a library with iCloud Music Library may be identified with 
 
 | Symptom | Next Step |
 | --- | --- |
-| Music cannot be controlled | Run `doctor` in the intended test user. Follow its Automation permission instructions. |
+| Music cannot be controlled | Run `doctor` and follow its Automation permission instructions. |
 | A matching track already exists | Stop and inspect the duplicate. iLibrary never removes the existing entry automatically. |
 | A run stopped while adding an album | Keep the staging folder and journal. Preview the same `add` command before resuming; see the [recovery guidance](https://github.com/x96x64/ilibrary/blob/main/docs/library-operations.md#interrupted-addition). |
 | A catalog does not match every file | Run `validate` with the selected paths and correct the catalog or selection before applying. |
 | `check` reports stale library values | Review the differences. It does not refresh, relink, rename, or delete Music entries. |
 | Space is insufficient or a destination exists | Free space or choose a new destination. Do not delete an unverified original to make the command pass. |
 
-See [SUPPORT.md](https://github.com/x96x64/ilibrary/blob/main/SUPPORT.md) for a privacy-preserving problem report.
+Report problems through [GitHub Issues](https://github.com/x96x64/ilibrary/issues) with a synthetic reproduction, and security problems as the [security policy](https://github.com/x96x64/ilibrary/blob/main/SECURITY.md) describes.
 
 ## Rights and Privacy
 
@@ -149,12 +149,12 @@ Use audio and artwork that you are entitled to process. iLibrary does not downlo
 
 ## Limitations
 
-- Live Music validation covers a separate test user on one macOS version; cloud matching remains unmeasured. Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
+- Live Music behavior was measured on one macOS version with Music 1.7; cloud matching remains unmeasured. Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
 - Conversion supports mono and stereo only, and refuses floating-point PCM. Protected audio (`.m4p`) is out of scope.
 - Library comparison covers the file tracks and thirteen fields exposed by the adapter.
 - Mutating batches are not transactions: a later failure can leave earlier files or albums completed. Keep backups and the addition journal; no automatic library rollback is attempted.
 - Real Trash operations remain untested; public tests use a substitute Trash.
-- `rebuild prepare` was qualified once by the maintainer, on a synthetic library of 12 tracks on one Mac with macOS 27.0.1 and Music 1.7 and one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests, not by that live run. A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a personal library or backup medium can be recovered. Keep independent backups and complete the separate-user validation before any personal-library use; iLibrary does not prevent Apple Music cloud matching.
+- `rebuild prepare` was exercised once on a synthetic library of 12 tracks with one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests only.
 - `check --library` uses a bulk read only when its result is consistent and every track's cloud status is `unknown`, and otherwise uses the previous per-track read. In one maintainer-run comparison on a synthetic library of 12 tracks with macOS 27.0.1 and Music 1.7, its results matched those of the per-track read. Which read was used, its speed with larger libraries, and its behavior with other cloud statuses were not measured; libraries with other statuses keep the per-track read and its speed.
 
 See [Limitations](https://github.com/x96x64/ilibrary#limitations) in the iLibrary README for the complete list.
@@ -163,11 +163,11 @@ See [Limitations](https://github.com/x96x64/ilibrary#limitations) in the iLibrar
 
 - [README](https://github.com/x96x64/ilibrary#readme): the complete project description
 - [Command-Line Interface](https://github.com/x96x64/ilibrary/blob/main/docs/command-line-interface.md): commands, options, and exit status
-- [Library Operations and Recovery](https://github.com/x96x64/ilibrary/blob/main/docs/library-operations.md): dry runs, interrupted runs, and privacy
+- [Library Operations and Recovery](https://github.com/x96x64/ilibrary/blob/main/docs/library-operations.md): dry runs, interrupted runs, privacy, and measured Music behavior
 - [Distribution](https://github.com/x96x64/ilibrary/blob/main/docs/distribution.md): package names, contents, installation, and publication
 - [Roadmap to iLibrary 1.0.0](https://github.com/x96x64/ilibrary/blob/main/docs/roadmap.md): remaining work, rebuilding safety boundary, and verification limits
 - [Changelog](https://github.com/x96x64/ilibrary/blob/main/CHANGELOG.md) and [releases](https://github.com/x96x64/ilibrary/releases)
-- [Support](https://github.com/x96x64/ilibrary/blob/main/SUPPORT.md) and the [issue tracker](https://github.com/x96x64/ilibrary/issues)
+- [Security Policy](https://github.com/x96x64/ilibrary/blob/main/SECURITY.md) and the [issue tracker](https://github.com/x96x64/ilibrary/issues)
 
 ## License
 

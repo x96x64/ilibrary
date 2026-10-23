@@ -2,7 +2,7 @@
 
 ## Status
 
-`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands of version 0.2.0. The implemented `add` and `check --library` passed [separate-user validation](reports/library-command-validation.md); use the separate-user procedure before operating a personal library.
+`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands of version 0.2.0. Begin with copies and keep independent backups of the Music library before running a command that changes it.
 
 ## Synopsis
 
@@ -76,7 +76,7 @@ Adds the albums in the staging folders to Music, one album at a time. Music must
 1. The `.m4a` files are grouped into albums by their album and album artist tags; a file without either is refused.
 2. The albums are ordered: `release` (the default) by release date, `artist` by album artist and then album name, `artist-desc` by both in descending order, and `artist-release` by album artist and then release date.
 3. For each album in turn, the library is searched for a track with the same album artist, album, and title. If one exists, the run stops before this album.
-4. The album's files are moved into the media folder named by Music's preferences, to `Music/Album Artist/Album/` with their names unchanged, and added there in one call. Music adds files inside the media folder in place (measured; see [Music Behavior](reports/music-behavior.md)).
+4. The album's files are moved into the media folder named by Music's preferences, to `Music/Album Artist/Album/` with their names unchanged, and added there in one call. Music adds files inside the media folder in place (measured; see [Measured Music Behavior](library-operations.md#measured-music-behavior)).
 5. Music must report one new track per file, each at the place of its file, before the next album begins. Otherwise the run stops and reports the album as not confirmed.
 
 Nothing is moved when any file is refused, a destination already exists, or a folder on the way is a file or a symbolic link. A staging folder may not overlap the media folder. Track properties are never set in Music, because Music then moves and renames files. Files are expected to carry Music's names already, as `apply --rename` gives them; other names are reported, because Music may rename such files later.
@@ -238,4 +238,4 @@ Dates use the time zone of the process, which the `TZ` environment variable sele
 
 ## Rights
 
-Process only recordings and artwork that you have the right to use. iLibrary does not download audio and refuses protected files. Catalogs, prompts, journals, and diagnostics can contain private metadata; review them before sharing. See [Rights and Privacy](../README.md#rights-and-privacy) and [Support](../SUPPORT.md) for reporting requirements.
+Process only recordings and artwork that you have the right to use. iLibrary does not download audio and refuses protected files. Catalogs, prompts, journals, and diagnostics can contain private metadata; review them before sharing. See [Rights and Privacy](../README.md#rights-and-privacy) and [CONTRIBUTING.md](../CONTRIBUTING.md#before-you-start) for reporting problems.

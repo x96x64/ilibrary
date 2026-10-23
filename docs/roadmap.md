@@ -6,7 +6,7 @@ iLibrary 1.0.0 automates the preparation and organization of a personal, local A
 
 The project is a personal tool maintained by one person. Reasonable file preservation, previews, error detection, and recovery are required. Exhaustive environment certification, repeated manual qualification, and formal proof of every hypothetical failure are not objectives. No release depends on further maintainer-operated test sessions, on a second macOS account, or on access by an agent to the maintainer's personal library.
 
-This document supersedes the earlier stable-release plan, the M10 to M15 milestone sequence, and the status log that accompanied them. Their completed measurements remain valid evidence and are summarized in [Music Behavior](reports/music-behavior.md) and the separated-addition qualification results.
+This document supersedes the earlier stable-release plan, the M10 to M15 milestone sequence, and the status log that accompanied them. Their completed measurements remain valid evidence and are summarized in [Measured Music Behavior](library-operations.md#measured-music-behavior).
 
 ## Implemented Capabilities
 
@@ -34,7 +34,7 @@ Agents never run `rebuild` against the maintainer's library. Its Music-facing be
 
 ## Milestones
 
-The repository consolidation precedes product work and is not a release. It replaces the historical plans, reports, procedures, probes, and validation scripts with this roadmap and a small set of canonical documents, removes the qualification-only executables `GUIProbeMac`, `M11Probe`, and `ReferenceProbe`, removes merged branches, and enables automatic deletion of merged head branches. Essential findings are consolidated into the remaining documents before their sources are removed.
+The repository consolidation precedes product work and is not a release. Completed in October 2026, it replaced the historical plans, reports, procedures, probes, and validation scripts with this roadmap and a small set of canonical documents and removed the qualification-only executables `GUIProbeMac`, `M11Probe`, and `ReferenceProbe`, after consolidating their essential findings. Removing the merged branches and enabling automatic deletion of merged head branches remain to be completed.
 
 Version 0.3.0 completes the workflow: the four rebuilding stages, journal reporting in `rebuild status`, separated addition in ordinary `add`, and updated command reference and recovery guidance. It is released when Linux and macOS CI pass and an independent review of the removal and evacuation paths finds no blocking defect.
 
