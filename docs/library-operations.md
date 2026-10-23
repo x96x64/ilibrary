@@ -34,7 +34,7 @@ Addition is not an all-or-nothing transaction. Albums confirmed before a failure
 
 ## Rebuilding a Library
 
-A rebuild replaces the registrations of an existing library with freshly added albums, so that the files carry the catalog's metadata and Recently Added shows the chosen order. Playlists, ratings, play counts, and other library history are not restored. Libraries that use iCloud Music Library are refused at preparation.
+A rebuild replaces the registrations of an existing library with freshly added albums, so that the files carry the catalog's metadata and Recently Added shows the chosen order. Playlists, ratings, play counts, and other library history are not restored. iCloud Music Library is not supported: preparation refuses any registration whose cloud status is other than empty or `unknown`.
 
 1. Make a backup of the media folder's files on a separate physical device, mirroring the relative paths below the source directory. iLibrary verifies that backup but never creates or changes it.
 2. Run `rebuild prepare` with `--dry-run`, then without it. It verifies the backup, restores it into an empty test directory, asks you to eject the backup volume, and writes the recovery record. Keep the backup disconnected until the rebuild has been checked.
