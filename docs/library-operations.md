@@ -2,13 +2,13 @@
 
 ## Before a Write
 
-Keep a recoverable copy of selected source files and an independent backup of the Music library. Start with synthetic files or copies in staging, outside the Music media folder. The implemented Music commands passed [separate-user validation](reports/library-command-validation.md), and the approved [personal-file copy qualification](reports/library-qualification.md) completed without findings. Those measurements do not authorize access to another library. Use the [separate-user procedure](test-library-validation.md) before adopting the workflow.
+Keep a recoverable copy of the selected source files and an independent backup of the Music library. Begin with copies in a staging folder outside the Music media folder, and keep the staging folder, catalog, and artwork together until the run is complete.
 
 1. Use `import --dry-run` to inspect conversions, copies, destinations, refusals, and capacity requirements. Omit `--delete-originals` while qualifying a workflow.
 2. Export a catalog and keep its referenced covers alongside it. Review AI-generated values against evidence; unknown information should remain empty.
 3. Run `validate CATALOG.json PATH...`, then `apply CATALOG.json PATH... --rename --timestamps --dry-run`. An unmatched file prevents application.
 4. Apply only the reviewed plan and run `check PATH...`. A diagnostic is a reason to inspect the selected files, not an instruction to remove them.
-5. In the separate test user, run `doctor`, then `add PATH... --order release --dry-run`. The latter reads Music even though it does not move or add files.
+5. Run `doctor`, then `add PATH... --order release --dry-run`. The latter reads Music even though it does not move or add files.
 
 `import`, `export`, `apply`, `timestamps`, and `add` offer dry runs. A dry run describes the current state; it does not reserve space or prevent another process from changing files before execution. `timestamps --dry-run --script FILE` is an explicit output request: it writes the script while leaving file dates unchanged. To preview without creating any file, omit `--script`. `prompt` and `schema` print to standard output; a shell redirection can still create or replace a file.
 
@@ -18,7 +18,7 @@ Keep a recoverable copy of selected source files and an independent backup of th
 
 Same-volume moves retain the file. Cross-volume moves use a temporary copy, compare bytes, decode and compare audio, and remove the selected source only after verification. Insufficient capacity or failed verification leaves the source in place. Empty source folders are retained. Sources not selected by the command are untouched.
 
-Music may reorganize files when its properties change. iLibrary therefore writes tags and names before addition and does not change library track properties. Earlier application behavior was measured in [Music Behavior](reports/music-behavior.md); this does not establish all future behavior or cloud effects.
+Music may reorganize files when its properties change. iLibrary therefore writes tags and names before addition and does not change library track properties; see [Measured Music Behavior](#measured-music-behavior).
 
 ## Interrupted Addition
 
@@ -50,4 +50,16 @@ Use `check PATH...` for file checks and add `--library` only when access to that
 
 Command output may contain old and new metadata, paths, and library information. Catalogs, prompts, journals, and artwork can also contain private or copyrighted material. Do not attach them unreviewed to public issues or commits. Private reference material belongs under ignored `reference-private/`; machine-specific synthetic logs belong under ignored `artifacts/`.
 
-For separate-user validation, share only the generated `ilibrary-command-results.txt`, whose contents are counts and statuses. For other problems, follow [SUPPORT.md](../SUPPORT.md) and describe a synthetic reproduction. Removing purchase fields is not a comprehensive privacy audit of the file.
+For problem reports, describe a synthetic reproduction as explained in [CONTRIBUTING.md](../CONTRIBUTING.md#before-you-start). Removing purchase fields is not a comprehensive privacy audit of the file.
+
+## Measured Music Behavior
+
+The following behavior was measured with synthetic Apple Lossless albums in a separate macOS user that was not signed in to an Apple Account, with new libraries, on macOS 27.0.1 with Music 1.7. Behavior with iCloud Music Library, other Music settings, or other versions is unknown, and every cloud status observed was `unknown`.
+
+Music adds a file that is already inside the media folder in place, at its existing path, without changing its modification or creation date; it copies a file from outside the media folder into `Music/Album Artist/Album/` and leaves the source. Adding a file that the library already holds returns the existing track and creates no duplicate. Persistent IDs survive quitting and relaunching Music. These observations are why `add` moves each album to its organized folder before adding it and confirms one track per file at each destination.
+
+Setting track properties through Apple Events makes Music reorganize the media folder: setting `location` moved a file back to its organized path, and setting the album of each track moved all its files into a new folder and renamed a file whose title had changed. An earlier manual rename in a real library split an album and broke file references. Music also reread a changed title without `refresh`, while stale comments and composers were observed in another library, so when Music rereads a file is unknown. iLibrary therefore never sets track properties and reports file・library differences instead of assuming either behavior.
+
+Music's `date added` property is read-only and exposed in whole seconds. When albums were added in quick succession, some of them shared an addition second, and Recently Added then showed an order other than the intended one, both before and after relaunch. When each album was added in its own request only after the previous album had been confirmed, the exposed addition seconds of each album were strictly later than those of every earlier album, and Recently Added showed the albums in the reverse of the addition order, as intended. That separated addition passed in cases of 20 albums with 300 tracks and of four albums in each of the `artist`, `artist-desc`, and `artist-release` orders. Music's rule for ordering albums that share an addition second is unknown, so iLibrary treats such a tie as a failure rather than a supported result.
+
+Removing a registration was measured by deleting each track by persistent ID, one per request, after confirming that exactly one file track had that ID and that its title, album, and artist matched the record; 300 registrations were removed this way in about 167 seconds. A bulk read of the whole library in nine requests returned the same fields as the per-track read for the libraries compared, in about half a second for 300 tracks.

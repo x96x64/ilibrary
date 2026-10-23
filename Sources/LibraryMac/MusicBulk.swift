@@ -2,7 +2,7 @@
 //
 // Equivalence status: the bulk reader is designed to return, field for field, what the per-track reader
 // (`describeHandler`, `MusicApp.parse`) returns. Live field-level equivalence was measured for 12 synthetic
-// tracks in the M11 version 2 qualification (docs/reports/m11-qualification-v2-results.md), all of whose cloud
+// tracks in the backup qualification on macOS 27.0.1 with Music 1.7, all of whose cloud
 // statuses were `unknown`; the text produced by coercing other bulk-read cloud statuses outside the `tell`
 // block is unmeasured. The use of the bulk reader in `check --library` through `allTracksPreferringBulk()`
 // is verified only by synthetic tests that send no Apple Event; its live behaviour is not measured. The

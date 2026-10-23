@@ -18,9 +18,9 @@ ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary 0.2.0 is experimental. See the [Roadmap](docs/roadmap.md) for the remaining work and its verification limits. Eleven top-level commands are implemented; within `rebuild`, only `prepare` and `status` are implemented, and the staged rebuilding of a Music library is not implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary 0.2.0 is experimental. Eleven top-level commands are implemented; within `rebuild`, only `prepare` and `status` are implemented, and the staged rebuilding of a Music library is planned for version 0.3.0, as the [Roadmap](docs/roadmap.md) describes. File processing is verified with synthetic tests, and Music operations are tested with a substitute library; the Music commands were also exercised in a separate macOS user on macOS 27.0.1 with Music 1.7. Begin with copies and keep independent backups of your library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 >
-> `rebuild prepare` was qualified once by the maintainer, on a synthetic library of 12 tracks on one Mac with macOS 27.0.1 and Music 1.7 and one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests, not by that live run. A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a personal library or backup medium can be recovered. Keep independent backups and complete the separate-user validation before any personal-library use; iLibrary does not prevent Apple Music cloud matching.
+> A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a library or backup medium can be recovered. iLibrary does not prevent Apple Music cloud matching.
 
 ## Contents
 
@@ -137,7 +137,7 @@ ilibrary apply catalog.json ./staging --rename --timestamps
 ilibrary check ./staging
 ```
 
-For the remaining Music step, use the [separate-user validation procedure](docs/test-library-validation.md). In that test user, preview `ilibrary add ./staging --order release --dry-run` before running without `--dry-run`, then compare the added files with `check --library`. `add` moves selected files out of staging; it retains a progress journal there. See [Library Operations and Recovery](docs/library-operations.md) before resuming an interrupted run.
+For the remaining Music step, preview `ilibrary add ./staging --order release --dry-run` before running without `--dry-run`, then compare the added files with `check --library`. `add` moves selected files out of staging; it retains a progress journal there. See [Library Operations and Recovery](docs/library-operations.md) before resuming an interrupted run.
 
 ## Usage
 
@@ -209,10 +209,10 @@ The package separates domain logic from platform integration, as iLyrics does. N
 | `FLACCore` | FLAC metadata blocks | Implemented; Foundation only |
 | `CatalogCore` | Catalog format, validation, matching, naming, ordering, title rules, dates | Implemented; Foundation only |
 | `ConversionMac` | Conversion to Apple Lossless through AudioToolbox and PCM verification | Implemented; macOS only |
-| `LibraryMac` | File dates, Music automation, media folder, permission state | Implemented; macOS only; separate-user commands verified |
+| `LibraryMac` | File dates, Music automation, media folder, permission state | Implemented; macOS only |
 | `ilibrary` | Command parsing, plans, and reports | Implemented; Foundation logic with conditional Mac adapters |
 
-The design rests on technical spikes recorded in the [Architecture Spike](docs/reports/architecture-spike.md) report, including measurements on synthetic files and on private copies of purchased and downloaded files.
+The design rests on technical spikes made with synthetic files and with private copies of purchased and downloaded files, and on live measurements of Music summarized in [Measured Music Behavior](docs/library-operations.md#measured-music-behavior).
 
 ## Apple Music and Cloud Matching
 
@@ -222,14 +222,14 @@ Albums imported into a library with iCloud Music Library may be identified with 
 
 | Symptom | Next Step |
 | --- | --- |
-| Music cannot be controlled | Run `doctor` in the intended test user. Follow its Automation permission instructions. |
+| Music cannot be controlled | Run `doctor` and follow its Automation permission instructions. |
 | A matching track already exists | Stop and inspect the duplicate. iLibrary never removes the existing entry automatically. |
 | A run stopped while adding an album | Keep the staging folder and journal. Preview the same `add` command before resuming; see [recovery guidance](docs/library-operations.md#interrupted-addition). |
 | A catalog does not match every file | Run `validate` with the selected paths and correct the catalog or selection before applying. |
 | `check` reports stale library values | Review the differences. It does not refresh, relink, rename, or delete Music entries. |
 | Space is insufficient or a destination exists | Free space or choose a new destination. Do not delete an unverified original to make the command pass. |
 
-See [SUPPORT.md](SUPPORT.md) for a privacy-preserving problem report.
+Report problems through [GitHub Issues](https://github.com/x96x64/ilibrary/issues) with a synthetic reproduction, as [CONTRIBUTING.md](CONTRIBUTING.md#before-you-start) describes, and security problems as [SECURITY.md](SECURITY.md) describes.
 
 ## Rights and Privacy
 
@@ -237,7 +237,7 @@ Use audio and artwork that you are entitled to process. The repository contains 
 
 ## Limitations
 
-- Live Music validation covers a separate test user on one macOS version; cloud matching remains unmeasured. See [Live Library Command Validation](docs/reports/library-command-validation.md). Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
+- Live Music behavior was measured on one macOS version with Music 1.7; cloud matching remains unmeasured. Catalogs are exported from `.m4a` files only; FLAC tags reach a catalog through `import`.
 - Conversion and setting creation dates require macOS. On Linux, the catalog commands and copies by `import` run, but `timestamps` requires `--dry-run`, optionally with `--script`.
 - A catalog numbers discs and tracks by position; `export` reports gaps and repetitions in the files' numbers.
 - Conversion supports mono and stereo only, and refuses floating-point PCM. FLAC fields outside the standard set are not carried.
@@ -247,24 +247,22 @@ Use audio and artwork that you are entitled to process. The repository contains 
 - Library comparison covers the file tracks and thirteen fields exposed by the adapter. Artwork, copyright, full release dates, and cloud-only entries not exposed as file tracks are not compared.
 - Mutating batches are not transactions: a later failure can leave earlier files or albums completed. Keep backups and the addition journal; no automatic library rollback is attempted.
 - Real Trash operations remain untested; public tests use a substitute Trash.
-- `rebuild prepare` was qualified once by the maintainer, on a synthetic library of 12 tracks on one Mac with macOS 27.0.1 and Music 1.7 and one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests, not by that live run. A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a personal library or backup medium can be recovered. Keep independent backups and complete the separate-user validation before any personal-library use; iLibrary does not prevent Apple Music cloud matching.
+- `rebuild prepare` was exercised once on a synthetic library of 12 tracks with one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests only.
 - `check --library` uses a bulk read only when its result is consistent and every track's cloud status is `unknown`, and otherwise uses the previous per-track read. In one maintainer-run comparison on a synthetic library of 12 tracks with macOS 27.0.1 and Music 1.7, its results matched those of the per-track read. Which read was used, its speed with larger libraries, and its behavior with other cloud statuses were not measured; libraries with other statuses keep the per-track read and its speed.
 
 ## Documentation
 
 - [Distribution](docs/distribution.md): package names, contents, installation, and publication
-- [Library Operations and Recovery](docs/library-operations.md): dry runs, interrupted runs, and privacy
-- [Test Library Validation](docs/test-library-validation.md): Japanese instructions and result reporting
-- [Technical Planning Study](docs/planning-study.md): the approved plan, preserved as a historical record
+- [Library Operations and Recovery](docs/library-operations.md): dry runs, interrupted runs, privacy, and measured Music behavior
 - [Command-Line Interface](docs/command-line-interface.md): commands, options, and exit status
 - [Completing Catalogs with AI Agents](docs/catalog-for-agents.md): the authoring workflow
 - [Roadmap to iLibrary 1.0.0](docs/roadmap.md): remaining work, rebuilding safety boundary, and verification limits
 - [Catalog JSON Schema](docs/schema/ilibrary-catalog-1.schema.json)
-- [Documentation Index](docs/README.md): every engineering report, in chronological order
+- [Security Policy](SECURITY.md): supported versions and private reporting
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for build commands, verification, evidence classification, and publication checks, and [AGENTS.md](AGENTS.md) for the engineering constraints. The public test suite uses original synthetic data and needs neither network access, private files, nor a Music library. Commits follow Conventional Commits and preserve human authorship with contribution trailers.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for build commands, tests, and pull requests, and [AGENTS.md](AGENTS.md) for the engineering constraints. The public test suite uses original synthetic data and needs neither network access, private files, nor a Music library. Commits follow Conventional Commits and preserve human authorship with contribution trailers.
 
 ## Star History
 

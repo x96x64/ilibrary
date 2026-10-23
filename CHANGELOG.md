@@ -4,6 +4,14 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+
+- A security policy describing supported versions and private reporting.
+
+### Removed
+
+- The qualification-only executables `GUIProbeMac`, `M11Probe`, and `ReferenceProbe`, their tests, the separate-user validation scripts and procedures, the architecture spikes, and the historical engineering reports. The measured Music behavior on which the commands rely is summarized in the library operations guide, and the plan is consolidated in a single roadmap.
+
 ## [0.2.0] - 2026-10-20
 
 ### Added
