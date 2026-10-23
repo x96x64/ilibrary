@@ -86,7 +86,7 @@ import Testing
         let catalog = try #require(Catalog.validate(try Data(contentsOf: url)).catalog)
         let first = try #require(catalog.albums.first { $0.album == "Synthetic Album" })
         #expect(first.artist == "Example Artist")
-        #expect(first.releaseDate == "1958-08-29")
+        #expect(first.releaseDate == "2009-06-25")
         #expect(first.composer == nil)
         #expect(first.discs[0].tracks.map(\.composer) == ["Example Writer", "Second Writer", "Example Writer"])
         let tribute = try #require(catalog.albums.first { $0.album == "Tribute Collection" })
@@ -180,7 +180,7 @@ import Testing
         defer { try? FileManager.default.removeItem(at: url) }
         let album = try #require(catalog.albums.firstIndex { $0.album == "Synthetic Album" })
         catalog.albums[album].discs[0].tracks[0].title = "First Song (Revised)"
-        catalog.albums[album].copyright = "℗ 1959 Example Records, Inc."
+        catalog.albums[album].copyright = "℗ 2010 Example Records, Inc."
         catalog.albums[album].genre = ""
         try write(catalog, to: url)
         let original = try library.snapshot()
@@ -204,7 +204,7 @@ import Testing
         }
         let changed = try MP4File(contentsOf: try #require(files.first { $0.lastPathComponent.hasPrefix("01-First") }))
         #expect(changed.metadataValues(.title) == [.text("First Song (Revised)")])
-        #expect(changed.metadataValues(.copyright) == [.text("℗ 1959 Example Records, Inc.")])
+        #expect(changed.metadataValues(.copyright) == [.text("℗ 2010 Example Records, Inc.")])
         #expect(changed.metadataValues(.genre) == [.text("Pop")])
 
         let settled = try library.snapshot()

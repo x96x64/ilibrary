@@ -15,8 +15,8 @@ The document holds `albums` and, optionally, `titleRules` and `artists`. Each al
       "album": "Album A",
       "aliases": ["Album A (Remastered)"],
       "albumArtist": "Artist A",
-      "copyright": "℗ 1958 Label A",
-      "releaseDate": "1958-08-29",
+      "copyright": "℗ 2009 Label A",
+      "releaseDate": "2009-06-25",
       "discs": [{ "tracks": [{ "title": "Song A", "composer": "Composer A" }] }]
     }
   ]

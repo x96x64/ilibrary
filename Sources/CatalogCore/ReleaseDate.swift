@@ -25,7 +25,7 @@ public struct ReleaseDate: Hashable, Comparable, Sendable, CustomStringConvertib
         self.day = day
     }
 
-    /// Reads the date part of a tag value such as `1958-08-29T00:00:00Z` or `1958-08-29`.
+    /// Reads the date part of a tag value such as `2009-06-25T00:00:00Z` or `2009-06-25`.
     /// A year alone is not a date and returns nil.
     public init?(tagValue: String) {
         self.init(String(tagValue.prefix(10)))

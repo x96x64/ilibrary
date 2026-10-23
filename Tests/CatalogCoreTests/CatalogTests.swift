@@ -12,7 +12,7 @@ let exampleCatalog = #"""
         "bracketNested": true,
         "preserve": ["SyNTH", "ABCDE", "X.Y.Z."]
       },
-      "artists": { "Example Artist": { "folderDate": "1958-08-29" } },
+      "artists": { "Example Artist": { "folderDate": "2009-06-25" } },
       "albums": [
         {
           "album": "Example Album",
@@ -20,8 +20,8 @@ let exampleCatalog = #"""
           "albumArtist": "Example Artist",
           "artist": "Example Artist",
           "genre": "Pop",
-          "copyright": "℗ 1958 Example Records, Inc.",
-          "releaseDate": "1958-08-29",
+          "copyright": "℗ 2009 Example Records, Inc.",
+          "releaseDate": "2009-06-25",
           "artwork": "artwork/Example Album.png",
           "notes": "Copyright verified on the distributor's album page.",
           "sources": ["https://example.com/album"],
@@ -46,7 +46,7 @@ func replacing(_ old: String, _ new: String) -> String {
         #expect(result.diagnostics.isEmpty)
         let catalog = try #require(result.catalog)
         #expect(catalog.titleRules?.caseStyle == .keep)
-        #expect(catalog.artists?["Example Artist"]?.folderDate == "1958-08-29")
+        #expect(catalog.artists?["Example Artist"]?.folderDate == "2009-06-25")
         #expect(catalog.albums[0].discs[0].tracks[0].composer == "Example Writer, Second Writer")
     }
 
@@ -67,7 +67,7 @@ func replacing(_ old: String, _ new: String) -> String {
     }
 
     @Test func unknownFieldsAreReportedWithTheirPaths() {
-        let result = validate(replacing(#""genre": "Pop""#, #""genre": "Pop", "relaseDate": "1958-08-29""#))
+        let result = validate(replacing(#""genre": "Pop""#, #""genre": "Pop", "relaseDate": "2009-06-25""#))
         #expect(result.errors.map(\.path) == ["albums[0].relaseDate"])
         #expect(result.catalog == nil)
     }
@@ -88,9 +88,9 @@ func replacing(_ old: String, _ new: String) -> String {
         #expect(aliases.errors.map(\.path) == ["albums[0].aliases[1]"])
     }
 
-    @Test(arguments: ["1958-02-30", "1958-13-29", "1958-8-29", "58-08-29", "１９５８-08-29", "1900-02-29"])
+    @Test(arguments: ["2009-02-30", "2009-13-25", "2009-6-25", "09-06-25", "２００９-06-25", "1900-02-29"])
     func invalidDatesAreRejected(date: String) {
-        let result = validate(replacing(#""releaseDate": "1958-08-29""#, #""releaseDate": "\#(date)""#))
+        let result = validate(replacing(#""releaseDate": "2009-06-25""#, #""releaseDate": "\#(date)""#))
         #expect(result.errors.map(\.path) == ["albums[0].releaseDate"])
     }
 
@@ -125,7 +125,7 @@ func replacing(_ old: String, _ new: String) -> String {
     }
 
     @Test func emptyValuesMeanUnknown() throws {
-        let result = validate(replacing(#""releaseDate": "1958-08-29""#, #""releaseDate": """#))
+        let result = validate(replacing(#""releaseDate": "2009-06-25""#, #""releaseDate": """#))
         #expect(result.diagnostics.isEmpty)
         let catalog = try #require(result.catalog)
         #expect(catalog.resolvedTracks()[0].releaseDate == nil)
@@ -141,7 +141,7 @@ func replacing(_ old: String, _ new: String) -> String {
     }
 
     @Test func conventionsProduceWarnings() {
-        let copyright = validate(replacing("℗ 1958", "(P) 1980"))
+        let copyright = validate(replacing("℗ 2009", "(P) 2009"))
         #expect(copyright.warnings.map(\.path) == ["albums[0].copyright"])
         #expect(copyright.catalog != nil)
         let empty = validate(#"{"format": "ilibrary-catalog-1", "albums": []}"#)
@@ -201,18 +201,18 @@ func replacing(_ old: String, _ new: String) -> String {
         #expect(ReleaseDate("2000-02-29")?.description == "2000-02-29")
         #expect(ReleaseDate("2024-02-29") != nil)
         #expect(ReleaseDate("1900-02-29") == nil)
-        #expect(ReleaseDate("1958-09-31") == nil)
-        #expect(ReleaseDate("1958-08-29 ") == nil)
+        #expect(ReleaseDate("2009-09-31") == nil)
+        #expect(ReleaseDate("2009-06-25 ") == nil)
         #expect(ReleaseDate("0000-01-01") == nil)
-        #expect(ReleaseDate("1957-08-29")! < ReleaseDate("1958-08-29")!)
+        #expect(ReleaseDate("2008-06-25")! < ReleaseDate("2009-06-25")!)
     }
 
     @Test func tagValuesUseMidnightUTC() {
-        #expect(ReleaseDate("1958-08-29")?.tagValue == "1958-08-29T00:00:00Z")
-        #expect(ReleaseDate(tagValue: "1958-08-29T00:00:00Z") == ReleaseDate("1958-08-29"))
-        #expect(ReleaseDate(tagValue: "1958-08-29") == ReleaseDate("1958-08-29"))
-        #expect(ReleaseDate(tagValue: "1958") == nil)
-        #expect(ReleaseDate(tagValue: "1958-08-29X") == nil)
+        #expect(ReleaseDate("2009-06-25")?.tagValue == "2009-06-25T00:00:00Z")
+        #expect(ReleaseDate(tagValue: "2009-06-25T00:00:00Z") == ReleaseDate("2009-06-25"))
+        #expect(ReleaseDate(tagValue: "2009-06-25") == ReleaseDate("2009-06-25"))
+        #expect(ReleaseDate(tagValue: "2009") == nil)
+        #expect(ReleaseDate(tagValue: "2009-06-25X") == nil)
     }
 
     func components(_ date: Date, _ zone: String) -> String {
@@ -223,11 +223,11 @@ func replacing(_ old: String, _ new: String) -> String {
 
     @Test func localStartIsMidnightWhereMidnightExists() throws {
         let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
-        let start = ReleaseDate("1958-08-29")!.localStart(in: tokyo)
+        let start = ReleaseDate("2009-06-25")!.localStart(in: tokyo)
         #expect(start.isMidnight)
-        #expect(components(start.date, "UTC") == "1958-08-28T15:00:00Z")
-        let early = ReleaseDate("1957-08-29")!.localStart(in: tokyo)
-        #expect(components(early.date, "UTC") == "1957-08-28T15:00:00Z")
+        #expect(components(start.date, "UTC") == "2009-06-24T15:00:00Z")
+        let early = ReleaseDate("2008-06-25")!.localStart(in: tokyo)
+        #expect(components(early.date, "UTC") == "2008-06-24T15:00:00Z")
         // British Standard Time kept the United Kingdom one hour ahead of UTC from 1968 to 1971.
         let london = try #require(TimeZone(identifier: "Europe/London"))
         #expect(components(ReleaseDate("1970-01-01")!.localStart(in: london).date, "UTC") == "1969-12-31T23:00:00Z")
@@ -247,13 +247,13 @@ func replacing(_ old: String, _ new: String) -> String {
             Album(
                 album: "Example Album", albumArtist: "", artist: "Example Artist", genre: "Pop",
                 composer: "Album Writer",
-                releaseDate: "1958-08-29",
+                releaseDate: "2009-06-25",
                 discs: [
                     Disc(tracks: [
                         Track(title: "One", artist: "Guest Artist", genre: ""),
                         Track(title: "Two", composer: "Track Writer"),
                     ]),
-                    Disc(tracks: [Track(title: "Three", releaseDate: "1959-08-29")]),
+                    Disc(tracks: [Track(title: "Three", releaseDate: "2010-06-25")]),
                 ])
         ])
         let tracks = catalog.resolvedTracks()
@@ -262,7 +262,7 @@ func replacing(_ old: String, _ new: String) -> String {
         #expect(tracks[0].albumArtist == "Example Artist")
         #expect(tracks[0].genre == "Pop")
         #expect(tracks[1].composer == "Track Writer")
-        #expect(tracks[2].releaseDate == ReleaseDate("1959-08-29"))
+        #expect(tracks[2].releaseDate == ReleaseDate("2010-06-25"))
         #expect(tracks[2].reference == TrackReference(album: 0, disc: 2, track: 1))
         #expect(tracks.map(\.trackCount) == [2, 2, 1])
         #expect(tracks.allSatisfy { $0.discCount == 2 })

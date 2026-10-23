@@ -12,7 +12,7 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ### Changed
 
-- **Synthetic Examples:** Tests, fixtures, help text, and documentation use synthetic artists, albums, and song titles, with 1958-08-29 as the ordinary example date; the catalog reference no longer reproduces a commercial album. Boundary dates for leap years, daylight saving time, and invalid input keep their roles.
+- **Synthetic Examples:** Tests, fixtures, help text, and documentation use synthetic artists, albums, and song titles, with 2009-06-25 as the ordinary example date; the catalog reference no longer reproduces a commercial album. Boundary dates for leap years, daylight saving time, and invalid input keep their roles.
 - **File-Name Placeholder:** Help text and documentation write Music-style paths as `Album Artist/Album/NN Song.m4a` and `D-NN Song.m4a`; the names that iLibrary creates still use each track's title.
 - **Labeled Release Highlights:** `packaging/release_notes.py` takes each highlight, with its specific colon-terminated label, from the version's changelog entries, refuses unlabeled or category-named entries, and checks the layout of a release description, and the release workflow can replace the description of a published release after the same check.
 

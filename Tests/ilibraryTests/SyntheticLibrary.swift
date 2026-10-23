@@ -37,7 +37,7 @@ struct SyntheticLibrary {
     static let standardAlbums: [AlbumSpec] = [
         AlbumSpec(
             folder: "Download One", album: "Synthetic Album", albumArtist: "Example Artist", genre: "Pop",
-            copyright: "℗ 1958 Example Records, Inc.", date: "1958-08-29T00:00:00Z", compilation: nil, cover: png,
+            copyright: "℗ 2009 Example Records, Inc.", date: "2009-06-25T00:00:00Z", compilation: nil, cover: png,
             tracks: [
                 TrackSpec(
                     title: "First Song", artist: "Example Artist", composer: "Example Writer", disc: 1, track: 1,
@@ -51,7 +51,7 @@ struct SyntheticLibrary {
             ]),
         AlbumSpec(
             folder: "Download Two", album: "Double Album", albumArtist: "Example Artist", genre: "Rock",
-            copyright: "℗ 1958 Example Records, Inc.", date: "1958-08-30T00:00:00Z", compilation: 0, cover: jpeg,
+            copyright: "℗ 2009 Example Records, Inc.", date: "2009-06-26T00:00:00Z", compilation: 0, cover: jpeg,
             tracks: [
                 TrackSpec(
                     title: "Opening", artist: "Example Artist", composer: "Example Writer", disc: 1, track: 1,
@@ -68,7 +68,7 @@ struct SyntheticLibrary {
             ]),
         AlbumSpec(
             folder: "Download Three", album: "Tribute Collection", albumArtist: "Various Artists", genre: "Pop",
-            copyright: "℗ 1959 Example Records, Inc.", date: "1959-08-29T00:00:00Z", compilation: 1, cover: nil,
+            copyright: "℗ 2010 Example Records, Inc.", date: "2010-06-25T00:00:00Z", compilation: 1, cover: nil,
             tracks: [
                 TrackSpec(
                     title: "Cover Version", artist: "First Guest", composer: "Example Writer", disc: 1, track: 1,

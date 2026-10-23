@@ -5,7 +5,7 @@
     @Suite struct MusicRecordTests {
         @Test func snapshotsParseAllComparedFieldsWithoutCallingMusic() throws {
             let fields = [
-                "SYNTHETIC-ID", "Song", "Album", "Artist", "Album Artist", "Composer", "Genre", "1958",
+                "SYNTHETIC-ID", "Song", "Album", "Artist", "Album Artist", "Composer", "Genre", "2009",
                 "2", "1", "/synthetic/song.m4a", "unknown", "Comment", "10", "2", "true",
             ]
             let records = try MusicApp.parse(

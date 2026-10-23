@@ -8,7 +8,7 @@ struct SyntheticFLAC {
     var channels = 2
     var bitsPerSample = 24
     var totalFrames: UInt64 = 51_826_701
-    var comments = ["TITLE=Synthetic Song", "ARTIST=Example Artist", "artist=Second Artist", "DATE=1958-08-29"]
+    var comments = ["TITLE=Synthetic Song", "ARTIST=Example Artist", "artist=Second Artist", "DATE=2009-06-25"]
     var picture: Data? = Data([0x89, 0x50, 0x4E, 0x47]) + Data(count: 60)
     var padding = 1_024
     var id3Prefix = false

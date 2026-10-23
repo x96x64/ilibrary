@@ -230,11 +230,11 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
 
 @Suite struct OrderingTests {
     static let catalog = Catalog(albums: [
-        Album(album: "Bravo", albumArtist: "Beta", releaseDate: "1958-08-29", discs: []),
-        Album(album: "Alpha", albumArtist: "Beta", releaseDate: "1957-08-29", discs: []),
-        Album(album: "Charlie", albumArtist: "alpha", releaseDate: "1959-08-29", discs: []),
+        Album(album: "Bravo", albumArtist: "Beta", releaseDate: "2009-06-25", discs: []),
+        Album(album: "Alpha", albumArtist: "Beta", releaseDate: "2008-06-25", discs: []),
+        Album(album: "Charlie", albumArtist: "alpha", releaseDate: "2010-06-25", discs: []),
         Album(album: "Delta", albumArtist: "Älpha", discs: []),
-        Album(album: "Echo", albumArtist: "Gamma", releaseDate: "1957-08-29", discs: []),
+        Album(album: "Echo", albumArtist: "Gamma", releaseDate: "2008-06-25", discs: []),
     ])
 
     @Test func releaseOrder() {
