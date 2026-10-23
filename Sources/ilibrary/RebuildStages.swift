@@ -11,7 +11,10 @@ struct RebuildSession {
     let workspace: URL
     let record: RecoveryRecord
     let recordBytes: Data
-    private(set) var progress: RebuildProgress?
+    /// The journal as last read or written, so that each entry is appended without reading the file again.
+    private var state: JournalState?
+
+    var progress: RebuildProgress? { state?.progress }
 
     init(workspace option: String) throws {
         workspace = URL(fileURLWithPath: RebuildCommand.resolve(option), isDirectory: true)
@@ -26,8 +29,6 @@ struct RebuildSession {
             try reload()
         }
     }
-
-    var hasJournal: Bool { progress != nil }
 
     func completed(_ stage: RebuildStage) -> Bool { progress?.completedStages.contains(stage) ?? false }
 
@@ -52,14 +53,14 @@ struct RebuildSession {
 
     mutating func reload() throws {
         do {
-            progress = try ProgressJournalFile.read(in: workspace, record: record, recordBytes: recordBytes).progress
+            state = try ProgressJournalFile.readState(in: workspace, record: record, recordBytes: recordBytes)
         } catch {
             throw CommandError.failure("the progress journal cannot be used: \(error)")
         }
     }
 
     mutating func createJournal() throws {
-        guard progress == nil else { return }
+        guard state == nil else { return }
         do {
             try ProgressJournalFile.create(
                 in: workspace, record: record, recordBytes: recordBytes, ilibraryVersion: version)
@@ -70,14 +71,13 @@ struct RebuildSession {
     }
 
     mutating func append(_ body: JournalBody) throws {
-        guard let head = progress?.head else { throw CommandError.failure("the progress journal does not exist") }
+        guard let current = state else { throw CommandError.failure("the progress journal does not exist") }
         do {
-            try ProgressJournalFile.append(
-                body, to: workspace, expectedHead: head, record: record, recordBytes: recordBytes)
+            state = try ProgressJournalFile.append(
+                body, to: workspace, state: current, record: record, recordBytes: recordBytes)
         } catch {
             throw CommandError.failure("the progress journal refused an entry: \(error)")
         }
-        try reload()
     }
 
     mutating func begin(_ stage: RebuildStage) throws {
@@ -350,7 +350,7 @@ enum RebuildStages {
                         throw CommandError.failure("\(id) is still in the library after its removal")
                     }
                     remaining.remove(id.uppercased())
-                    return JournalObservation(remaining: remaining.sorted())
+                    return JournalObservation(remainingCount: remaining.count)
                 })
         }
         if !session.verified(.confirmLibraryEmpty, "") {
