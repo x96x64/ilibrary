@@ -17,6 +17,9 @@
         }
         func track(persistentID: String) throws -> LibraryTrack? { nil }
         func add(_ files: [URL]) throws -> [LibraryTrack] { [] }
+        func datesAdded(_ persistentIDs: [String]) throws -> [String: Int] { [:] }
+        func remove(persistentID: String, name: String, album: String, artist: String) throws {}
+        func quit() throws {}
     }
 
     /// Compares `check --library` under the per-track reader and under the selection function that prefers the

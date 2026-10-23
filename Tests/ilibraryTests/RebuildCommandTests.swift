@@ -118,6 +118,11 @@ import Testing
             addCalls += 1
             throw CocoaError(.fileWriteUnknown)
         }
+        func datesAdded(_ persistentIDs: [String]) throws -> [String: Int] { throw CocoaError(.fileReadUnknown) }
+        func remove(persistentID: String, name: String, album: String, artist: String) throws {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        func quit() throws { throw CocoaError(.fileWriteUnknown) }
         func librarySnapshot() throws -> LibrarySnapshot {
             snapshotReads += 1
             if readFails { throw CocoaError(.fileReadUnknown) }
