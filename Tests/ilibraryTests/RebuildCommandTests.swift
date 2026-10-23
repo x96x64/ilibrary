@@ -373,12 +373,12 @@ import Testing
 
             let status = Run(["rebuild", "status", "--workspace", fixture.workspace])
             #expect(status.status == 0, "\(status.errorText)")
-            #expect(status.text.contains("Stage: prepared"))
+            #expect(status.text.contains("Record stage: prepared"))
             #expect(status.text.contains("Counts: 9 files"))
             #expect(status.text.contains("9 registrations, 3 albums"))
             #expect(status.text.contains("Backup disconnected: yes, confirmed at"))
             #expect(status.text.contains("Restoration test: verified 9 files"))
-            #expect(status.text.contains("Next required action: keep the recovery record and the backup."))
+            #expect(status.text.contains("Next required action: run 'ilibrary rebuild stage' with Music closed"))
             #expect(status.text.contains("private"))
         }
 

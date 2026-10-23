@@ -383,7 +383,10 @@ enum RebuildStages {
         let prepared = try ApplyCommand.prepare(
             catalogPath: record.catalogPath, paths: [record.locations.stagingDirectory], rename: true,
             timestamps: timestamps, console: console, environment: environment)
-        let byPath = Dictionary(uniqueKeysWithValues: prepared.plans.map { ($0.file.url.path, $0) })
+        // Planned URLs are standardized, which on macOS turns /private/var into /var; the record holds resolved
+        // paths, so every planned path is resolved the same way before it is compared.
+        let current = { (plan: ApplyCommand.FilePlan) in RebuildCommand.resolve(plan.file.url.path) }
+        let byPath = Dictionary(uniqueKeysWithValues: prepared.plans.map { (current($0), $0) })
         let known = Set(session.stagedFiles)
         let pending = session.ordered(record.evacuation.map(\.stagingPath), .applyFile)
         var planFor: [String: ApplyCommand.FilePlan] = [:]
@@ -391,16 +394,16 @@ enum RebuildStages {
             if let plan = byPath[target] {
                 planFor[target] = plan
             } else if session.progress?.openOperation?.target == target {
-                let moved = prepared.plans.filter { !known.contains($0.file.url.path) }
+                let moved = prepared.plans.filter { !known.contains(current($0)) }
                 guard moved.count == 1 else { throw CommandError.failure("\(target) cannot be found in staging") }
                 planFor[target] = moved[0]
             } else {
                 throw CommandError.failure("\(target) is missing from the staging directory; nothing was changed")
             }
         }
-        let expected = Set(pending.map { planFor[$0]!.file.url.path }).union(
+        let expected = Set(pending.map { current(planFor[$0]!) }).union(
             known.subtracting(pending))
-        let unexpected = prepared.plans.map(\.file.url.path).filter { !expected.contains($0) }
+        let unexpected = prepared.plans.map(current).filter { !expected.contains($0) }
         guard unexpected.isEmpty else {
             throw CommandError.failure("the staging directory holds files that the record does not list: \(unexpected)")
         }
@@ -410,17 +413,19 @@ enum RebuildStages {
         }
         try session.begin(.application)
         let fileDates = Dictionary(
-            (prepared.datePlan?.targets ?? []).filter { $0.kind == .file }.map { ($0.url.path, $0) },
+            (prepared.datePlan?.targets ?? []).filter { $0.kind == .file }.map {
+                (RebuildCommand.resolve($0.url.path), $0)
+            },
             uniquingKeysWith: { first, _ in first })
         for target in pending {
             let plan = planFor[target]!
-            let destination = plan.destination ?? plan.file.url
+            let destination = URL(fileURLWithPath: RebuildCommand.resolve((plan.destination ?? plan.file.url).path))
             try session.perform(
                 .applyFile, target,
                 action: {
                     guard try musicClosed(environment) else { throw CommandError.failure("Music was opened") }
                     if !plan.changes.isEmpty { try ApplyCommand.rewrite(plan) }
-                    if destination != plan.file.url {
+                    if destination.path != current(plan) {
                         _ = try ApplyCommand.executeMoves([plan], console: console, shown: prepared.shown)
                     }
                     if let date = fileDates[destination.path] {
