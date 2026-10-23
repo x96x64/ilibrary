@@ -55,8 +55,11 @@ enum AddCommand {
             organized folder inside the Music media folder, Album Artist/Album, and added there in place; Music
             must then report one track per file at the place of each file before the next album begins. The run
             stops before an album when the library already holds a track of the same album artist, album, and
-            title, and it never changes a track in Music. Progress is recorded in PATH/.ilibrary-add.json, so that
-            an interrupted run resumes. Requires macOS and the Automation permission for Music.
+            title, and it never changes a track in Music. Each album is added only after the clock has passed the
+            latest addition second of the album before it, and the run stops when Music reports an addition date
+            that does not follow it, so that Recently Added shows the albums in the reverse of the order of addition.
+            Progress is recorded in PATH/.ilibrary-add.json, so that an interrupted run resumes. Requires macOS and
+            the Automation permission for Music.
 
             Options:
               --order ORDER   release (default), artist, artist-desc, or artist-release
@@ -130,7 +133,8 @@ enum AddCommand {
                 )
             }
         }
-        console.print("Albums to add in \(order.rawValue) order: \(albums.count)")
+        console.print(
+            "Albums to add in \(order.rawValue) order: \(albums.count), each after the previous album's addition dates")
         for (index, album) in albums.enumerated() {
             let date = album.releaseDate.map { " (\($0))" } ?? ""
             console.print("  \(index + 1). \(album.albumArtist) - \(album.album)\(date): \(album.files.count) files")
@@ -159,10 +163,20 @@ enum AddCommand {
             return 0
         }
 
-        // Albums interrupted after their move are confirmed or added first.
+        // Albums interrupted after their move are confirmed or added first, each after the album before it.
         for index in journal.entries.indices where journal.entries[index].state == .moving {
+            var separation = SeparatedAddition()
+            if let previous = journal.entries[..<index].last(where: { $0.state == .added }) {
+                try separation.follow(previous.persistentIDs, music: music)
+            }
+            separation.waitForNext(environment: environment)
             try resume(&journal.entries[index], music: music, console: console, environment: environment)
             try journal.save(journalURL)
+            try requireLater(journal.entries[index], &separation, music: music)
+        }
+        var separation = SeparatedAddition()
+        if let last = journal.entries.last(where: { $0.state == .added }) {
+            try separation.follow(last.persistentIDs, music: music)
         }
         var added = 0
         for album in albums {
@@ -177,10 +191,12 @@ enum AddCommand {
                 destinations: album.destinations.map(\.path), state: .moving)
             journal.entries.append(entry)
             try journal.save(journalURL)
+            separation.waitForNext(environment: environment)
             try move(album, environment: environment)
             try confirm(&entry, music: music)
             journal.entries[journal.entries.count - 1] = entry
             try journal.save(journalURL)
+            try requireLater(entry, &separation, music: music)
             added += 1
             console.print(
                 "Added \(added) of \(albums.count): \(album.albumArtist) - \(album.album), \(album.files.count) tracks confirmed"
@@ -391,6 +407,17 @@ enum AddCommand {
         }
         entry.persistentIDs = tracks.map(\.persistentID)
         entry.state = .added
+    }
+
+    /// Stops the run when an album's addition dates do not follow those of the album before it.
+    static func requireLater(_ entry: AddJournal.Entry, _ separation: inout SeparatedAddition, music: any MusicLibrary)
+        throws
+    {
+        guard try separation.confirm(entry.persistentIDs, music: music) else {
+            throw CommandError.failure(
+                "\"\(entry.album)\" was added, but its addition dates do not follow those of the album before it, so "
+                    + "Recently Added may not show the intended order; the run stopped")
+        }
     }
 
     /// Completes an album that was being moved when an earlier run stopped.
