@@ -173,7 +173,6 @@ enum AddCommand {
         return 0
     }
 
-    /// The files that are still to be moved, with their destinations.
     static func remainingMoves(pending: [AddJournal.Entry], albums: [PlannedAlbum]) -> [(URL, URL)] {
         let interrupted = pending.flatMap { entry in
             zip(entry.sources, entry.destinations).compactMap { source, destination -> (URL, URL)? in
