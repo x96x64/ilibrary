@@ -13,8 +13,9 @@
 
 ## Maintainer Documentation
 
-- [Roadmap to the Stable Release](roadmap-to-stable.md): current status, decisions in force, and where work can run
-- [Plan for the Stable Release](stable-release-plan.md): revised M10–M15 sequence, preservation requirements, and actual display-order gates
+- [Roadmap to iLibrary 1.0.0](roadmap.md): the authoritative plan, superseding the two documents below
+- [Roadmap to the Stable Release](roadmap-to-stable.md): superseded status log and decisions, retained until the consolidation
+- [Plan for the Stable Release](stable-release-plan.md): superseded M10–M15 sequence
 - [Plan for M11](m11-plan.md): backup, inventory, strict export, and recovery-record work for 0.2.0, approved under Decision 41 with its Decisions A to G and safeguards; M11 passed under Decision 45
 - [M12 GUI-Emptiness Feasibility Procedure](m12-gui-emptiness-feasibility.md): prepared, unexecuted English procedure and offline probe for testing whether Accessibility can establish empty Songs and Recently Added views; running it requires separate authorization
 - [M12 Progress Journal](m12-progress-journal.md): the portable progress journal of staged rebuilding, in local development and unqualified
