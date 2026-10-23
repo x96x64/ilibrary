@@ -18,12 +18,10 @@ public struct SHA256Digest: Equatable, Hashable, Codable, Sendable, CustomString
         guard digits.count == 2 * SHA256Digest.byteCount else { return nil }
         var result: [UInt8] = []
         result.reserveCapacity(SHA256Digest.byteCount)
-        var index = 0
-        while index < digits.count {
+        for index in stride(from: 0, to: digits.count, by: 2) {
             guard let high = SHA256Digest.nibble(digits[index]), let low = SHA256Digest.nibble(digits[index + 1])
             else { return nil }
             result.append(high << 4 | low)
-            index += 2
         }
         bytes = result
     }

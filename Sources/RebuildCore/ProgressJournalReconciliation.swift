@@ -126,33 +126,22 @@ extension ProgressJournal {
     ) -> [ReconciliationProblem] {
         var found: [ReconciliationProblem] = []
         switch method {
-        case nil:
+        case nil, "copy":
             if let source = observation.source {
                 if !source.matches(expected) { found.append(.sourceDiffers(sourcePath: entry.sourcePath)) }
             } else {
                 found.append(.sourceMissing(sourcePath: entry.sourcePath))
             }
-            if observation.staging != nil { found.append(.stagingUnexpectedlyPresent(stagingPath: entry.stagingPath)) }
-        case "copy":
-            if let source = observation.source {
-                if !source.matches(expected) { found.append(.sourceDiffers(sourcePath: entry.sourcePath)) }
-            } else {
-                found.append(.sourceMissing(sourcePath: entry.sourcePath))
-            }
-            found += stagingProblems(entry: entry, expected: expected, observation: observation)
         default:
             if observation.source != nil { found.append(.sourceStillPresentAfterRename(sourcePath: entry.sourcePath)) }
-            found += stagingProblems(entry: entry, expected: expected, observation: observation)
+        }
+        switch (method, observation.staging) {
+        case (nil, nil): break
+        case (nil, .some): found.append(.stagingUnexpectedlyPresent(stagingPath: entry.stagingPath))
+        case (.some, nil): found.append(.stagingMissing(stagingPath: entry.stagingPath))
+        case (.some, .some(let staging)):
+            if !staging.matches(expected) { found.append(.stagingDiffers(stagingPath: entry.stagingPath)) }
         }
         return found
-    }
-
-    private static func stagingProblems(
-        entry: EvacuationEntry, expected: FileRecord, observation: EvacuationObservation
-    )
-        -> [ReconciliationProblem]
-    {
-        guard let staging = observation.staging else { return [.stagingMissing(stagingPath: entry.stagingPath)] }
-        return staging.matches(expected) ? [] : [.stagingDiffers(stagingPath: entry.stagingPath)]
     }
 }

@@ -367,7 +367,6 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
             previous = (rootIndex, entry.record.path)
         }
         if !sortedOK { found.append(.inventoryUnsorted) }
-        let sourceCount = inventoryKeys.count
 
         // Registrations and mapping.
         var ids = Set<String>()
@@ -411,7 +410,7 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
         for id in ids where !mappedIDs.contains(id) {
             found.append(.mappingNotOneToOne("the registration is not mapped: \(id)"))
         }
-        if mapping.count != sourceCount {
+        if mapping.count != inventoryKeys.count {
             found.append(.mappingNotOneToOne("the counts of mapping and inventory differ"))
         }
 

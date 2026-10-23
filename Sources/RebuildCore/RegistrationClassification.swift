@@ -157,15 +157,13 @@ public enum RegistrationClassification {
         for entry in inventory {
             let key = PathKey.key(entry.absolutePath)
             inventoryKeys.insert(key)
-            switch byKey[key]?.count ?? 0 {
-            case 0: refusals.append(.unregisteredFile(path: entry.absolutePath))
-            case 1:
-                if let registration = byKey[key]?.first {
-                    mapping.append(
-                        RegistrationMapping(location: entry.absolutePath, persistentID: registration.persistentID))
-                }
-            default: break  // Reported as a duplicate location.
+            let group = byKey[key] ?? []
+            if group.isEmpty {
+                refusals.append(.unregisteredFile(path: entry.absolutePath))
+            } else if group.count == 1 {
+                mapping.append(RegistrationMapping(location: entry.absolutePath, persistentID: group[0].persistentID))
             }
+            // A larger group was reported as a duplicate location.
         }
         for key in keyOrder where !inventoryKeys.contains(key) {
             for registration in byKey[key] ?? [] {

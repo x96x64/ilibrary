@@ -389,30 +389,16 @@ public enum ProgressJournal {
         guard operation.stage == current else {
             return [.operationNotInStage(operation: operation, stage: operation.stage, current: current)]
         }
-        switch operation {
-        case .evacuateFile:
-            guard index.evacuationBySourcePath[target] != nil else {
-                return [.targetNotInPlan(operation: operation, target: target)]
+        let inPlan =
+            switch operation {
+            case .evacuateFile: index.evacuationBySourcePath[target] != nil
+            case .removeRegistration: index.mappedIDs.contains(target.uppercased())
+            case .confirmLibraryEmpty, .terminateMusic: target.isEmpty
+            case .applyFile: index.evacuationByStagingPath[target] != nil
+            case .addAlbum: index.additionPositions[target] != nil
+            case .confirmDisplay: target == displayTarget
             }
-        case .removeRegistration:
-            guard index.mappedIDs.contains(target.uppercased()) else {
-                return [.targetNotInPlan(operation: operation, target: target)]
-            }
-        case .confirmLibraryEmpty, .terminateMusic:
-            guard target.isEmpty else { return [.targetNotInPlan(operation: operation, target: target)] }
-        case .applyFile:
-            guard index.evacuationByStagingPath[target] != nil else {
-                return [.targetNotInPlan(operation: operation, target: target)]
-            }
-        case .addAlbum:
-            guard index.additionPositions[target] != nil else {
-                return [.targetNotInPlan(operation: operation, target: target)]
-            }
-        case .confirmDisplay:
-            guard target == displayTarget else {
-                return [.targetNotInPlan(operation: operation, target: target)]
-            }
-        }
+        guard inPlan else { return [.targetNotInPlan(operation: operation, target: target)] }
         let canonical = canonicalTarget(operation, target)
         if progress.isVerified(operation, canonical) {
             return [.duplicateOperation(operation: operation, target: target)]
