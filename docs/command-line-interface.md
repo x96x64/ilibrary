@@ -2,7 +2,7 @@
 
 ## Status
 
-`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands of version 0.2.0. Begin with copies and keep independent backups of the Music library before running a command that changes it.
+`ilibrary` is a command-based interface with verb subcommands. This reference describes the commands of this source tree. Begin with copies and keep independent backups of the Music library before running a command that changes it.
 
 ## Synopsis
 
@@ -12,6 +12,10 @@ ilibrary add PATH... [--order release|artist|artist-desc|artist-release] [--dry-
 ilibrary rebuild prepare CATALOG.json SOURCE --workspace DIR --backup DIR --restore-test DIR --staging DIR
                          [--order release|artist|artist-desc|artist-release] [--confirm-separate-device]
                          [--disconnect-timeout SECONDS] [--dry-run]
+ilibrary rebuild stage --workspace DIR [--dry-run]
+ilibrary rebuild clear --workspace DIR [--dry-run]
+ilibrary rebuild apply --workspace DIR [--timestamps] [--dry-run]
+ilibrary rebuild add --workspace DIR [--dry-run]
 ilibrary rebuild status --workspace DIR
 ilibrary export PATH... -o CATALOG.json [--artwork DIR] [--strict] [--dry-run]
 ilibrary prompt CATALOG.json
@@ -31,8 +35,8 @@ ilibrary help [COMMAND] | --help | --version
 | Status | Meaning |
 | --- | --- |
 | 0 | Success |
-| 1 | A runtime failure, an invalid catalog, a refusal, a problem reported by `check` or `doctor`, a step of `rebuild prepare` that did not pass, or a missing or invalid recovery record reported by `rebuild status` |
-| 2 | A usage error: an unknown command or option, a missing argument, or a reserved `rebuild` subcommand (`stage`, `clear`, `apply`, `add`) |
+| 1 | A runtime failure, an invalid catalog, a refusal, a problem reported by `check` or `doctor`, a step of `rebuild prepare` that did not pass, a `rebuild` stage that refused or stopped, or a missing or invalid recovery record or journal reported by `rebuild status` |
+| 2 | A usage error: an unknown command or option, or a missing argument |
 
 Reports are written to standard output, and errors and warnings to standard error with the prefixes `ilibrary: error:` and `ilibrary: warning:`.
 
@@ -78,6 +82,7 @@ Adds the albums in the staging folders to Music, one album at a time. Music must
 3. For each album in turn, the library is searched for a track with the same album artist, album, and title. If one exists, the run stops before this album.
 4. The album's files are moved into the media folder named by Music's preferences, to `Music/Album Artist/Album/` with their names unchanged, and added there in one call. Music adds files inside the media folder in place (measured; see [Measured Music Behavior](library-operations.md#measured-music-behavior)).
 5. Music must report one new track per file, each at the place of its file, before the next album begins. Otherwise the run stops and reports the album as not confirmed.
+6. Each album after the first is added only once the clock has passed the latest addition second of the album before it, and Music must report addition seconds for it that are all later. Otherwise the run stops after that album, because Recently Added might not show the intended order: Music exposes the date added in whole seconds, and its order for albums that share a second is unknown.
 
 Nothing is moved when any file is refused, a destination already exists, or a folder on the way is a file or a symbolic link. A staging folder may not overlap the media folder. Track properties are never set in Music, because Music then moves and renames files. Files are expected to carry Music's names already, as `apply --rename` gives them; other names are reported, because Music may rename such files later.
 
@@ -94,10 +99,13 @@ Progress is recorded in `.ilibrary-add.json` in the first staging folder, with t
 ilibrary rebuild prepare catalog.json ~/Music/Media.localized/Music --workspace ~/ilibrary-work \
     --backup /Volumes/Backup/Music --restore-test ~/ilibrary-restore --staging ~/ilibrary-staging \
     --confirm-separate-device --dry-run
+ilibrary rebuild stage --workspace ~/ilibrary-work --dry-run
 ilibrary rebuild status --workspace ~/ilibrary-work
 ```
 
-The `rebuild` group prepares the rebuilding of a Music library from its files. In version 0.2.0, only `prepare` and `status` exist. They never change Music, the source files, or the backup, and they add or remove no Music registration. The subcommands `stage`, `clear`, `apply`, and `add` are reserved: each prints that it is planned and not implemented in this version and ends with status 2. The behavior of Music and iCloud Music Library under these procedures has not been fully measured; `prepare` documents conditions that reduce cloud matching and refuses what it detects, and it does not claim to prevent it.
+The `rebuild` group rebuilds an existing Music library from its files so that it matches a catalog and Recently Added presents the albums in the chosen order. `prepare` verifies a backup and writes a recovery record; then `stage`, `clear`, `apply`, and `add` run in that order, each once, and `status` reports the progress. Every stage reads the record, offers `--dry-run`, prints its plan before changing anything, and records each change in the progress journal. A stage refuses to run before the stages that precede it are complete, and running a completed stage again changes nothing. The behavior of iCloud Music Library under these procedures has not been measured; `prepare` refuses libraries whose cloud status it detects, and iLibrary does not claim to prevent cloud matching.
+
+When a stage stops, because of an error or an interruption, its journal shows the operation that was in progress. Run the same stage again: it repeats that operation after checking whether its effect is already present, and then continues. Restore from the backup instead when a stage reports that the library or the files differ from the record.
 
 #### rebuild prepare
 
@@ -118,18 +126,36 @@ With `--dry-run`, steps 1 to 4 run, the complete plan is printed, and the comman
 - `--workspace DIR` names the directory that receives the recovery record.
 - `--backup DIR` names the backup tree, which mirrors the relative paths below `SOURCE`. iLibrary never writes to it.
 - `--restore-test DIR` names the empty directory that receives the restoration test.
-- `--staging DIR` names the planned evacuation directory, outside Music's media folder. Nothing is written to it in this version.
+- `--staging DIR` names the evacuation directory, outside Music's media folder. `rebuild stage` requires it to be on the volume of the media folder, so that files are moved rather than copied.
 - `--order ORDER` selects `release` (default), `artist`, `artist-desc`, or `artist-release`.
 - `--confirm-separate-device` states that the backup is on a separate physical device.
 - `--disconnect-timeout SECONDS` sets the wait for the ejection, from 0 to 86400.
 
+#### rebuild stage
+
+`stage` moves every inventoried file from the media folder to its place in the staging directory, which keeps the file's path relative to `SOURCE`, and confirms that each moved file has the size, SHA-256, and dates of the inventory. Music must be closed. Each source must still match the inventory, no staging path may exist, and the staging directory must be on the volume of the media folder. Registrations are not changed. With `--dry-run`, every file is checked and the moves are listed.
+
+#### rebuild clear
+
+`clear` first reads the whole library and refuses to start when it holds any track that the record does not plan to remove, any non-file track, or a planned track whose name, album, or artist has changed. It then removes the recorded registrations one persistent ID per request: each request finds the one file track with that persistent ID and compares its name, album, and artist with case considered before deleting it, and the track's absence is confirmed afterwards. When every registration is removed, the command confirms that Music reports no tracks at all and asks Music to quit, waiting up to a minute for it to close. The Music window is not inspected; an empty library is established by Music's track count. With `--dry-run`, the library is compared with the record and the removals are listed.
+
+#### rebuild apply
+
+`apply` writes the catalog recorded by `prepare` to the staged files and arranges them as `Album Artist/Album/NN Title.m4a` in the staging directory, exactly as `ilibrary apply --rename` would, and with `--timestamps` sets file and folder dates to release dates at local midnight. Music must stay closed. The catalog must still have the SHA-256 recorded by `prepare`, every file in the staging directory must be one that the record lists, and every written file is read back. With `--dry-run`, the tag changes, moves, and dates are listed.
+
+#### rebuild add
+
+`add` moves the staged files of each album into the media folder, to `Music/Album Artist/Album/`, and adds them there in place, one album per request, in the addition order recorded by `prepare`. Before the first album, the library must contain no track other than those this rebuild has added. Music must report one track per file at the place of each file. Each album after the first is added only once the clock has passed the latest addition second of the album before it, and all of its addition seconds must be later; otherwise the command stops, because Recently Added might not show the intended order. Finally, the albums are ordered by their latest addition date, newest first, and the result must equal the expected display list of the record. This compares Music's exposed addition dates, which order Recently Added; it is not an observation of the Music window. With `--dry-run`, the albums and moves are listed.
+
 #### rebuild status
 
-`status` loads and validates the recovery record in `--workspace` and prints its creation time, locations, counts, the backup and restoration results, the stage, and the next required action. It accesses neither Music nor the backup and changes nothing. A missing or invalid record, including a wrong format, a damaged checksum, or inconsistent content, is reported with its reasons and ends with status 1. Because the later stages are not implemented in this version, the next required action is to keep the record and the backup.
+`status` loads and validates the recovery record and the progress journal in `--workspace`, and prints the record's creation time, locations, counts, backup and restoration results, the completed stages, a stage in progress, an operation left open by an interrupted run, the counts of staged files, removed registrations, applied files, and added albums, and the next required action. It accesses neither Music nor the backup and changes nothing. A missing or invalid record or journal is reported with its reasons and ends with status 1.
 
 #### Recovery Record
 
-The record, `rebuild-record.json` in the workspace, has the format `ilibrary-rebuild-record-1`, distinct from the catalog format. It holds the inventory, the registrations and their mapping to files, the addition and expected display lists, the evacuation plan, the backup and restoration results, and the stage, which is `prepared` in this version. It is private: it contains machine-specific paths, the volume UUID of the backup, and Music persistent IDs. Never share, publish, or commit it. Its checksum detects accidental damage and does not authenticate it. Any change to the catalog, the files, the library, or the backup after preparation invalidates the record and requires a new `prepare` in a new workspace.
+The record, `rebuild-record.json` in the workspace, has the format `ilibrary-rebuild-record-1`, distinct from the catalog format. It holds the inventory, the registrations and their mapping to files, the addition and expected display lists, the evacuation plan, the backup and restoration results, and the stage `prepared`. It is private: it contains machine-specific paths, the volume UUID of the backup, and Music persistent IDs. Never share, publish, or commit it. Its checksum detects accidental damage and does not authenticate it. Any change to the catalog, the files, the library, or the backup after preparation invalidates the record and requires a new `prepare` in a new workspace.
+
+The progress journal, `rebuild-journal.jsonl` in the workspace, has the format `ilibrary-rebuild-journal-1`. It is append-only: each line records the beginning or completion of a stage, or the intent, return, or verified result of one operation, and carries the checksum of the line before it, so that a damaged or edited journal is refused. It is as private as the record. Never edit or remove it during a rebuild.
 
 ### export
 

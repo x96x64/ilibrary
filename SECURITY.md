@@ -20,7 +20,7 @@ Problems that depend on an attacker who already controls your user account, or o
 
 ## Safety Properties
 
-Every mutating command offers `--dry-run` and prints its plan before changing anything. Rewrites go through a hidden partial file that is parsed and compared before it replaces the destination. Originals are moved to the Trash only after every output has been verified, and only when requested. Timestamp operations refuse missing paths and symbolic links. The addition journal is validated before it authorizes any move or library operation, and the recovery record of a rebuild carries a checksum and is refused when it is damaged or edited.
+Every mutating command offers `--dry-run` and prints its plan before changing anything. Rewrites go through a hidden partial file that is parsed and compared before it replaces the destination. Originals are moved to the Trash only after every output has been verified, and only when requested. Timestamp operations refuse missing paths and symbolic links. The addition journal is validated before it authorizes any move or library operation, the recovery record and progress journal of a rebuild carry checksums and are refused when damaged or edited, and the rebuild stages refuse to run out of order.
 
 iLibrary has no network component: it never downloads audio, contacts a server, or sends telemetry. It controls only the Music application, through Apple Events that macOS permits only after you grant the Automation permission.
 
