@@ -237,6 +237,29 @@ import Testing
         #expect(again.text.contains("Moves: 0 of 9 files"))
     }
 
+    @Test func titleRulesShapeWrittenTitlesAndNames() throws {
+        let library = try SyntheticLibrary()
+        defer { library.remove() }
+        var (url, catalog) = try exported(library)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let album = try #require(catalog.albums.firstIndex { $0.album == "Synthetic Album" })
+        catalog.titleRules = TitleRuleSettings(caseStyle: .start, removeQualifiers: ["Remaster"], bracketNested: true)
+        catalog.albums[album].discs[0].tracks[0].title = "first song (Sam's Mix (Demo)) (2012 Remaster)"
+        try write(catalog, to: url)
+
+        let preview = Run(["apply", url.path, library.root.path, "--rename", "--dry-run"])
+        #expect(preview.status == 0, "\(preview.errorText)")
+        #expect(preview.text.contains("title: \"First Song\" -> \"First Song [Sam's Mix (Demo)]\""))
+        let apply = Run(["apply", url.path, library.root.path, "--rename"])
+        #expect(apply.status == 0, "\(apply.errorText)")
+        let renamed = library.root.appendingPathComponent(
+            "Example Artist/Synthetic Album/01 First Song [Sam's Mix (Demo)].m4a")
+        #expect(try MP4File(contentsOf: renamed).metadataValues(.title) == [.text("First Song [Sam's Mix (Demo)]")])
+        let again = Run(["apply", url.path, library.root.path, "--rename"])
+        #expect(again.text.contains("Tag changes: 0 of 9 files"))
+        #expect(again.text.contains("Moves: 0 of 9 files"))
+    }
+
     @Test func collisionsUnmatchedFilesAndLinksChangeNothing() throws {
         let library = try SyntheticLibrary()
         defer { library.remove() }

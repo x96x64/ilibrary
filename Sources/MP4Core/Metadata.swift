@@ -33,7 +33,6 @@ public enum ImageFormat: UInt32, Sendable {
     case jpeg = 13
     case png = 14
 
-    /// Detects the format from the image signature.
     public init?(detecting data: Data) {
         if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) {
             self = .png

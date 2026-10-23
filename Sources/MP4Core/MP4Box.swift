@@ -92,20 +92,23 @@ public struct MP4Box: Sendable {
         case .leaf(let data): return data.count
         case .container(let prefix, let children, let trailer):
             return prefix.count + children.reduce(0) { $0 + $1.serializedSize } + trailer.count
-        case .source: return (sourceRange?.count ?? 0) - headerSize
+        case .source: return (sourceRange?.count ?? 0) - headerSize(payloadSize: 0)
         }
     }
 
-    var headerSize: Int { usesLargeSize || payloadNeedsLargeHeader ? 16 : 8 }
+    var headerSize: Int { headerSize(payloadSize: payloadSize) }
 
-    private var payloadNeedsLargeHeader: Bool {
-        if case .source = content { return false }
-        return payloadSize + 8 > Int(UInt32.max)
+    /// Takes the payload size from the caller, so that a subtree's size is computed once per level.
+    private func headerSize(payloadSize: Int) -> Int {
+        if usesLargeSize { return 16 }
+        if case .source = content { return 8 }
+        return payloadSize + 8 > Int(UInt32.max) ? 16 : 8
     }
 
     public var serializedSize: Int {
         if case .source = content { return sourceRange?.count ?? 0 }
-        return headerSize + payloadSize
+        let payload = payloadSize
+        return headerSize(payloadSize: payload) + payload
     }
 
     /// Serializes a box held in memory. Source boxes are written by the file writer instead.

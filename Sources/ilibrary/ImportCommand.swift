@@ -291,7 +291,6 @@ enum ImportCommand {
         let ext = source.pathExtension.lowercased()
         if ext == "m4a" {
             var file = try MP4File(contentsOf: source)
-            try file.ensureNotEncrypted(path: source.path)
             return .copy(try file.removePurchaseMetadata())
         }
         guard let converter = environment.converter else {

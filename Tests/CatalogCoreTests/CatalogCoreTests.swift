@@ -160,6 +160,15 @@ func rules(_ style: TitleCase = .keep, remove: [String] = [], bracket: Bool = fa
             ])
     }
 
+    @Test func albumsRefusedAsAWholeAreReportedInAlbumOrder() {
+        // The later album is given first, and the order of the unmatched files must still follow the catalog.
+        let report = match([
+            file("Greatest Hits", 1, 1, "Wrong Hit", artist: "Second Artist"), file("Example Album", 1, 1, "Wrong A"),
+        ])
+        #expect(report.matches.isEmpty)
+        #expect(report.unmatched.map(\.file.path) == ["1-1 Wrong A", "1-1 Wrong Hit"])
+    }
+
     @Test func aCorrectedTitleIsAcceptedWhileMostTitlesAgree() {
         let report = match([
             file("Example Album", 1, 1, "A1"), file("Example Album", 1, 2, "A2 Misspelt"),

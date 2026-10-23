@@ -37,7 +37,6 @@ struct StorageReport: Equatable, Sendable {
     var mountPoint: String
     var volumeUUID: String?
     var filesystemType: String
-    var isReadOnly: Bool
     var facts: StorageFacts
 }
 
@@ -161,7 +160,7 @@ struct Environment: Sendable {
                 let description = try StorageDevice.describe(path: path)
                 return StorageReport(
                     mountPoint: description.mountPoint, volumeUUID: description.volumeUUID,
-                    filesystemType: description.filesystemType, isReadOnly: description.isReadOnly,
+                    filesystemType: description.filesystemType,
                     facts: description.facts)
             }
         #else

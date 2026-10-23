@@ -18,7 +18,6 @@ public enum FLACError: Error, Equatable, Sendable, CustomStringConvertible {
     }
 }
 
-/// The STREAMINFO block.
 public struct FLACStreamInformation: Equatable, Sendable {
     public var sampleRate: Int
     public var channels: Int
@@ -28,7 +27,6 @@ public struct FLACStreamInformation: Equatable, Sendable {
     public var md5: Data
 }
 
-/// A PICTURE block.
 public struct FLACPicture: Equatable, Sendable {
     /// The picture type of ID3v2 APIC frames; 3 is the front cover.
     public var type: Int

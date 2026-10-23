@@ -1,7 +1,7 @@
 import CatalogCore
 import Foundation
 
-let version = "1.0.0"
+let version = "1.0.1"
 
 enum CommandLineInterface {
     static let commands: [(name: String, summary: String)] = [

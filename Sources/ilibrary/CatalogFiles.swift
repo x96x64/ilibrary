@@ -15,6 +15,12 @@ func loadCatalog(_ path: String, console: Console) throws -> (catalog: Catalog, 
     } catch {
         throw CommandError.failure("\(path) cannot be read: \(error.localizedDescription)")
     }
+    return try validateCatalog(data, path: path, console: console)
+}
+
+/// Validates the bytes of a catalog that was read from `path`, printing its diagnostics. Errors end the command.
+func validateCatalog(_ data: Data, path: String, console: Console) throws -> (catalog: Catalog, directory: URL) {
+    let url = URL(fileURLWithPath: path).standardizedFileURL
     let result = Catalog.validate(data)
     for diagnostic in result.diagnostics {
         let text = "\(path): \(diagnostic.path.isEmpty ? "catalog" : diagnostic.path): \(diagnostic.message)"

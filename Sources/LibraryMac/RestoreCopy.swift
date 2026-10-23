@@ -71,8 +71,7 @@
             precondition(chunkSize > 0)
             let sourcePath = source.path
             let destinationPath = lexicalPath(destination)
-            var rootPath = lexicalPath(root)
-            if rootPath.count > 1, rootPath.hasSuffix("/") { rootPath.removeLast() }
+            let rootPath = lexicalPath(root)
 
             let input = open(sourcePath, O_RDONLY | O_NOFOLLOW)
             guard input >= 0 else {

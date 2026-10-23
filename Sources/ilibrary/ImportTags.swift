@@ -39,8 +39,6 @@ struct ImportTags: Equatable {
         "LOCATION", "CONTACT", "LICENSE", "ENCODER", "ENCODED-BY", "ENCODEDBY",
     ]
 
-    init() {}
-
     init(_ metadata: FLACMetadata) {
         var known: Set<String> = Set(ImportTags.numberFields)
         for field in ImportTags.textFields {

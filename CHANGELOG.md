@@ -4,6 +4,20 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-23
+
+### Fixed
+
+- `apply`, its `--rename` option, and `rebuild apply` write and name titles after the catalog's `titleRules`: the capitalization style, square brackets for nested parentheticals, and the removal of listed qualifiers. These rules were previously validated and used only for matching. `validate` and `apply` report each word left unchanged for review as a warning. Catalogs without `titleRules`, or with the default rules, are unaffected.
+- The files of albums that are refused as a whole are reported in album order instead of an order that could vary between runs.
+- `rebuild apply` and `rebuild add` read, check, and validate the recorded catalog once, so that its warnings are printed once.
+
+### Changed
+
+- `prompt` asks for titles in the capitalization of their source, because iLibrary now applies the title rules itself.
+- Writing an M4A file computes the size of each box once per nesting level, and unused declarations and unreachable lines were removed.
+- The README and the package description explain the license and each installation channel, and the command reference no longer cites withdrawn planning decisions. Generated release descriptions follow the layout of the first release.
+
 ## [1.0.0] - 2026-10-23
 
 ### Added

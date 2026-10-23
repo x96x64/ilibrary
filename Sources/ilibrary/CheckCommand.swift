@@ -205,6 +205,7 @@ enum CheckCommand {
                 }
             }
         }
+        let hasDirectoryRoot = roots.contains { pathKind($0) == .directory }
         for track in tracks {
             let key = albumKey(artist: track.effectiveAlbumArtist, album: track.album)
             let selected =
@@ -214,7 +215,7 @@ enum CheckCommand {
             guard entireLibrary || selected || albums.contains(key) else { continue }
             let path = track.location ?? "\(track.album) / \(track.name)"
             if !entireLibrary, albums.contains(key), !selected,
-                roots.contains(where: { pathKind($0) == .directory }), track.location != nil
+                hasDirectoryRoot, track.location != nil
             {
                 findings.append(Finding(path: path, message: "a track of this album is outside the selected folders"))
             }

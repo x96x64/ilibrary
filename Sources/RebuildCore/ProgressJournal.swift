@@ -143,8 +143,6 @@ public struct RebuildProgress: Equatable, Sendable {
         verifiedSets[operation]?.contains(target) ?? false
     }
 
-    func verified(_ operation: RebuildOperation) -> [String] { verifiedTargets[operation] ?? [] }
-
     func verifiedCount(_ operation: RebuildOperation) -> Int { verifiedSets[operation]?.count ?? 0 }
 
     public static func == (lhs: RebuildProgress, rhs: RebuildProgress) -> Bool {

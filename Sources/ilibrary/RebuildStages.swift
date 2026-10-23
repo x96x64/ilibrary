@@ -11,6 +11,10 @@ struct RebuildSession {
     let workspace: URL
     let record: RecoveryRecord
     let recordBytes: Data
+    /// The inventory records by absolute path.
+    let inventoryByPath: [String: FileRecord]
+    /// The recorded registrations by upper-cased persistent ID, so that IDs compare regardless of case.
+    let registrationsByID: [String: RegistrationRecord]
     /// The journal as last read or written, so that each entry is appended without reading the file again.
     private var state: JournalState?
 
@@ -25,6 +29,9 @@ struct RebuildSession {
                 "there is no valid recovery record in \(workspace.path): \(error); run 'ilibrary rebuild prepare' first"
             )
         }
+        inventoryByPath = Dictionary(uniqueKeysWithValues: record.inventory.map { ($0.absolutePath, $0.record) })
+        registrationsByID = Dictionary(
+            uniqueKeysWithValues: record.registrations.map { ($0.persistentID.uppercased(), $0) })
         if pathKind(workspace.appendingPathComponent(ProgressJournal.fileName)) != .missing {
             try reload()
         }
@@ -121,15 +128,6 @@ struct RebuildSession {
         return [pending[index]] + pending.enumerated().filter { $0.offset != index }.map(\.element)
     }
 
-    var inventoryByPath: [String: FileRecord] {
-        Dictionary(uniqueKeysWithValues: record.inventory.map { ($0.absolutePath, $0.record) })
-    }
-
-    /// The recorded registrations by upper-cased persistent ID, so that IDs compare regardless of case.
-    var registrationsByID: [String: RegistrationRecord] {
-        Dictionary(uniqueKeysWithValues: record.registrations.map { ($0.persistentID.uppercased(), $0) })
-    }
-
     /// The current path of each staged file: its result after application, or its staging path.
     var stagedFiles: [String] {
         record.evacuation.map { progress?.appliedPaths[$0.stagingPath] ?? $0.stagingPath }
@@ -180,8 +178,11 @@ enum RebuildStages {
         return music
     }
 
-    /// Loads the recorded catalog after confirming that it is the file that was prepared.
-    static func recordedCatalog(_ session: RebuildSession, console: Console) throws -> Catalog {
+    /// Loads the recorded catalog once, after confirming that it is the file that was prepared, and prints its
+    /// diagnostics. The digest is checked on the same bytes that are validated.
+    static func recordedCatalog(
+        _ session: RebuildSession, console: Console
+    ) throws -> (catalog: Catalog, directory: URL) {
         let url = URL(fileURLWithPath: session.record.catalogPath)
         guard pathKind(url) == .file, let data = try? Data(contentsOf: url),
             SHA256.digest(of: data) == session.record.catalogSHA256
@@ -189,7 +190,7 @@ enum RebuildStages {
             throw CommandError.failure(
                 "the catalog \(url.path) is missing or differs from the one recorded by rebuild prepare")
         }
-        return try loadCatalog(url.path, console: console).catalog
+        return try validateCatalog(data, path: url.path, console: console)
     }
 
     // MARK: stage
@@ -434,10 +435,10 @@ enum RebuildStages {
         guard try musicClosed(environment) else {
             throw CommandError.failure("Music must stay closed while the files are edited; quit it and run again")
         }
-        _ = try recordedCatalog(session, console: console)
+        let loaded = try recordedCatalog(session, console: console)
         let timestamps = parsed.flag("--timestamps")
         let prepared = try ApplyCommand.prepare(
-            catalogPath: record.catalogPath, paths: [record.locations.stagingDirectory], rename: true,
+            catalogPath: record.catalogPath, loaded: loaded, paths: [record.locations.stagingDirectory], rename: true,
             timestamps: timestamps, console: console, environment: environment)
         // Planned URLs are standardized, which on macOS turns /private/var into /var; the record holds resolved
         // paths, so every planned path is resolved the same way before it is compared.
@@ -516,8 +517,7 @@ enum RebuildStages {
     }
 
     /// Groups the applied files into the recorded albums and plans their places in the media folder.
-    static func stagedAlbums(_ session: RebuildSession, console: Console) throws -> [StagedAlbum] {
-        let catalog = try recordedCatalog(session, console: console)
+    static func stagedAlbums(_ session: RebuildSession, catalog: Catalog) throws -> [StagedAlbum] {
         let musicFolder = URL(fileURLWithPath: session.record.locations.mediaFolder, isDirectory: true)
             .appendingPathComponent("Music", isDirectory: true)
         // A file of an album whose addition was interrupted may already be at its place in the media folder, which
@@ -563,7 +563,8 @@ enum RebuildStages {
         let timestamps = parsed.flag("--timestamps")
         if timestamps, environment.setDates == nil { throw CommandError.timestampsRequireMacOS }
         let music = try requireMusic(environment)
-        let albums = try stagedAlbums(session, console: console)
+        let catalog = try recordedCatalog(session, console: console).catalog
+        let albums = try stagedAlbums(session, catalog: catalog)
         let albumsByLabel = Dictionary(albums.map { ($0.label, $0) }, uniquingKeysWith: { first, _ in first })
         let pending = session.ordered(record.additionList, .addAlbum)
         let added = Set(session.progress?.newPersistentIDs ?? [])
@@ -604,7 +605,7 @@ enum RebuildStages {
             timestamps
             ? TimestampPlanner.plan(
                 files: albums.flatMap { zip($0.destinations, $0.tracks).map { ($0, $1) } },
-                catalog: try recordedCatalog(session, console: console),
+                catalog: catalog,
                 roots: [URL(fileURLWithPath: record.locations.mediaFolder).appendingPathComponent("Music")],
                 timeZone: environment.timeZone)
             : nil
@@ -679,11 +680,10 @@ enum RebuildStages {
     static func additionDateOrder(_ albums: [StagedAlbum], music: any MusicLibrary) throws -> [String] {
         let snapshot = try music.librarySnapshot()
         var latest: [String: Int] = [:]
+        let located = snapshot.tracks.map { (id: $0.persistentID, place: normalized($0.location ?? "")) }
         for album in albums {
             let places = Set(album.destinations.map { normalized($0.path) })
-            let dates = snapshot.tracks.filter { places.contains(normalized($0.location ?? "")) }.compactMap {
-                snapshot.dateAddedSeconds[$0.persistentID]
-            }
+            let dates = located.filter { places.contains($0.place) }.compactMap { snapshot.dateAddedSeconds[$0.id] }
             guard dates.count == places.count, let newest = dates.max() else {
                 throw CommandError.failure("the addition dates of \"\(album.label)\" cannot be read")
             }
