@@ -12,8 +12,8 @@ import Testing
             artists: folderDate.map { ["Example Artist": ArtistEntry(folderDate: $0)] },
             albums: [
                 Album(
-                    album: "Synthetic Album", albumArtist: "Example Artist", releaseDate: "1980-06-01",
-                    discs: [Disc(tracks: [Track(title: "One"), Track(title: "Two", releaseDate: "1981-01-01")])]),
+                    album: "Synthetic Album", albumArtist: "Example Artist", releaseDate: "1958-08-29",
+                    discs: [Disc(tracks: [Track(title: "One"), Track(title: "Two", releaseDate: "1959-08-29")])]),
                 Album(album: "Undated", albumArtist: "Example Artist", discs: [Disc(tracks: [Track(title: "Three")])]),
             ])
     }
@@ -29,7 +29,7 @@ import Testing
 
     @Test func filesComeFirstThenAlbumAndArtistFolders() {
         let root = URL(fileURLWithPath: "/Staging")
-        let catalog = catalog(folderDate: "1979-01-01")
+        let catalog = catalog(folderDate: "1957-08-29")
         let plan = TimestampPlanner.plan(
             files: files(catalog, root: root), catalog: catalog, roots: [root], timeZone: TimestampPlanTests.zone)
         #expect(plan.targets.map(\.kind) == [.file, .file, .albumFolder, .artistFolder])
@@ -39,8 +39,8 @@ import Testing
                 "Example Artist/Synthetic Album", "Example Artist",
             ])
         #expect(
-            plan.targets.map(\.releaseDate.description) == ["1980-06-01", "1981-01-01", "1980-06-01", "1979-01-01"])
-        #expect(plan.targets[0].date == Date(timeIntervalSince1970: 328_633_200))
+            plan.targets.map(\.releaseDate.description) == ["1958-08-29", "1959-08-29", "1958-08-29", "1957-08-29"])
+        #expect(plan.targets[0].date == Date(timeIntervalSince1970: -357_987_600))
         #expect(plan.notes.contains { $0.contains("01 Three.m4a left unchanged: no release date") })
         #expect(plan.notes.contains { $0.contains("\"Undated\" has no release date") })
     }
@@ -56,7 +56,7 @@ import Testing
 
     @Test func foldersOutsideTheGivenDirectoriesAreNeverChanged() {
         let root = URL(fileURLWithPath: "/Staging/Example Artist/Synthetic Album")
-        let catalog = catalog(folderDate: "1979-01-01")
+        let catalog = catalog(folderDate: "1957-08-29")
         let plan = TimestampPlanner.plan(
             files: Array(files(catalog, root: URL(fileURLWithPath: "/Staging")).prefix(2)), catalog: catalog,
             roots: [root],
@@ -79,7 +79,7 @@ import Testing
     }
 
     @Test func theScriptChecksEveryPathAndQuotes() {
-        let catalog = catalog(folderDate: "1958-03-01")
+        let catalog = catalog(folderDate: "1957-08-29")
         let root = URL(fileURLWithPath: "/Staging/It's Here")
         let plan = TimestampPlanner.plan(
             files: files(catalog, root: root), catalog: catalog, roots: [root], timeZone: TimestampPlanTests.zone)
@@ -90,10 +90,10 @@ import Testing
         #expect(script.contains("touch -c -m -t"))
         #expect(
             script.contains(
-                "set_dates '/Staging/It'\\''s Here/Example Artist/Synthetic Album/01 One.m4a' '06/01/1980 00:00:00' '198006010000.00'"
+                "set_dates '/Staging/It'\\''s Here/Example Artist/Synthetic Album/01 One.m4a' '08/29/1958 00:00:00' '195808290000.00'"
             ))
         #expect(
-            script.contains("set_dates '/Staging/It'\\''s Here/Example Artist' '03/01/1958 00:00:00' '195803010000.00'")
+            script.contains("set_dates '/Staging/It'\\''s Here/Example Artist' '08/29/1957 00:00:00' '195708290000.00'")
         )
         #expect(script.hasSuffix("exit $status\n"))
     }
@@ -133,23 +133,23 @@ import Testing
             defer { try? FileManager.default.removeItem(at: url) }
             #expect(Run(["export", library.root.path, "-o", url.path]).status == 0)
             var catalog = try #require(Catalog.validate(try Data(contentsOf: url)).catalog)
-            catalog.artists = ["Example Artist": ArtistEntry(folderDate: "1979-08-10")]
+            catalog.artists = ["Example Artist": ArtistEntry(folderDate: "1957-08-29")]
             try? FileManager.default.removeItem(at: url)
             try catalog.encoded().write(to: url)
 
             let run = Run(["apply", url.path, library.root.path, "--rename", "--timestamps"])
             #expect(run.status == 0, "\(run.errorText)")
             #expect(run.text.contains("paths dated"))
-            let release = Date(timeIntervalSince1970: 328_633_200)
+            let release = Date(timeIntervalSince1970: -357_987_600)
             let song = library.root.appendingPathComponent("Example Artist/Synthetic Album/01 First Song.m4a")
             #expect(try dates(song) == (release, release))
             #expect(
                 try dates(library.root.appendingPathComponent("Example Artist/Synthetic Album")) == (release, release))
-            let folderDate = ReleaseDate("1979-08-10")!.localStart(in: TimeZone(identifier: "Asia/Tokyo")!).date
+            let folderDate = ReleaseDate("1957-08-29")!.localStart(in: TimeZone(identifier: "Asia/Tokyo")!).date
             #expect(try dates(library.root.appendingPathComponent("Example Artist")) == (folderDate, folderDate))
             // Various Artists has no folderDate, so its folder keeps the dates it had.
             let various = try dates(library.root.appendingPathComponent("Various Artists"))
-            #expect(various.0 != Date(timeIntervalSince1970: 915_116_400))
+            #expect(various.0 != Date(timeIntervalSince1970: -326_451_600))
             #expect(run.text.contains("gives \"Various Artists\" no folderDate"))
         }
 
@@ -162,7 +162,7 @@ import Testing
             FileManager.default.createFile(atPath: present.path, contents: Data())
             let before = try dates(present)
             let missing = directory.appendingPathComponent("Missing Folder")
-            let date = ReleaseDate("1980-06-01")!
+            let date = ReleaseDate("1958-08-29")!
             func target(_ url: URL) -> DatedPath {
                 DatedPath(
                     url: url, kind: .file, releaseDate: date, date: Date(timeIntervalSince1970: 0), isMidnight: true)
@@ -198,7 +198,7 @@ import Testing
             process.waitUntilExit()
             #expect(process.terminationStatus == 1)
             #expect(pathKind(removed) == .missing)
-            let release = Date(timeIntervalSince1970: 328_633_200)
+            let release = Date(timeIntervalSince1970: -357_987_600)
             let song = library.root.appendingPathComponent("Download One/01-First Song_1001.m4a")
             #expect(try dates(song) == (release, release))
             #expect(try dates(library.root.appendingPathComponent("Download One")) == (release, release))

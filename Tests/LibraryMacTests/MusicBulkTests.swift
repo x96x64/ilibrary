@@ -9,7 +9,7 @@
 
         static func row(
             _ id: String, name: String = "Song", location: String = "/synthetic/a.m4a", composer: String = "C",
-            genre: String = "G", comment: String = "N", year: String = "1980", trackCount: String = "10",
+            genre: String = "G", comment: String = "N", year: String = "1958", trackCount: String = "10",
             discCount: String = "2", compilation: String = "false", status: String = "matched"
         ) -> Fields {
             [

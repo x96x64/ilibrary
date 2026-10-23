@@ -85,7 +85,7 @@ func musicStatus(version: String? = "1.7", running: Bool = true, permission: Str
         try untitled.removeMetadata(.title)
         try MP4Writer.write(untitled, to: files[5])
         var environment = noDates
-        let release = Date(timeIntervalSince1970: 328_633_200)
+        let release = Date(timeIntervalSince1970: -357_987_600)
         environment.readDates = { url in url == files[6] ? (Date(), Date()) : (release, release) }
         let run = Run(["check", library.root.path], environment: environment)
         #expect(run.status == 1)
