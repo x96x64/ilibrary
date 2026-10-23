@@ -13,6 +13,11 @@ extension Data {
         Swift.withUnsafeBytes(of: value.bigEndian) { append(contentsOf: $0) }
     }
 
+    /// Appends the low `width` bytes of `value`, most significant first.
+    mutating func appendBigEndian(_ value: UInt64, width: Int) {
+        for index in 0..<width { append(UInt8(truncatingIfNeeded: value >> UInt64(8 * (width - 1 - index)))) }
+    }
+
     /// Replaces `width` bytes at `offset`, relative to `startIndex`, with a big-endian integer.
     mutating func setBigEndianInteger(_ value: UInt64, at offset: Int, width: Int) {
         let base = startIndex + offset

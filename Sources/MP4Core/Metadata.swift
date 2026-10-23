@@ -117,7 +117,7 @@ extension MetadataValue {
                 throw MP4Error.invalidValue(key: key.description, reason: "\(value) does not fit in \(width) bytes")
             }
             header(21)
-            payload.setBigEndianIntegerAppending(UInt64(bitPattern: value), width: width)
+            payload.appendBigEndian(UInt64(bitPattern: value), width: width)
         case .pair(let number, let total):
             guard (0...Int(UInt16.max)).contains(number), (0...Int(UInt16.max)).contains(total) else {
                 throw MP4Error.invalidValue(key: key.description, reason: "\(number)/\(total) is out of range")
@@ -136,12 +136,6 @@ extension MetadataValue {
             payload.append(data)
         }
         return MP4Box(type: "data", payload: payload)
-    }
-}
-
-extension Data {
-    mutating func setBigEndianIntegerAppending(_ value: UInt64, width: Int) {
-        for index in 0..<width { append(UInt8(truncatingIfNeeded: value >> UInt64(8 * (width - 1 - index)))) }
     }
 }
 

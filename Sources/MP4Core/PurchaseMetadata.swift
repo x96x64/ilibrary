@@ -10,7 +10,7 @@ public struct PurchaseMetadataRemoval: Equatable, Sendable {
 }
 
 extension MP4File {
-    /// Item-list atoms that identify the purchaser, the purchase, or catalog entries (decision 10).
+    /// Item-list atoms that identify the purchaser, the purchase, or catalog entries.
     public static let purchaseItemKeys: [FourCC] = [
         "apID", "ownr", "purd", "cnID", "atID", "plID", "geID", "sfID", "cmID", "akID", "flvr", "xid ",
     ]

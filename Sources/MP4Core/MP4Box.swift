@@ -52,11 +52,6 @@ public struct MP4Box: Sendable {
         }
     }
 
-    public var isContainer: Bool {
-        if case .container = content { return true }
-        return false
-    }
-
     public func child(_ type: FourCC) -> MP4Box? { children.first { $0.type == type } }
 
     /// Every descendant of the given type, in file order.
@@ -101,9 +96,9 @@ public struct MP4Box: Sendable {
         }
     }
 
-    var headerSize: Int { usesLargeSize || payloadSizeExcludingHeaderNeedsLarge ? 16 : 8 }
+    var headerSize: Int { usesLargeSize || payloadNeedsLargeHeader ? 16 : 8 }
 
-    private var payloadSizeExcludingHeaderNeedsLarge: Bool {
+    private var payloadNeedsLargeHeader: Bool {
         if case .source = content { return false }
         return payloadSize + 8 > Int(UInt32.max)
     }

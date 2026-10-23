@@ -1,7 +1,7 @@
 import Foundation
 
 extension MP4File {
-    /// Compares the audio streams of two files without decoding (decision 7): the payloads of the
+    /// Compares the audio streams of two files without decoding: the payloads of the
     /// media-data boxes, the sample tables, and every chunk position relative to its media-data payload.
     /// Returns the differences; an empty result means that the streams are identical.
     public func streamDifferences(from other: MP4File) -> [String] {
