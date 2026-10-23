@@ -16,13 +16,6 @@ final class PrepareProgress: @unchecked Sendable {
     var recordWritten = false
 }
 
-/// The facts of step 4 that the plan prints and the record keeps.
-struct BackupFacts {
-    var report: StorageReport
-    var policy: TimestampPolicy
-    var verifiedCount: Int
-}
-
 enum RebuildPrepare {
     static func run(_ arguments: [String], console: Console, environment: Environment) throws -> Int32 {
         let syntax = RebuildCommand.prepareSyntax
@@ -240,7 +233,7 @@ enum RebuildPrepare {
         switch pathKind(workspaceURL) {
         case .directory:
             let recordPath = inputs.workspace + "/" + RecoveryRecord.fileName
-            if pathKind(URL(fileURLWithPath: recordPath)) != .missing {
+            if pathKind(recordPath) != .missing {
                 reasons.append(
                     "a recovery record already exists at \(recordPath); it is never overwritten. Use another workspace or remove it deliberately"
                 )
@@ -282,15 +275,11 @@ enum RebuildPrepare {
         }
         let catalog = validation.catalog
         if let catalog {
-            for (index, album) in catalog.albums.enumerated() {
-                guard let artwork = album.artwork, !artwork.isEmpty else { continue }
+            for (index, path) in catalog.artworkPaths {
                 do {
-                    _ = try loadArtwork(
-                        artwork, catalogDirectory: catalogURL.deletingLastPathComponent())
-                } catch let error as CommandError {
-                    reasons.append("albums[\(index)]: \(error.message)")
+                    _ = try loadArtwork(path, catalogDirectory: catalogURL.deletingLastPathComponent())
                 } catch {
-                    reasons.append("albums[\(index)]: \(error)")
+                    reasons.append("albums[\(index)]: \(error.commandMessage)")
                 }
             }
         } else if reasons.isEmpty {
@@ -310,51 +299,7 @@ enum RebuildPrepare {
                 reasons.append("file inventory: \(error)")
             }
             if let catalog {
-                do {
-                    let correspondence = try Correspondence.build([inputs.source], catalog: catalog)
-                    for unmatched in correspondence.report.unmatched {
-                        reasons.append("unmatched \(unmatched.file.path): \(unmatched.reason)")
-                    }
-                    for refusal in correspondence.refused {
-                        reasons.append("refused \(refusal.path): \(refusal.reason)")
-                    }
-                    // The matcher reports missing tracks only for albums with at least one match, so every
-                    // track of the catalog is enumerated here and a wholly absent album is reported as well.
-                    var absent = Set<TrackReference>()
-                    for (albumIndex, album) in catalog.albums.enumerated() {
-                        for (discIndex, disc) in album.discs.enumerated() {
-                            for trackIndex in disc.tracks.indices {
-                                absent.insert(
-                                    TrackReference(album: albumIndex, disc: discIndex + 1, track: trackIndex + 1))
-                            }
-                        }
-                    }
-                    absent.subtract(correspondence.report.matches.map(\.reference))
-                    for reference in absent.sorted() {
-                        reasons.append("no file for \(reference) \"\(catalog.track(reference).title)\"")
-                    }
-                    if let inventory {
-                        let scanned = Set(
-                            // standardizedFileURL drops a leading /private, so the paths are resolved again.
-                            correspondence.files.map {
-                                RebuildCommand.resolve($0.url.path).precomposedStringWithCanonicalMapping
-                            })
-                        let inventoried = Set(
-                            inventory.records.map {
-                                (inputs.source + "/" + $0.path).precomposedStringWithCanonicalMapping
-                            })
-                        for path in inventoried.subtracting(scanned).sorted() {
-                            reasons.append("the inventoried file \(path) was not read for matching")
-                        }
-                        for path in scanned.subtracting(inventoried).sorted() {
-                            reasons.append("the matched file \(path) is not in the inventory")
-                        }
-                    }
-                } catch let error as CommandError {
-                    reasons.append(error.message)
-                } catch {
-                    reasons.append("\(error)")
-                }
+                reasons += matchingReasons(catalog, source: inputs.source, inventory: inventory)
             }
         }
         if let inventory {
@@ -367,6 +312,46 @@ enum RebuildPrepare {
             throw PrepareFailure(step: 1, title: title, reasons: reasons)
         }
         return Analysis(catalog: catalog, catalogDigest: SHA256.digest(of: data), inventory: inventory)
+    }
+
+    /// The reasons why the files under the source do not correspond to the catalog or to the inventory.
+    static func matchingReasons(_ catalog: Catalog, source: String, inventory: FileInventory?) -> [String] {
+        var reasons: [String] = []
+        do {
+            let correspondence = try Correspondence.build([source], catalog: catalog)
+            for unmatched in correspondence.report.unmatched {
+                reasons.append("unmatched \(unmatched.file.path): \(unmatched.reason)")
+            }
+            for refusal in correspondence.refused {
+                reasons.append("refused \(refusal.path): \(refusal.reason)")
+            }
+            // The matcher reports missing tracks only for albums with at least one match, so every track of the
+            // catalog is enumerated here and a wholly absent album is reported as well.
+            let absent = Set(catalog.resolvedTracks().map(\.reference))
+                .subtracting(correspondence.report.matches.map(\.reference))
+            for reference in absent.sorted() {
+                reasons.append("no file for \(reference) \"\(catalog.track(reference).title)\"")
+            }
+            if let inventory {
+                // standardizedFileURL drops a leading /private, so the paths are resolved again.
+                let scanned = Set(
+                    correspondence.files.map {
+                        RebuildCommand.resolve($0.url.path).precomposedStringWithCanonicalMapping
+                    }
+                )
+                let inventoried = Set(
+                    inventory.records.map { (source + "/" + $0.path).precomposedStringWithCanonicalMapping })
+                for path in inventoried.subtracting(scanned).sorted() {
+                    reasons.append("the inventoried file \(path) was not read for matching")
+                }
+                for path in scanned.subtracting(inventoried).sorted() {
+                    reasons.append("the matched file \(path) is not in the inventory")
+                }
+            }
+        } catch {
+            reasons.append(error.commandMessage)
+        }
+        return reasons
     }
 
     static func describe(_ error: FileInventoryError) -> String {
@@ -411,7 +396,7 @@ enum RebuildPrepare {
         var mediaFolder = ""
         if let folder = music.mediaFolder() {
             mediaFolder = RebuildCommand.resolve(folder.path)
-            if pathKind(URL(fileURLWithPath: mediaFolder)) != .directory {
+            if pathKind(mediaFolder) != .directory {
                 reasons.append("Music's media folder \(mediaFolder) is not an existing directory")
             }
         } else {
@@ -452,16 +437,16 @@ enum RebuildPrepare {
         reasons += locations.symbolicLinkRefusals(status: { try FileStatus.read(atPath: $0) }).map(\.description)
         for (label, path) in [
             ("backup root", locations.backupRoot), ("restoration-test directory", locations.restorationDirectory),
-        ] where pathKind(URL(fileURLWithPath: path)) != .directory {
+        ] where pathKind(path) != .directory {
             reasons.append("the \(label) \(path) is not an existing directory")
         }
-        if pathKind(URL(fileURLWithPath: locations.stagingDirectory)) != .missing,
-            pathKind(URL(fileURLWithPath: locations.stagingDirectory)) != .directory
+        if pathKind(locations.stagingDirectory) != .missing,
+            pathKind(locations.stagingDirectory) != .directory
         {
             reasons.append("the staging directory \(locations.stagingDirectory) exists and is not a directory")
         }
         if let problem = nonEmptyReason(locations.restorationDirectory) { reasons.append(problem) }
-        if pathKind(URL(fileURLWithPath: locations.restorationDirectory)) == .directory,
+        if pathKind(locations.restorationDirectory) == .directory,
             environment.timestampPolicy(locations.restorationDirectory) == nil
         {
             reasons.append(
@@ -482,7 +467,7 @@ enum RebuildPrepare {
 
     /// A reason when an existing directory holds any entry, including hidden ones.
     static func nonEmptyReason(_ directory: String) -> String? {
-        guard pathKind(URL(fileURLWithPath: directory)) == .directory else { return nil }
+        guard pathKind(directory) == .directory else { return nil }
         guard let entries = try? FileManager.default.contentsOfDirectory(atPath: directory) else {
             return "the restoration-test directory \(directory) cannot be listed"
         }

@@ -121,6 +121,15 @@ struct RebuildSession {
         return [pending[index]] + pending.enumerated().filter { $0.offset != index }.map(\.element)
     }
 
+    var inventoryByPath: [String: FileRecord] {
+        Dictionary(uniqueKeysWithValues: record.inventory.map { ($0.absolutePath, $0.record) })
+    }
+
+    /// The recorded registrations by upper-cased persistent ID, so that IDs compare regardless of case.
+    var registrationsByID: [String: RegistrationRecord] {
+        Dictionary(uniqueKeysWithValues: record.registrations.map { ($0.persistentID.uppercased(), $0) })
+    }
+
     /// The current path of each staged file: its result after application, or its staging path.
     var stagedFiles: [String] {
         record.evacuation.map { progress?.appliedPaths[$0.stagingPath] ?? $0.stagingPath }
@@ -145,7 +154,7 @@ enum RebuildStages {
     /// Confirms, by status rather than digest, that an evacuated file is still at its staging path with its
     /// recorded size and modification time and that nothing has returned to its original place.
     static func stillStaged(_ entry: EvacuationEntry, _ expected: FileRecord) -> Bool {
-        guard pathKind(URL(fileURLWithPath: entry.sourcePath)) == .missing,
+        guard pathKind(entry.sourcePath) == .missing,
             let status = try? FileStatus.read(atPath: entry.stagingPath), status.kind == .regular
         else { return false }
         return status.size == expected.size && status.modification == expected.modification
@@ -202,7 +211,7 @@ enum RebuildStages {
         }
         let pending = session.ordered(record.evacuation.map(\.sourcePath), .evacuateFile)
         let entries = Dictionary(uniqueKeysWithValues: record.evacuation.map { ($0.sourcePath, $0) })
-        let inventory = Dictionary(uniqueKeysWithValues: record.inventory.map { ($0.absolutePath, $0.record) })
+        let inventory = session.inventoryByPath
         let staging = URL(fileURLWithPath: record.locations.stagingDirectory, isDirectory: true)
         let stagingVolume = environment.volumeIdentifier(
             URL(fileURLWithPath: RebuildCommand.nearestExisting(staging.path)))
@@ -243,7 +252,7 @@ enum RebuildStages {
             try session.perform(
                 .evacuateFile, source,
                 action: {
-                    guard pathKind(URL(fileURLWithPath: source)) == .file else { return }
+                    guard pathKind(source) == .file else { return }
                     let target = URL(fileURLWithPath: entry.stagingPath)
                     try manager.createDirectory(
                         at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -278,43 +287,13 @@ enum RebuildStages {
         }
         try session.require(.clearing, after: .evacuation, command: "clear")
         let music = try requireMusic(environment)
-        let registrations = Dictionary(
-            uniqueKeysWithValues: record.registrations.map { ($0.persistentID.uppercased(), $0) })
-        let inventory = Dictionary(uniqueKeysWithValues: record.inventory.map { ($0.absolutePath, $0.record) })
+        let registrations = session.registrationsByID
+        let inventory = session.inventoryByPath
         let evacuations = Dictionary(uniqueKeysWithValues: record.evacuation.map { ($0.sourcePath, $0) })
         let locations = Dictionary(
             uniqueKeysWithValues: record.mapping.map { ($0.persistentID.uppercased(), $0.location) })
         let pending = session.ordered(record.mapping.map(\.persistentID), .removeRegistration)
-        var problems: [String] = []
-        for entry in record.evacuation where !stillStaged(entry, inventory[entry.sourcePath]!) {
-            problems.append("\(entry.stagingPath) is missing or changed, or \(entry.sourcePath) exists again")
-        }
-        // The library is read on every run, including a resumed one, so that a track added since an earlier
-        // confirmation is found; reading it launches Music, which is quit again below.
-        do {
-            let pendingIDs = Set(pending.map { $0.uppercased() })
-            let snapshot = try music.librarySnapshot()
-            let present = Set(snapshot.tracks.map { $0.persistentID.uppercased() })
-            let openRemoval = session.progress?.openOperation.flatMap {
-                $0.operation == .removeRegistration ? $0.target.uppercased() : nil
-            }
-            if snapshot.trackCount != snapshot.fileTrackCount {
-                problems.append(
-                    "the library holds \(snapshot.trackCount - snapshot.fileTrackCount) tracks that are not files")
-            }
-            for id in present.subtracting(pendingIDs).sorted() {
-                problems.append("the library holds \(id), which the record does not plan to remove")
-            }
-            for id in pendingIDs.subtracting(present).subtracting(openRemoval.map { [$0] } ?? []).sorted() {
-                problems.append("the planned registration \(id) is missing from the library")
-            }
-            for track in snapshot.tracks {
-                guard let expected = registrations[track.persistentID.uppercased()] else { continue }
-                if track.name != expected.name || track.album != expected.album || track.artist != expected.artist {
-                    problems.append("\(track.persistentID) no longer has its recorded name, album, and artist")
-                }
-            }
-        }
+        let problems = try clearingProblems(session, pending: pending, music: music)
         guard problems.isEmpty else {
             for problem in problems { console.error(problem) }
             throw CommandError.failure("the files or the library differ from the recovery record; nothing was removed")
@@ -368,25 +347,68 @@ enum RebuildStages {
         }
         if !session.verified(.terminateMusic, "") {
             try session.perform(
-                .terminateMusic, "",
-                // Music may quit before it answers the request, so a failed request is judged by the result.
-                action: { if !(try musicClosed(environment)) { try? music.quit() } },
+                .terminateMusic, "", action: { try requestQuit(music, environment: environment) },
                 observe: {
-                    guard try waitUntilClosed(environment) else {
-                        throw CommandError.failure("Music did not quit; quit it and run rebuild clear again")
-                    }
+                    try requireClosed(environment)
                     return JournalObservation(musicRunning: false)
                 })
         }
-        if !(try musicClosed(environment)) { try? music.quit() }
-        guard try waitUntilClosed(environment) else {
-            throw CommandError.failure("Music did not quit; quit it and run rebuild clear again")
-        }
+        try requestQuit(music, environment: environment)
+        try requireClosed(environment)
         try session.complete(.clearing)
         console.print(
             "Cleared: \(record.mapping.count) registrations removed; Music reports no tracks and has quit. The Music "
                 + "window was not inspected. Next: ilibrary rebuild apply")
         return 0
+    }
+
+    /// The differences between the staged files, the library, and the recovery record that forbid removing
+    /// registrations. The library is read on every run, including a resumed one, so that a track added since an
+    /// earlier confirmation is found; reading it launches Music, which is quit again afterwards.
+    static func clearingProblems(
+        _ session: RebuildSession, pending: [String], music: any MusicLibrary
+    ) throws -> [String] {
+        let inventory = session.inventoryByPath
+        let registrations = session.registrationsByID
+        var problems: [String] = []
+        for entry in session.record.evacuation where !stillStaged(entry, inventory[entry.sourcePath]!) {
+            problems.append("\(entry.stagingPath) is missing or changed, or \(entry.sourcePath) exists again")
+        }
+        let pendingIDs = Set(pending.map { $0.uppercased() })
+        let snapshot = try music.librarySnapshot()
+        let present = Set(snapshot.tracks.map { $0.persistentID.uppercased() })
+        let openRemoval = session.progress?.openOperation.flatMap {
+            $0.operation == .removeRegistration ? $0.target.uppercased() : nil
+        }
+        if snapshot.trackCount != snapshot.fileTrackCount {
+            problems.append(
+                "the library holds \(snapshot.trackCount - snapshot.fileTrackCount) tracks that are not files")
+        }
+        for id in present.subtracting(pendingIDs).sorted() {
+            problems.append("the library holds \(id), which the record does not plan to remove")
+        }
+        for id in pendingIDs.subtracting(present).subtracting(openRemoval.map { [$0] } ?? []).sorted() {
+            problems.append("the planned registration \(id) is missing from the library")
+        }
+        for track in snapshot.tracks {
+            guard let expected = registrations[track.persistentID.uppercased()] else { continue }
+            if track.name != expected.name || track.album != expected.album || track.artist != expected.artist {
+                problems.append("\(track.persistentID) no longer has its recorded name, album, and artist")
+            }
+        }
+        return problems
+    }
+
+    /// Asks Music to quit unless it is closed. Music may quit before it answers the request, so a failed request is
+    /// judged by the result.
+    static func requestQuit(_ music: any MusicLibrary, environment: Environment) throws {
+        if !(try musicClosed(environment)) { try? music.quit() }
+    }
+
+    static func requireClosed(_ environment: Environment) throws {
+        guard try waitUntilClosed(environment) else {
+            throw CommandError.failure("Music did not quit; quit it and run rebuild clear again")
+        }
     }
 
     /// Waits up to a minute for Music to quit.
@@ -503,7 +525,7 @@ enum RebuildStages {
         let stagingRoot = session.record.locations.stagingDirectory
         let staged = session.stagedFiles
         let paths = staged.map { path in
-            pathKind(URL(fileURLWithPath: path)) == .file ? path : musicFolder.path + path.dropFirst(stagingRoot.count)
+            pathKind(path) == .file ? path : musicFolder.path + path.dropFirst(stagingRoot.count)
         }
         let stagedByPath = Dictionary(uniqueKeysWithValues: zip(paths.map(normalized), staged))
         let correspondence = try Correspondence.build(paths, catalog: catalog)
@@ -539,17 +561,14 @@ enum RebuildStages {
         }
         if !session.completed(.addition) { try session.require(.addition, after: .application, command: "add") }
         let timestamps = parsed.flag("--timestamps")
-        if timestamps, environment.setDates == nil {
-            throw CommandError.failure(
-                "--timestamps requires macOS, where creation dates can be set; nothing was changed")
-        }
+        if timestamps, environment.setDates == nil { throw CommandError.timestampsRequireMacOS }
         let music = try requireMusic(environment)
         let albums = try stagedAlbums(session, console: console)
+        let albumsByLabel = Dictionary(albums.map { ($0.label, $0) }, uniquingKeysWith: { first, _ in first })
         let pending = session.ordered(record.additionList, .addAlbum)
         let added = Set(session.progress?.newPersistentIDs ?? [])
         let openLabel = session.progress?.openOperation.flatMap { $0.operation == .addAlbum ? $0.target : nil }
-        let allowed = Set(
-            (albums.first { $0.label == openLabel }?.destinations ?? []).map { normalized($0.path) })
+        let allowed = Set((openLabel.flatMap { albumsByLabel[$0] }?.destinations ?? []).map { normalized($0.path) })
         let snapshot = try music.librarySnapshot()
         let unexpected = snapshot.tracks.filter {
             !added.contains($0.persistentID.uppercased()) && !allowed.contains(normalized($0.location ?? ""))
@@ -561,9 +580,9 @@ enum RebuildStages {
         // A file is moved only from its staged place to a free destination. Only the album that an earlier run
         // was adding may already be in the media folder.
         for label in pending {
-            let album = albums.first { $0.label == label }!
+            let album = albumsByLabel[label]!
             for (staged, destination) in zip(album.staged, album.destinations) {
-                let isStaged = pathKind(URL(fileURLWithPath: staged)) == .file
+                let isStaged = pathKind(staged) == .file
                 let isPlaced = pathKind(destination) != .missing
                 guard isStaged != isPlaced, isStaged || label == openLabel else {
                     throw CommandError.failure(
@@ -575,7 +594,7 @@ enum RebuildStages {
         console.print(
             "Albums to add in the recorded order, each after the previous album's addition dates: \(pending.count)")
         for label in pending {
-            let album = albums.first { $0.label == label }!
+            let album = albumsByLabel[label]!
             console.print("  \(label): \(album.files.count) files")
             for (file, destination) in zip(album.files, album.destinations) {
                 console.print("     move \(file.path) -> \(destination.path)")
@@ -603,14 +622,14 @@ enum RebuildStages {
                 snapshot.dateAddedSeconds.map { ($0.key.uppercased(), $0.value) }, uniquingKeysWith: max)
             var separation = SeparatedAddition(latest: added.compactMap { dates[$0] }.max())
             for label in pending {
-                let album = albums.first { $0.label == label }!
+                let album = albumsByLabel[label]!
                 var tracks: [LibraryTrack] = []
                 separation.waitForNext(environment: environment)
                 try session.perform(
                     .addAlbum, label,
                     action: {
                         for (staged, destination) in zip(album.staged, album.destinations)
-                        where pathKind(URL(fileURLWithPath: staged)) == .file {
+                        where pathKind(staged) == .file {
                             try AddCommand.moveFile(
                                 URL(fileURLWithPath: staged), to: destination, environment: environment)
                         }
