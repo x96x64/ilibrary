@@ -68,13 +68,15 @@ The following commands install version 1.0.0, the version of this source tree. T
 brew install x96x64/tap/ilibrary
 ```
 
-Homebrew builds from source and requires Swift 6.
+The formula in [x96x64/homebrew-tap](https://github.com/x96x64/homebrew-tap) downloads the release source archive, which Homebrew checks against the checksum recorded in the formula, and builds it on your Mac. It requires Swift 6 or later from Xcode or the Command Line Tools and stops with an explanation when an older toolchain is selected. It installs only the `ilibrary` executable, and `brew test ilibrary` checks its version, built-in schema, and help.
 
 ### npm
 
 ```bash
 npm install -g @x96_64/ilibrary@1.0.0
 ```
+
+The package contains the prebuilt executable, the license, and this project's package README, and declares `darwin` and `arm64` so that npm refuses it on other systems. It runs no installation script and needs no Swift toolchain. Releases are published from the release workflow with npm provenance, which links each version to the commit and workflow run that built it.
 
 ### PyPI (pip)
 
@@ -251,12 +253,12 @@ Use audio and artwork that you are entitled to process. The repository contains 
 
 ## Documentation
 
-- [Distribution](docs/distribution.md): package names, contents, installation, and publication
-- [Library Operations and Recovery](docs/library-operations.md): dry runs, interrupted runs, rebuilding, privacy, and measured Music behavior
 - [Command-Line Interface](docs/command-line-interface.md): commands, options, and exit status
-- [Catalogs](docs/catalogs.md): the catalog format, title rules, matching, and authoring
+- [Library Operations and Recovery](docs/library-operations.md): dry runs, interrupted runs, rebuilding, privacy, and measured Music behavior
+- [Catalogs](docs/catalogs.md): the catalog format, title rules, matching, and authoring, with the [catalog JSON Schema](docs/schema/ilibrary-catalog-1.schema.json)
+- [Distribution](docs/distribution.md): package names, contents, installation, and publication
 - [Roadmap](docs/roadmap.md): the product's scope, rebuilding safety boundary, and verification limits
-- [Catalog JSON Schema](docs/schema/ilibrary-catalog-1.schema.json)
+- [Changelog](CHANGELOG.md) and [releases](https://github.com/x96x64/ilibrary/releases)
 - [Security Policy](SECURITY.md): supported versions and private reporting
 
 ## Contributing
@@ -274,4 +276,6 @@ Star counts are recorded daily in UTC, beginning on October 17, 2026. Lines conn
 
 ## License
 
-iLibrary is licensed under the [Apache License, Version 2.0](LICENSE).
+iLibrary is licensed under the [Apache License, Version 2.0](LICENSE), and every release archive and package includes a copy of it. The license permits use, modification, and redistribution in source or compiled form, for any purpose, provided that a redistribution includes the license, retains the existing copyright and attribution notices, and marks the files that were changed. It also grants a patent license from each contributor for their contributions, which terminates for anyone who brings a patent claim alleging that the software infringes. The software is provided without warranties or conditions of any kind, and contributions submitted for inclusion are accepted under the same license.
+
+The license applies to the iLibrary source code, documentation, and executables. It grants no rights in the recordings, artwork, and metadata that you process, which remain subject to the terms of their rights holders, and no permission to use the project's name or marks except to describe the origin of the software. Apple, Apple Music, and macOS are trademarks of Apple Inc.; iLibrary uses Music and the system frameworks only through their public interfaces and includes no Apple software or assets.

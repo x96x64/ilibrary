@@ -41,7 +41,7 @@ brew install x96x64/tap/ilibrary
 ilibrary --version
 ```
 
-Homebrew builds from source and requires Swift 6.
+The formula downloads the release source archive, which Homebrew checks against the checksum recorded in the formula, and builds it on your Mac. It requires Swift 6 or later from Xcode or the Command Line Tools and installs only the `ilibrary` executable.
 
 ### npm
 
@@ -49,6 +49,8 @@ Homebrew builds from source and requires Swift 6.
 npm install -g @x96_64/ilibrary@1.0.0
 ilibrary --version
 ```
+
+The package contains the prebuilt executable and declares `darwin` and `arm64`, so that npm refuses it on other systems. It runs no installation script and needs no Swift toolchain, and each version is published with npm provenance that links it to the commit and workflow run that built it.
 
 ### PyPI (pip)
 
@@ -66,6 +68,8 @@ npm and PyPI install the same native executable. To build from source instead, f
 ### Updating
 
 Read the [changelog](https://github.com/x96x64/ilibrary/blob/main/CHANGELOG.md) and [Roadmap](https://github.com/x96x64/ilibrary/blob/main/docs/roadmap.md) before updating. Use `brew upgrade ilibrary`, `npm update -g @x96_64/ilibrary`, or `python -m pip install --upgrade x96_64-ilibrary` in the selected virtual environment.
+
+Updating replaces the executable only; catalogs, staging folders, addition journals, and rebuild workspaces remain unchanged. If an `add` run or a rebuild stage was interrupted, keep its staging folder and journal and read [Library Operations and Recovery](https://github.com/x96x64/ilibrary/blob/main/docs/library-operations.md) before resuming with the new version.
 
 ### Uninstalling
 
@@ -178,4 +182,6 @@ See [Limitations](https://github.com/x96x64/ilibrary#limitations) in the iLibrar
 
 ## License
 
-iLibrary is licensed under the [Apache License, Version 2.0](https://github.com/x96x64/ilibrary/blob/main/LICENSE).
+iLibrary is licensed under the [Apache License, Version 2.0](https://github.com/x96x64/ilibrary/blob/main/LICENSE), and this package includes a copy of it. The license permits use, modification, and redistribution in source or compiled form, for any purpose, provided that a redistribution includes the license, retains the existing copyright and attribution notices, and marks the files that were changed. It grants a patent license from each contributor, and the software is provided without warranties or conditions of any kind.
+
+The license applies to the iLibrary software only. It grants no rights in the recordings, artwork, and metadata that you process, which remain subject to the terms of their rights holders, and no permission to use the project's name or marks except to describe the origin of the software. Apple, Apple Music, and macOS are trademarks of Apple Inc.; iLibrary uses Music and the system frameworks only through their public interfaces and includes no Apple software or assets.
