@@ -9,13 +9,16 @@ struct SeparatedAddition {
     /// The latest addition second of the previous album, or nil before the first.
     private(set) var latest: Int?
 
+    init(latest: Int? = nil) { self.latest = latest }
+
     /// How far past the previous album's latest second the clock must be before the next album is added.
     static let margin: TimeInterval = 2
 
-    /// Starts after an album added earlier, such as the last album of an interrupted run.
-    mutating func follow(_ persistentIDs: [String], music: any MusicLibrary) throws {
+    /// Starts after an album added earlier, such as the last album of an interrupted run. When its tracks can no
+    /// longer be read, for example because they were removed from Music, there is nothing to follow.
+    mutating func follow(_ persistentIDs: [String], music: any MusicLibrary) {
         guard !persistentIDs.isEmpty else { return }
-        latest = try music.datesAdded(persistentIDs).values.max()
+        latest = (try? music.datesAdded(persistentIDs))?.values.max()
     }
 
     /// Waits until the next album can be added.

@@ -167,7 +167,7 @@ enum AddCommand {
         for index in journal.entries.indices where journal.entries[index].state == .moving {
             var separation = SeparatedAddition()
             if let previous = journal.entries[..<index].last(where: { $0.state == .added }) {
-                try separation.follow(previous.persistentIDs, music: music)
+                separation.follow(previous.persistentIDs, music: music)
             }
             separation.waitForNext(environment: environment)
             try resume(&journal.entries[index], music: music, console: console, environment: environment)
@@ -176,7 +176,7 @@ enum AddCommand {
         }
         var separation = SeparatedAddition()
         if let last = journal.entries.last(where: { $0.state == .added }) {
-            try separation.follow(last.persistentIDs, music: music)
+            separation.follow(last.persistentIDs, music: music)
         }
         var added = 0
         for album in albums {

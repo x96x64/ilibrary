@@ -39,7 +39,7 @@ A rebuild replaces the registrations of an existing library with freshly added a
 1. Make a backup of the media folder's files on a separate physical device, mirroring the relative paths below the source directory. iLibrary verifies that backup but never creates or changes it.
 2. Run `rebuild prepare` with `--dry-run`, then without it. It verifies the backup, restores it into an empty test directory, asks you to eject the backup volume, and writes the recovery record. Keep the backup disconnected until the rebuild has been checked.
 3. Quit Music and run `rebuild stage`, which moves the files to the staging directory. Then run `rebuild clear`, which removes the recorded registrations, confirms that Music reports no tracks, and quits Music.
-4. Without opening Music, run `rebuild apply`, optionally with `--timestamps`. Then run `rebuild add`, which adds the albums one at a time in the recorded order.
+4. Without opening Music, run `rebuild apply`, optionally with `--timestamps` for file dates. Then run `rebuild add`, optionally with `--timestamps` for folder dates, which adds the albums one at a time in the recorded order.
 5. Open Music, check Recently Added and the albums, and run `check --library` on the media folder.
 
 Run each stage with `--dry-run` first; `rebuild status` shows the completed stages and the next one. When a stage stops, keep the workspace, the staging directory, and the media folder as they are, correct the reported cause, and run the same stage again: it completes the operation that was in progress before continuing. Never edit or delete the recovery record or the journal. If a stage reports that the library or the files differ from the record, stop and restore the affected files from the backup rather than forcing the stage.

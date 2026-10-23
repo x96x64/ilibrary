@@ -239,6 +239,49 @@ struct StageFixture {
         #expect(Set(fixture.music.removals).count == 9)
     }
 
+    @Test func clearRefusesWhenAStagedFileIsNoLongerStaged() throws {
+        let fixture = try StageFixture()
+        defer { fixture.remove() }
+        #expect(fixture.run("stage").status == 0)
+        let entry = fixture.record.evacuation[4]
+        try FileManager.default.moveItem(atPath: entry.stagingPath, toPath: entry.sourcePath)
+        let clear = fixture.run("clear")
+        #expect(clear.status == 1)
+        #expect(clear.errorText.contains("is missing or changed, or \(entry.sourcePath) exists again"))
+        #expect(fixture.music.removals.isEmpty)
+    }
+
+    @Test func aRemovalInterruptedAfterTheDeletionIsCompletedWithoutRepeatingIt() throws {
+        let fixture = try StageFixture()
+        defer { fixture.remove() }
+        #expect(fixture.run("stage").status == 0)
+        let fourth = fixture.record.mapping[3].persistentID
+        fixture.music.failAfterRemove = fourth
+        #expect(fixture.run("clear").status == 1)
+        #expect(fixture.music.removals.count == 4)
+        fixture.music.failAfterRemove = nil
+        let second = fixture.run("clear")
+        #expect(second.status == 0, "\(second.errorText)")
+        #expect(fixture.music.removals.count == 9)
+        #expect(Set(fixture.music.removals).count == 9)
+    }
+
+    @Test func addRefusesADestinationThatIsAlreadyOccupied() throws {
+        let fixture = try StageFixture()
+        defer { fixture.remove() }
+        for subcommand in ["stage", "clear", "apply"] { #expect(fixture.run(subcommand).status == 0) }
+        let occupied = fixture.musicFolder.appendingPathComponent("Example Artist/Double Album/1-01 Opening.m4a")
+        try FileManager.default.createDirectory(
+            at: occupied.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("unrelated".utf8).write(to: occupied)
+        let calls = fixture.music.addCalls.count
+        let add = fixture.run("add")
+        #expect(add.status == 1)
+        #expect(add.errorText.contains("already exists in the media folder; nothing was added"))
+        #expect(fixture.music.addCalls.count == calls)
+        #expect(try Data(contentsOf: occupied) == Data("unrelated".utf8))
+    }
+
     @Test func applyRefusesACatalogThatChangedAfterPreparation() throws {
         let fixture = try StageFixture()
         defer { fixture.remove() }
@@ -260,7 +303,12 @@ struct StageFixture {
         let add = fixture.run("add")
         #expect(add.status == 1)
         #expect(add.errorText.contains("its addition dates do not follow those of the album before it"))
+        #expect(add.errorText.contains("the backup remains the way back"))
         #expect(fixture.progress?.completedStages.contains(.addition) == false)
+        let again = fixture.run("add")
+        #expect(again.status == 1)
+        #expect(again.errorText.contains("its addition dates do not follow those of the album before it"))
+        #expect(fixture.music.library.count < 9)
     }
 
     @Test func anInterruptedAdditionResumes() throws {

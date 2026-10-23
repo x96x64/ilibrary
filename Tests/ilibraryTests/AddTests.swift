@@ -19,6 +19,8 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
     var removals: [String] = []
     var quitCalls = 0
     var failOnRemove: String?
+    /// Removes this track and then fails, as when a run is interrupted before it records the removal.
+    var failAfterRemove: String?
     /// When set, every track added receives this addition second, as if albums shared one.
     var fixedDate: Int?
     /// Whether the app runs: adding launches it, and quitting ends it.
@@ -82,6 +84,7 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
         else { throw CocoaError(.fileWriteUnknown) }
         library.removeAll { $0.persistentID == persistentID }
         removals.append(persistentID)
+        if failAfterRemove == persistentID { throw CocoaError(.fileWriteUnknown) }
     }
 
     func quit() throws {

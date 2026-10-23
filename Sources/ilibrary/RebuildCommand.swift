@@ -47,13 +47,14 @@ enum RebuildCommand {
             Usage: ilibrary rebuild clear --workspace DIR [--dry-run]
 
             Removes the registrations recorded by rebuild prepare, one persistent ID per request, after confirming
-            that each track still has its recorded name, album, and artist. It refuses to start when the library
-            holds any other track. It then confirms that Music reports no tracks and quits Music. The Music window is
+            that each track still has its recorded name, album, and artist and that its file is still staged. It
+            refuses to start when the library holds any other track or a staged file is missing or changed. It then confirms that Music reports no tracks and quits Music. The Music window is
             not inspected. Requires a completed stage, macOS, and the Automation permission for Music.
 
             Options:
               --workspace DIR   the directory that holds the recovery record
-              --dry-run         compare the library with the record, list the removals, and change nothing
+              --dry-run         compare the files and the library with the record, list the removals, and change
+                                nothing; reading the library launches Music
             """, valued: ["--workspace": []], flags: ["--dry-run"], positionals: 0...0)
 
     static let applySyntax = CommandSyntax(
@@ -67,25 +68,26 @@ enum RebuildCommand {
 
             Options:
               --workspace DIR   the directory that holds the recovery record
-              --timestamps      also set file and folder dates to release dates at local midnight (macOS)
+              --timestamps      also set file dates to release dates at local midnight (macOS)
               --dry-run         list the planned changes and change nothing
             """, valued: ["--workspace": []], flags: ["--timestamps", "--dry-run"], positionals: 0...0)
 
     static let addSyntax = CommandSyntax(
         name: "rebuild add",
         usage: """
-            Usage: ilibrary rebuild add --workspace DIR [--dry-run]
+            Usage: ilibrary rebuild add --workspace DIR [--timestamps] [--dry-run]
 
             Moves each album's staged files into the media folder and adds them in place, one album per request,
             in the order recorded by rebuild prepare. Each album is added only after the clock has passed the
             latest addition second of the album before it, and its own addition seconds must be later. Finally the
             albums' addition dates, newest first, are compared with the expected Recently Added order. Requires a
-            completed apply, macOS, and the Automation permission for Music.
+            completed apply, macOS, and the Automation permission for Music; reading the library launches Music.
 
             Options:
               --workspace DIR   the directory that holds the recovery record
+              --timestamps      afterwards, set album and artist folder dates in the media folder (macOS)
               --dry-run         list the albums and moves and change nothing
-            """, valued: ["--workspace": []], flags: ["--dry-run"], positionals: 0...0)
+            """, valued: ["--workspace": []], flags: ["--timestamps", "--dry-run"], positionals: 0...0)
 
     static let prepareSyntax = CommandSyntax(
         name: "rebuild prepare",
