@@ -70,18 +70,14 @@ extension ProgressJournal {
         let observations = Dictionary(
             snapshot.evacuation.map { ($0.sourcePath, $0) }, uniquingKeysWith: { first, _ in first })
         let open = progress.openOperation
+        let index = RecordIndex(record)
 
         for entry in record.evacuation {
             guard let observation = observations[entry.sourcePath] else {
                 found.append(.evacuationNotObserved(sourcePath: entry.sourcePath))
                 continue
             }
-            guard
-                let expected = record.inventory.first(where: {
-                    PathKey.key($0.absolutePath) == PathKey.key(entry.sourcePath)
-                })?
-                .record
-            else { continue }
+            guard let expected = index.inventoryByKey[PathKey.key(entry.sourcePath)] else { continue }
             if progress.isVerified(.applyFile, entry.stagingPath)
                 || (open?.operation == .applyFile && open?.target == entry.stagingPath)
             {
@@ -103,8 +99,8 @@ extension ProgressJournal {
             }
         }
 
-        let mapped = Set(record.mapping.map { $0.persistentID.uppercased() })
-        let removed = Set(progress.verified(.removeRegistration))
+        let mapped = index.mappedIDs
+        let removed = progress.verifiedSets[.removeRegistration] ?? []
         var implied = mapped.subtracting(removed).union(progress.newPersistentIDs)
         var uncertain = Set<String>()
         if open?.operation == .removeRegistration, let target = open?.target { uncertain.insert(target.uppercased()) }
@@ -118,7 +114,7 @@ extension ProgressJournal {
                     ? .registrationStillPresent(persistentID: id) : .registrationUnexpected(persistentID: id))
         }
 
-        let terminated = !progress.verified(.terminateMusic).isEmpty && !progress.completedStages.contains(.application)
+        let terminated = progress.verifiedCount(.terminateMusic) > 0 && !progress.completedStages.contains(.application)
         if snapshot.musicRunning && (terminated || progress.currentStage == .application) {
             found.append(.musicRunningButMustBeClosed)
         }

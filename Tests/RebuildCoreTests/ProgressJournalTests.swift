@@ -80,10 +80,10 @@ struct JournalBuilder {
 
     mutating func removeAll() {
         add(.stageBegan(.clearing))
-        var remaining = record.mapping.map(\.persistentID)
+        var remaining = record.mapping.count
         for mapping in record.mapping {
-            remaining.removeAll { $0.uppercased() == mapping.persistentID.uppercased() }
-            operation(.removeRegistration, mapping.persistentID, JournalObservation(remaining: remaining))
+            remaining -= 1
+            operation(.removeRegistration, mapping.persistentID, JournalObservation(remainingCount: remaining))
         }
     }
 
@@ -407,33 +407,29 @@ struct JournalBuilder {
                     operation: .confirmLibraryEmpty, requires: "removal of every mapped registration"))
     }
 
-    @Test func removalIsCaseInsensitiveAndRequiresTheExactRemainingSet() throws {
+    @Test func removalIsCaseInsensitiveAndRequiresTheExactRemainingCount() throws {
         var lower = try Builder.make()
         lower.completeThroughEvacuation()
         lower.add(.stageBegan(.clearing))
         lower.operation(
             .removeRegistration, RecoveryRecordTests.two.lowercased(),
-            JournalObservation(remaining: [RecoveryRecordTests.one.lowercased()]))
+            JournalObservation(remainingCount: 1))
         #expect(try lower.replay().verifiedTargets[.removeRegistration] == [RecoveryRecordTests.two.uppercased()])
-        let wrongSets: [[String]] = [[], [RecoveryRecordTests.one, RecoveryRecordTests.two], ["00000000000000FF"]]
-        for wrong in wrongSets {
+        for wrong in [0, 2, 3, -1] {
             var builder = try Builder.make()
             builder.completeThroughEvacuation()
             builder.add(.stageBegan(.clearing))
-            builder.operation(.removeRegistration, RecoveryRecordTests.two, JournalObservation(remaining: wrong))
-            guard case .remainingSetWrong(let expected, _)? = transition(builder) else {
-                Issue.record("expected remainingSetWrong for \(wrong)")
-                continue
-            }
-            #expect(expected == [RecoveryRecordTests.one])
+            builder.operation(.removeRegistration, RecoveryRecordTests.two, JournalObservation(remainingCount: wrong))
+            #expect(transition(builder) == .remainingCountWrong(expected: 1, found: wrong))
         }
-        var duplicated = try Builder.make()
-        duplicated.completeThroughEvacuation()
-        duplicated.add(.stageBegan(.clearing))
-        duplicated.operation(
-            .removeRegistration, RecoveryRecordTests.two,
-            JournalObservation(remaining: [RecoveryRecordTests.one, RecoveryRecordTests.one]))
-        #expect(transition(duplicated) != nil)
+        // The count is a number: the observation of a removal without it is refused as a shape error.
+        var absent = try Builder.make()
+        absent.completeThroughEvacuation()
+        absent.add(.stageBegan(.clearing))
+        absent.operation(.removeRegistration, RecoveryRecordTests.two, JournalObservation())
+        #expect(
+            transition(absent)
+                == .observationShape(operation: .removeRegistration, missing: ["remainingCount"], unexpected: []))
         var nonEmpty = try Builder.make()
         nonEmpty.completeThroughEvacuation()
         nonEmpty.removeAll()
@@ -724,8 +720,8 @@ struct JournalBuilder {
         removal.completeThroughEvacuation()
         removal.add(.stageBegan(.clearing))
         let id = removal.record.mapping[0].persistentID
-        let remaining = removal.record.mapping.dropFirst().map(\.persistentID)
-        removal.operation(.removeRegistration, id, JournalObservation(remaining: Array(remaining), resultPath: stray))
+        let remaining = removal.record.mapping.count - 1
+        removal.operation(.removeRegistration, id, JournalObservation(remainingCount: remaining, resultPath: stray))
         #expect(
             transition(removal)
                 == .observationShape(operation: .removeRegistration, missing: [], unexpected: ["resultPath"]))
@@ -1095,7 +1091,7 @@ struct JournalBuilder {
         builder.completeThroughEvacuation()
         builder.add(.stageBegan(.clearing))
         builder.operation(
-            .removeRegistration, RecoveryRecordTests.one, JournalObservation(remaining: [RecoveryRecordTests.two]))
+            .removeRegistration, RecoveryRecordTests.one, JournalObservation(remainingCount: 1))
         let progress = try builder.replay()
         let problems = ProgressJournal.reconcile(
             record: builder.record, progress: progress,
