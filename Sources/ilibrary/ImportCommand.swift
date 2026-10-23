@@ -77,49 +77,93 @@ enum ImportCommand {
             }
         }
 
-        var refused: [(String, String)] = []
+        var scan = try collectSources(parsed.positionals, output: output, from: from)
+        let items = planItems(scan.candidates, output: output, environment: environment, refused: &scan.refused)
+        console.print(
+            "Import: \(items.count) files planned, \(scan.refused.count) refused, \(scan.untouched) other files left untouched"
+        )
+        for (path, reason) in scan.refused { console.print("  refused \(path): \(reason)") }
+        guard scan.refused.isEmpty else { throw CommandError.failure("some files are refused; nothing was changed") }
+        guard !items.isEmpty else { throw CommandError.failure("no file to import was found") }
+
+        try requireCapacity(for: items, output: output, environment: environment, console: console)
+        printPlan(items, output: output, deleteOriginals: deleteOriginals, console: console)
+        if parsed.flag("--dry-run") {
+            console.print("Dry run: nothing was changed.")
+            return 0
+        }
+
+        var imported = 0
+        for item in items {
+            do {
+                try FileManager.default.createDirectory(
+                    at: item.destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try execute(item, environment: environment)
+            } catch {
+                throw CommandError.failure(
+                    "\(item.source.path): \(error.commandMessage) (\(imported) files were imported and verified before this failure; no original was moved)"
+                )
+            }
+            imported += 1
+        }
+        console.print("Imported and verified: \(imported) files")
+        if deleteOriginals, let moveToTrash = environment.moveToTrash {
+            try trashOriginals(of: items, using: moveToTrash, console: console)
+        }
+        return 0
+    }
+
+    struct SourceScan {
+        /// Each file to import, with its path relative to the source that holds it.
         var candidates: [(source: URL, relative: String)] = []
+        var refused: [(String, String)] = []
         var untouched = 0
-        for path in parsed.positionals {
+    }
+
+    static func collectSources(_ paths: [String], output: URL, from: String) throws -> SourceScan {
+        var found = SourceScan()
+        func consider(_ file: URL, relative: String, explicit: Bool) {
+            let ext = file.pathExtension.lowercased()
+            if ext == "m4p" {
+                found.refused.append((file.path, "protected .m4p files are not supported"))
+            } else if accepts(ext, from: from) {
+                found.candidates.append((file, relative))
+            } else if explicit {
+                found.refused.append((file.path, "not a file that --from \(from) imports"))
+            } else {
+                found.untouched += 1
+            }
+        }
+        for path in paths {
             let url = URL(fileURLWithPath: path).standardizedFileURL
             switch pathKind(url) {
             case .missing: throw CommandError.failure("\(path) does not exist")
-            case .symbolicLink: refused.append((url.path, "symbolic links are not followed"))
+            case .symbolicLink: found.refused.append((url.path, "symbolic links are not followed"))
             case .directory:
                 if isWithin(output, url) {
                     throw CommandError.failure(
                         "the output folder lies inside the source \(url.path); nothing was changed")
                 }
-                for (file, relative) in try walk(url, base: url, refused: &refused) {
-                    let ext = file.pathExtension.lowercased()
-                    if ext == "m4p" {
-                        refused.append((file.path, "protected .m4p files are not supported"))
-                    } else if accepts(ext, from: from) {
-                        candidates.append((file, relative))
-                    } else {
-                        untouched += 1
-                    }
+                for (file, relative) in try walk(url, base: url, refused: &found.refused) {
+                    consider(file, relative: relative, explicit: false)
                 }
-            case .file:
-                let ext = url.pathExtension.lowercased()
-                if ext == "m4p" {
-                    refused.append((url.path, "protected .m4p files are not supported"))
-                } else if accepts(ext, from: from) {
-                    candidates.append((url, url.lastPathComponent))
-                } else {
-                    refused.append((url.path, "not a file that --from \(from) imports"))
-                }
-            case .other: refused.append((url.path, "not a regular file or directory"))
+            case .file: consider(url, relative: url.lastPathComponent, explicit: true)
+            case .other: found.refused.append((url.path, "not a regular file or directory"))
             }
         }
+        return found
+    }
 
+    /// Plans every candidate. A candidate that cannot be planned is added to `refused`.
+    static func planItems(
+        _ candidates: [(source: URL, relative: String)], output: URL, environment: Environment,
+        refused: inout [(String, String)]
+    ) -> [Item] {
         var items: [Item] = []
         var claimed: [String: String] = [:]
         for (source, relative) in candidates.sorted(by: { $0.source.path < $1.source.path }) {
-            let destination = output.appendingPathComponent(relative).deletingPathExtension().appendingPathExtension(
-                "m4a"
-            )
-            .standardizedFileURL
+            let destination = output.appendingPathComponent(relative).deletingPathExtension()
+                .appendingPathExtension("m4a").standardizedFileURL
             let key = destination.path.lowercased()
             if let other = claimed[key] {
                 refused.append((source.path, "it and \(other) would both be imported as \(destination.path)"))
@@ -139,30 +183,20 @@ enum ImportCommand {
             do {
                 items.append(
                     Item(source: source, destination: destination, action: try plan(source, environment: environment)))
-            } catch let error as CommandError {
-                refused.append((source.path, error.message))
             } catch {
-                refused.append((source.path, "\(error)"))
+                refused.append((source.path, error.commandMessage))
             }
         }
-        console.print(
-            "Import: \(items.count) files planned, \(refused.count) refused, \(untouched) other files left untouched")
-        for (path, reason) in refused { console.print("  refused \(path): \(reason)") }
-        guard refused.isEmpty else { throw CommandError.failure("some files are refused; nothing was changed") }
-        guard !items.isEmpty else { throw CommandError.failure("no file to import was found") }
+        return items
+    }
 
-        // The outputs accumulate on the volume of the output folder. A converted file grows by the cover it
-        // carries, and writing its tags needs room for one further copy of the largest output.
+    /// The outputs accumulate on the volume of the output folder. A converted file grows by the cover it carries,
+    /// and writing its tags needs room for one further copy of the largest output.
+    static func requireCapacity(for items: [Item], output: URL, environment: Environment, console: Console) throws {
         let sizes = items.map { item -> Int64 in
             switch item.action {
             case .convert(let source, let tags):
-                let cover = tags?.items.first { $0.key == .artwork }.map { item -> Int64 in
-                    item.values.reduce(0) { total, value in
-                        if case .image(let data, _) = value { return total + Int64(data.count) }
-                        return total
-                    }
-                }
-                return source.estimatedSize + (cover ?? 0)
+                return source.estimatedSize + (tags?.coverSize ?? 0)
             case .copy:
                 let size = (try? FileManager.default.attributesOfItem(atPath: item.source.path)[.size] as? NSNumber)?
                     .intValue
@@ -171,15 +205,17 @@ enum ImportCommand {
         }
         let required = sizes.reduce(0, +) + (sizes.max() ?? 0) + (1 << 20)
         let volume = pathKind(output) == .directory ? output : output.deletingLastPathComponent()
-        if let available = environment.availableCapacity(volume) {
-            guard Int64(available) >= required else {
-                throw CommandError.failure(
-                    "\(available) bytes are available, but the import needs up to \(required); nothing was changed")
-            }
-        } else {
+        guard let available = environment.availableCapacity(volume) else {
             console.warning("the free space of the volume of \(volume.path) could not be determined")
+            return
         }
+        guard Int64(available) >= required else {
+            throw CommandError.failure(
+                "\(available) bytes are available, but the import needs up to \(required); nothing was changed")
+        }
+    }
 
+    static func printPlan(_ items: [Item], output: URL, deleteOriginals: Bool, console: Console) {
         if pathKind(output) == .missing { console.print("  create \(output.path)") }
         for item in items {
             let shown = relativePath(item.destination, from: output)
@@ -196,30 +232,13 @@ enum ImportCommand {
         if deleteOriginals {
             console.print("  then move \(items.count) originals to the Trash, once every output is verified")
         }
-        if parsed.flag("--dry-run") {
-            console.print("Dry run: nothing was changed.")
-            return 0
-        }
+    }
 
-        let manager = FileManager.default
-        var completed: [Item] = []
-        for item in items {
-            do {
-                try manager.createDirectory(
-                    at: item.destination.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try execute(item, environment: environment)
-            } catch {
-                let message = (error as? CommandError)?.message ?? "\(error)"
-                throw CommandError.failure(
-                    "\(item.source.path): \(message) (\(completed.count) files were imported and verified before this failure; no original was moved)"
-                )
-            }
-            completed.append(item)
-        }
-        console.print("Imported and verified: \(completed.count) files")
-        guard deleteOriginals, let moveToTrash = environment.moveToTrash else { return 0 }
+    static func trashOriginals(
+        of items: [Item], using moveToTrash: @Sendable (URL) throws -> URL?, console: Console
+    ) throws {
         var trashed = 0
-        for item in completed {
+        for item in items {
             // A replacement is trusted only while it exists where it was verified.
             guard pathKind(item.destination) == .file else {
                 throw CommandError.failure(
@@ -235,7 +254,6 @@ enum ImportCommand {
             trashed += 1
         }
         console.print("Moved to the Trash: \(trashed) originals")
-        return 0
     }
 
     static func blockedAncestor(of destination: URL, below output: URL) -> URL? {

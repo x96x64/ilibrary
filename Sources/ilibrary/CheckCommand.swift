@@ -108,8 +108,11 @@ enum CheckCommand {
     }
 
     static func fileFindings(_ files: [AudioFile], environment: Environment) -> [Finding] {
-        var findings: [Finding] = []
-        for file in files {
+        tagFindings(files) + duplicateFindings(files) + dateFindings(files, environment: environment)
+    }
+
+    static func tagFindings(_ files: [AudioFile]) -> [Finding] {
+        files.compactMap { file in
             var missing: [String] = []
             if file.tags.album == nil { missing.append("album") }
             if file.tags.albumArtist == nil && LibraryFiles.text(file.file, .artist) == nil {
@@ -117,17 +120,18 @@ enum CheckCommand {
             }
             if file.tags.title == nil { missing.append("title") }
             if file.tags.trackNumber == nil { missing.append("track number") }
-            if !missing.isEmpty {
-                findings.append(Finding(path: file.url.path, message: "no \(missing.joined(separator: ", ")) tag"))
-            }
+            return missing.isEmpty
+                ? nil : Finding(path: file.url.path, message: "no \(missing.joined(separator: ", ")) tag")
         }
+    }
+
+    /// Files of one album that share a disc and track number, or a title.
+    static func duplicateFindings(_ files: [AudioFile]) -> [Finding] {
+        var findings: [Finding] = []
         for (_, album) in Dictionary(grouping: files.filter { $0.tags.album != nil }, by: key(of:)) {
-            for (_, group) in Dictionary(
-                grouping: album.filter { $0.tags.trackNumber != nil },
-                by: {
-                    "\($0.tags.discNumber ?? 1)-\($0.tags.trackNumber!)"
-                }) where group.count > 1
-            {
+            let numbered = album.filter { $0.tags.trackNumber != nil }
+            let byNumber = Dictionary(grouping: numbered) { "\($0.tags.discNumber ?? 1)-\($0.tags.trackNumber!)" }
+            for group in byNumber.values where group.count > 1 {
                 for file in group {
                     findings.append(
                         Finding(
@@ -137,12 +141,9 @@ enum CheckCommand {
                         ))
                 }
             }
-            for (_, group) in Dictionary(
-                grouping: album.filter { $0.tags.title != nil },
-                by: {
-                    TitleRules.comparisonKey($0.tags.title!)
-                }) where group.count > 1
-            {
+            let titled = album.filter { $0.tags.title != nil }
+            let byTitle = Dictionary(grouping: titled) { TitleRules.comparisonKey($0.tags.title!) }
+            for group in byTitle.values where group.count > 1 {
                 for file in group {
                     findings.append(
                         Finding(
@@ -151,35 +152,33 @@ enum CheckCommand {
                 }
             }
         }
-        if let readDates = environment.readDates {
-            for file in files {
-                guard let date = LibraryFiles.text(file.file, .releaseDate).flatMap({ ReleaseDate(tagValue: $0) })
-                else {
-                    findings.append(
-                        Finding(path: file.url.path, message: "no complete release date; file dates cannot be checked"))
-                    continue
-                }
-                let values: (created: Date?, modified: Date?)
-                do { values = try readDates(file.url) } catch {
-                    findings.append(Finding(path: file.url.path, message: "file dates could not be read: \(error)"))
-                    continue
-                }
-                let expected = date.localStart(in: environment.timeZone).date
-                func differs(_ value: Date?) -> Bool { value.map { abs($0.timeIntervalSince(expected)) >= 1 } ?? true }
-                if differs(values.created) || differs(values.modified) {
-                    let formatter = ISO8601DateFormatter()
-                    formatter.timeZone = environment.timeZone
-                    func shown(_ value: Date?) -> String { value.map(formatter.string) ?? "unknown" }
-                    findings.append(
-                        Finding(
-                            path: file.url.path,
-                            message:
-                                "dates (created \(shown(values.created)), modified \(shown(values.modified))) differ from \(date) at local midnight"
-                        ))
-                }
-            }
-        }
         return findings
+    }
+
+    /// Files whose creation or modification date differs from their release date at local midnight.
+    static func dateFindings(_ files: [AudioFile], environment: Environment) -> [Finding] {
+        guard let readDates = environment.readDates else { return [] }
+        let formatter = ISO8601DateFormatter()
+        formatter.timeZone = environment.timeZone
+        return files.compactMap { file in
+            let path = file.url.path
+            guard let date = LibraryFiles.text(file.file, .releaseDate).flatMap({ ReleaseDate(tagValue: $0) }) else {
+                return Finding(path: path, message: "no complete release date; file dates cannot be checked")
+            }
+            let values: (created: Date?, modified: Date?)
+            do { values = try readDates(file.url) } catch {
+                return Finding(path: path, message: "file dates could not be read: \(error)")
+            }
+            let expected = date.localStart(in: environment.timeZone).date
+            func differs(_ value: Date?) -> Bool { value.map { abs($0.timeIntervalSince(expected)) >= 1 } ?? true }
+            guard differs(values.created) || differs(values.modified) else { return nil }
+            func shown(_ value: Date?) -> String { value.map(formatter.string) ?? "unknown" }
+            return Finding(
+                path: path,
+                message:
+                    "dates (created \(shown(values.created)), modified \(shown(values.modified))) differ from \(date) at local midnight"
+            )
+        }
     }
 
     /// Compares each file with the library track at its location, and reports library tracks of the same albums

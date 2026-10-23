@@ -27,9 +27,10 @@ struct AddJournal: Codable, Equatable {
     var entries: [Entry] = []
 
     static func load(_ url: URL) throws -> AddJournal {
-        if pathKind(url) == .missing { return AddJournal() }
-        guard pathKind(url) == .file else {
-            throw CommandError.failure("the add journal is not a regular file; nothing was changed")
+        switch pathKind(url) {
+        case .missing: return AddJournal()
+        case .file: break
+        default: throw CommandError.failure("the add journal is not a regular file; nothing was changed")
         }
         let journal = try JSONDecoder().decode(AddJournal.self, from: Data(contentsOf: url))
         guard journal.format == formatIdentifier else {
@@ -112,47 +113,10 @@ enum AddCommand {
         let albums = try plan(
             try scan.files.filter { !pendingSources.contains($0.path) }.map(LibraryFiles.read),
             musicFolder: musicFolder, order: order)
-        let remainingMoves =
-            pending.flatMap { entry in
-                zip(entry.sources, entry.destinations).compactMap { source, destination -> (URL, URL)? in
-                    let sourceURL = URL(fileURLWithPath: source)
-                    return pathKind(sourceURL) == .file ? (sourceURL, URL(fileURLWithPath: destination)) : nil
-                }
-            } + albums.flatMap { Array(zip($0.files.map(\.url), $0.destinations)) }
-        try checkMoveCapacity(remainingMoves, mediaFolder: mediaFolder, environment: environment)
+        try checkMoveCapacity(
+            remainingMoves(pending: pending, albums: albums), mediaFolder: mediaFolder, environment: environment)
 
-        console.print("Media folder: \(mediaFolder.path)")
-        if !pending.isEmpty {
-            console.print("Resuming \(pending.count) album(s) that were moved but not confirmed in Music")
-        }
-        for entry in pending {
-            console.print("  resume: \(entry.albumArtist) - \(entry.album)")
-            for (source, destination) in zip(entry.sources, entry.destinations) {
-                console.print(
-                    "     confirm or move \(source) -> \(relativePath(URL(fileURLWithPath: destination), from: mediaFolder))"
-                )
-            }
-        }
-        console.print(
-            "Albums to add in \(order.rawValue) order: \(albums.count), each after the previous album's addition dates")
-        for (index, album) in albums.enumerated() {
-            let date = album.releaseDate.map { " (\($0))" } ?? ""
-            console.print("  \(index + 1). \(album.albumArtist) - \(album.album)\(date): \(album.files.count) files")
-            for (file, destination) in zip(album.files, album.destinations) {
-                console.print(
-                    "     move \(file.url.lastPathComponent) -> \(relativePath(destination, from: mediaFolder))")
-                let tags = file.tags
-                if let title = tags.title, let track = tags.trackNumber {
-                    let organized = Naming.fileName(
-                        title: title, disc: tags.discNumber ?? 1, track: track,
-                        discCount: Set(album.files.map { $0.tags.discNumber ?? 1 }).count)
-                    if organized != file.url.lastPathComponent {
-                        console.print(
-                            "       note: Music may rename it to \(organized); run 'ilibrary apply --rename' first")
-                    }
-                }
-            }
-        }
+        printPlan(pending: pending, albums: albums, order: order, mediaFolder: mediaFolder, console: console)
         if parsed.flag("--dry-run") {
             for album in albums {
                 if let match = try existingMatch(album, music: music) {
@@ -163,19 +127,7 @@ enum AddCommand {
             return 0
         }
 
-        // A run stops right after an album whose addition dates did not follow the album before it, and the album
-        // is recorded as added; that boundary is checked again so that a later run does not continue past it.
-        let addedEntries = journal.entries.filter { $0.state == .added }
-        if addedEntries.count >= 2 {
-            var separation = SeparatedAddition()
-            separation.follow(addedEntries[addedEntries.count - 2].persistentIDs, music: music)
-            if separation.latest != nil, try !separation.confirm(addedEntries.last!.persistentIDs, music: music) {
-                throw CommandError.failure(
-                    "\"\(addedEntries.last!.album)\" does not follow the album before it in addition dates, so this "
-                        + "run cannot continue in order; move the albums that remain to a new staging folder to add "
-                        + "them in a new run")
-            }
-        }
+        try requireLastAddedAlbumInOrder(journal, music: music)
         // Albums interrupted after their move are confirmed or added first, each after the album before it.
         for index in journal.entries.indices where journal.entries[index].state == .moving {
             var separation = SeparatedAddition()
@@ -205,7 +157,9 @@ enum AddCommand {
             journal.entries.append(entry)
             try journal.save(journalURL)
             separation.waitForNext(environment: environment)
-            try move(album, environment: environment)
+            for (file, destination) in zip(album.files, album.destinations) {
+                try moveFile(file.url, to: destination, environment: environment)
+            }
             try confirm(&entry, music: music)
             journal.entries[journal.entries.count - 1] = entry
             try journal.save(journalURL)
@@ -217,6 +171,68 @@ enum AddCommand {
         }
         console.print("Added and confirmed: \(added) album(s)")
         return 0
+    }
+
+    /// The files that are still to be moved, with their destinations.
+    static func remainingMoves(pending: [AddJournal.Entry], albums: [PlannedAlbum]) -> [(URL, URL)] {
+        let interrupted = pending.flatMap { entry in
+            zip(entry.sources, entry.destinations).compactMap { source, destination -> (URL, URL)? in
+                pathKind(source) == .file ? (URL(fileURLWithPath: source), URL(fileURLWithPath: destination)) : nil
+            }
+        }
+        return interrupted + albums.flatMap { Array(zip($0.files.map(\.url), $0.destinations)) }
+    }
+
+    static func printPlan(
+        pending: [AddJournal.Entry], albums: [PlannedAlbum], order: AlbumOrder, mediaFolder: URL, console: Console
+    ) {
+        console.print("Media folder: \(mediaFolder.path)")
+        if !pending.isEmpty {
+            console.print("Resuming \(pending.count) album(s) that were moved but not confirmed in Music")
+        }
+        for entry in pending {
+            console.print("  resume: \(entry.albumArtist) - \(entry.album)")
+            for (source, destination) in zip(entry.sources, entry.destinations) {
+                console.print(
+                    "     confirm or move \(source) -> \(relativePath(URL(fileURLWithPath: destination), from: mediaFolder))"
+                )
+            }
+        }
+        console.print(
+            "Albums to add in \(order.rawValue) order: \(albums.count), each after the previous album's addition dates")
+        for (index, album) in albums.enumerated() {
+            let date = album.releaseDate.map { " (\($0))" } ?? ""
+            console.print("  \(index + 1). \(album.albumArtist) - \(album.album)\(date): \(album.files.count) files")
+            let discCount = Set(album.files.map { $0.tags.discNumber ?? 1 }).count
+            for (file, destination) in zip(album.files, album.destinations) {
+                console.print(
+                    "     move \(file.url.lastPathComponent) -> \(relativePath(destination, from: mediaFolder))")
+                let tags = file.tags
+                if let title = tags.title, let track = tags.trackNumber {
+                    let organized = Naming.fileName(
+                        title: title, disc: tags.discNumber ?? 1, track: track, discCount: discCount)
+                    if organized != file.url.lastPathComponent {
+                        console.print(
+                            "       note: Music may rename it to \(organized); run 'ilibrary apply --rename' first")
+                    }
+                }
+            }
+        }
+    }
+
+    /// A run stops right after an album whose addition dates did not follow the album before it, and that album is
+    /// recorded as added. The boundary is checked again so that a later run does not continue past it.
+    static func requireLastAddedAlbumInOrder(_ journal: AddJournal, music: any MusicLibrary) throws {
+        let added = journal.entries.filter { $0.state == .added }
+        guard added.count >= 2, let last = added.last else { return }
+        var separation = SeparatedAddition()
+        separation.follow(added[added.count - 2].persistentIDs, music: music)
+        if separation.latest != nil, try !separation.confirm(last.persistentIDs, music: music) {
+            throw CommandError.failure(
+                "\"\(last.album)\" does not follow the album before it in addition dates, so this "
+                    + "run cannot continue in order; move the albums that remain to a new staging folder to add "
+                    + "them in a new run")
+        }
     }
 
     /// Groups files into albums and orders them. Every album needs an album and album artist tag, and every
@@ -234,7 +250,7 @@ enum AddCommand {
             guard file.tags.title != nil else {
                 throw CommandError.failure("\(file.url.path) has no title for duplicate detection; nothing was changed")
             }
-            let key = TitleRules.comparisonKey(artist) + "\u{0}" + TitleRules.comparisonKey(album)
+            let key = albumKey(artist: artist, album: album)
             if groups[key] == nil {
                 keys.append(key)
                 groups[key] = PlannedAlbum(
@@ -280,13 +296,18 @@ enum AddCommand {
         return catalog.albumOrder(order).map { albums[$0] }
     }
 
+    /// Whether a library track has the album artist and one of the titles, both given as comparison keys.
+    static func matches(_ track: LibraryTrack, artistKey: String, titleKeys: Set<String>) -> Bool {
+        TitleRules.comparisonKey(track.effectiveAlbumArtist) == artistKey
+            && titleKeys.contains(TitleRules.comparisonKey(track.name))
+    }
+
     /// A track of the library with the album's album artist, album, and one of its titles, if any.
     static func existingMatch(_ album: PlannedAlbum, music: any MusicLibrary) throws -> LibraryTrack? {
-        let titles = Set(album.files.compactMap { $0.tags.title }.map(TitleRules.comparisonKey))
-        let artist = TitleRules.comparisonKey(album.albumArtist)
-        return try music.tracks(album: album.album).first { track in
-            let trackArtist = TitleRules.comparisonKey(track.albumArtist.isEmpty ? track.artist : track.albumArtist)
-            return trackArtist == artist && titles.contains(TitleRules.comparisonKey(track.name))
+        let titleKeys = Set(album.files.compactMap { $0.tags.title }.map(TitleRules.comparisonKey))
+        let artistKey = TitleRules.comparisonKey(album.albumArtist)
+        return try music.tracks(album: album.album).first {
+            matches($0, artistKey: artistKey, titleKeys: titleKeys)
         }
     }
 
@@ -356,12 +377,6 @@ enum AddCommand {
         }
     }
 
-    static func move(_ album: PlannedAlbum, environment: Environment) throws {
-        for (file, destination) in zip(album.files, album.destinations) {
-            try moveFile(file.url, to: destination, environment: environment)
-        }
-    }
-
     /// Same-volume moves rename the existing file. A cross-volume move verifies an explicit copy before
     /// removing the selected source. A failed verification leaves the source in place.
     static func moveFile(_ source: URL, to destination: URL, environment: Environment) throws {
@@ -409,17 +424,20 @@ enum AddCommand {
                 "Music did not add \"\(entry.album)\": \(error). Its files are in the media folder; run add again to resume"
             )
         }
-        let expected = Set(entry.destinations.map { URL(fileURLWithPath: $0).standardizedFileURL.path })
-        let located = Set(tracks.compactMap { $0.location.map { URL(fileURLWithPath: $0).standardizedFileURL.path } })
-        guard tracks.count == destinations.count, Set(tracks.map(\.persistentID)).count == tracks.count,
-            located == expected
-        else {
+        guard isOneTrackPerFile(tracks, destinations: entry.destinations) else {
             throw CommandError.failure(
                 "Music reported \(tracks.count) track(s) for the \(destinations.count) files of \"\(entry.album)\", or "
                     + "tracks at other places; the album is not confirmed. Check it in Music before running add again")
         }
         entry.persistentIDs = tracks.map(\.persistentID)
         entry.state = .added
+    }
+
+    /// Whether the tracks are exactly one per destination, each located at its destination.
+    static func isOneTrackPerFile(_ tracks: [LibraryTrack], destinations: [String]) -> Bool {
+        tracks.count == destinations.count && Set(tracks.map(\.persistentID)).count == tracks.count
+            && Set(tracks.compactMap(\.standardizedLocation))
+                == Set(destinations.map { URL(fileURLWithPath: $0).standardizedFileURL.path })
     }
 
     /// Stops the run when an album's addition dates do not follow those of the album before it.
@@ -437,26 +455,23 @@ enum AddCommand {
     static func resume(
         _ entry: inout AddJournal.Entry, music: any MusicLibrary, console: Console, environment: Environment
     ) throws {
-        // Read the still-present source or its destination, and check for a matching track elsewhere before moving.
         let files = try zip(entry.sources, entry.destinations).map { source, destination in
-            try LibraryFiles.read(
-                URL(fileURLWithPath: pathKind(URL(fileURLWithPath: source)) == .file ? source : destination))
+            try LibraryFiles.read(URL(fileURLWithPath: pathKind(source) == .file ? source : destination))
         }
-        let titles = Set(files.compactMap(\.tags.title).map(TitleRules.comparisonKey))
+        let titleKeys = Set(files.compactMap(\.tags.title).map(TitleRules.comparisonKey))
+        let artistKey = TitleRules.comparisonKey(entry.albumArtist)
         let expected = Set(entry.destinations)
         let known = try music.tracks(album: entry.album)
-        if known.contains(where: { track in
-            let artist = track.albumArtist.isEmpty ? track.artist : track.albumArtist
-            return TitleRules.comparisonKey(artist) == TitleRules.comparisonKey(entry.albumArtist)
-                && titles.contains(TitleRules.comparisonKey(track.name))
-                && !(track.location.map { expected.contains(URL(fileURLWithPath: $0).standardizedFileURL.path) }
-                    ?? false)
-        }) {
+        func isAtDestination(_ track: LibraryTrack) -> Bool {
+            track.standardizedLocation.map(expected.contains) ?? false
+        }
+        // A matching track at another place would make the album a duplicate, so it is refused before any move.
+        if known.contains(where: { matches($0, artistKey: artistKey, titleKeys: titleKeys) && !isAtDestination($0) }) {
             throw CommandError.failure(
                 "the library already holds a matching track elsewhere; resumption changed nothing")
         }
         for (source, destination) in zip(entry.sources, entry.destinations) {
-            switch (pathKind(URL(fileURLWithPath: source)), pathKind(URL(fileURLWithPath: destination))) {
+            switch (pathKind(source), pathKind(destination)) {
             case (.missing, .file): continue
             case (.file, .missing):
                 try moveFile(
@@ -467,14 +482,8 @@ enum AddCommand {
             }
         }
         // If an earlier run added the album but stopped before recording it, its tracks are already present.
-        let present = known.filter {
-            $0.location.map { expected.contains(URL(fileURLWithPath: $0).standardizedFileURL.path) } ?? false
-        }
-        if present.count == entry.destinations.count,
-            Set(present.map(\.persistentID)).count == present.count,
-            Set(present.compactMap { $0.location.map { URL(fileURLWithPath: $0).standardizedFileURL.path } })
-                == expected
-        {
+        let present = known.filter(isAtDestination)
+        if isOneTrackPerFile(present, destinations: entry.destinations) {
             entry.persistentIDs = present.map(\.persistentID)
             entry.state = .added
         } else if present.isEmpty {

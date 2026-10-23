@@ -69,31 +69,8 @@ enum ExportCommand {
             throw CommandError.failure("strict export refused; nothing was changed")
         }
 
-        if let artworkDirectory, pathKind(artworkDirectory) != .missing, pathKind(artworkDirectory) != .directory {
-            throw CommandError.failure("\(artworkDirectory.path) exists and is not a directory")
-        }
-        for cover in covers where pathKind(cover.url) != .missing {
-            throw CommandError.failure("\(cover.url.path) already exists; it is not overwritten")
-        }
-        for cover in covers where cover.url.lastPathComponent.utf8.count > 255 {
-            throw CommandError.failure(
-                "the cover name \(cover.url.lastPathComponent) exceeds 255 bytes; nothing was written")
-        }
-        let manager = FileManager.default
-        func writableDirectory(_ url: URL) -> Bool {
-            pathKind(url) == .directory && manager.isWritableFile(atPath: url.path)
-        }
-        guard writableDirectory(output.deletingLastPathComponent()) else {
-            throw CommandError.failure(
-                "\(output.deletingLastPathComponent().path) is not a writable directory; nothing was written")
-        }
-        let createsArtworkDirectory = artworkDirectory.map { pathKind($0) == .missing && !covers.isEmpty } ?? false
-        if let artworkDirectory, !covers.isEmpty {
-            let target = createsArtworkDirectory ? artworkDirectory.deletingLastPathComponent() : artworkDirectory
-            guard writableDirectory(target) else {
-                throw CommandError.failure("\(target.path) is not a writable directory; nothing was written")
-            }
-        }
+        let createsArtworkDirectory = try checkDestinations(
+            output: output, artworkDirectory: artworkDirectory, covers: covers)
         let trackCount = catalog.resolvedTracks().count
         console.print("Planned writes: \(1 + covers.count) files")
         console.print(
@@ -112,6 +89,7 @@ enum ExportCommand {
             return 0
         }
         // On any failure, the files and the directory that this run created are removed again.
+        let manager = FileManager.default
         var written: [URL] = []
         do {
             if let artworkDirectory, createsArtworkDirectory {
@@ -132,8 +110,7 @@ enum ExportCommand {
         } catch {
             for url in written.reversed() { try? manager.removeItem(at: url) }
             if let artworkDirectory, createsArtworkDirectory { try? manager.removeItem(at: artworkDirectory) }
-            let message = (error as? CommandError)?.message ?? "\(error)"
-            throw CommandError.failure("\(message); the files written by this export were removed")
+            throw CommandError.failure("\(error.commandMessage); the files written by this export were removed")
         }
         console.print(
             "Exported \(catalog.albums.count) albums and \(trackCount) tracks from \(files.count) files to \(outputPath)"
@@ -144,6 +121,35 @@ enum ExportCommand {
     struct Cover {
         var url: URL
         var data: Data
+    }
+
+    /// Refuses, before anything is written, a destination that exists, has too long a name, or cannot be written.
+    /// Returns whether the artwork directory has to be created.
+    static func checkDestinations(output: URL, artworkDirectory: URL?, covers: [Cover]) throws -> Bool {
+        if let artworkDirectory, pathKind(artworkDirectory) != .missing, pathKind(artworkDirectory) != .directory {
+            throw CommandError.failure("\(artworkDirectory.path) exists and is not a directory")
+        }
+        for cover in covers where pathKind(cover.url) != .missing {
+            throw CommandError.failure("\(cover.url.path) already exists; it is not overwritten")
+        }
+        for cover in covers where cover.url.lastPathComponent.utf8.count > 255 {
+            throw CommandError.failure(
+                "the cover name \(cover.url.lastPathComponent) exceeds 255 bytes; nothing was written")
+        }
+        func writableDirectory(_ url: URL) -> Bool {
+            pathKind(url) == .directory && FileManager.default.isWritableFile(atPath: url.path)
+        }
+        guard writableDirectory(output.deletingLastPathComponent()) else {
+            throw CommandError.failure(
+                "\(output.deletingLastPathComponent().path) is not a writable directory; nothing was written")
+        }
+        guard let artworkDirectory, !covers.isEmpty else { return false }
+        let createsDirectory = pathKind(artworkDirectory) == .missing
+        let target = createsDirectory ? artworkDirectory.deletingLastPathComponent() : artworkDirectory
+        guard writableDirectory(target) else {
+            throw CommandError.failure("\(target.path) is not a writable directory; nothing was written")
+        }
+        return createsDirectory
     }
 
     /// Groups files into a catalog. Returns the covers to write, warnings about values that a catalog
@@ -173,7 +179,7 @@ enum ExportCommand {
                 report("\(file.url.path) has no track number; not exported")
                 continue
             }
-            let key = TitleRules.comparisonKey(album) + "\u{0}" + TitleRules.comparisonKey(file.tags.albumArtist ?? "")
+            let key = albumKey(artist: file.tags.albumArtist ?? "", album: album)
             if groups[key] == nil { order.append(key) }
             groups[key, default: []].append(Entry(file: file, disc: file.tags.discNumber ?? 1, track: track))
         }
@@ -200,34 +206,21 @@ enum ExportCommand {
                 report(
                     "\"\(name)\" has disc numbers \(discNumbers); the catalog numbers its discs consecutively")
             }
-            if strict {
-                let totals = Set(
-                    entries.compactMap { LibraryFiles.pair($0.file.file, .discNumber)?.total }.filter { $0 > 0 })
-                if totals.count > 1 {
-                    findings.append(
-                        "\"\(name)\" has tracks that declare different disc totals \(totals.sorted())")
-                } else if let total = totals.first, total != discNumbers.count {
-                    findings.append(
-                        "\"\(name)\" declares \(total) discs but \(discNumbers.count) would be exported")
-                }
+            if strict,
+                let finding = totalFinding(
+                    entries, key: .discNumber, subject: "\"\(name)\"", noun: "disc", exported: discNumbers.count)
+            {
+                findings.append(finding)
             }
             var discs: [Disc] = []
             for number in discNumbers {
                 let discEntries = entries.filter { $0.disc == number }
-                if strict {
-                    let totals = Set(
-                        discEntries.compactMap { LibraryFiles.pair($0.file.file, .trackNumber)?.total }.filter {
-                            $0 > 0
-                        })
-                    if totals.count > 1 {
-                        findings.append(
-                            "\"\(name)\" disc \(number) has tracks that declare different track totals \(totals.sorted())"
-                        )
-                    } else if let total = totals.first, total != discEntries.count {
-                        findings.append(
-                            "\"\(name)\" disc \(number) declares \(total) tracks but \(discEntries.count) would be exported"
-                        )
-                    }
+                if strict,
+                    let finding = totalFinding(
+                        discEntries, key: .trackNumber, subject: "\"\(name)\" disc \(number)", noun: "track",
+                        exported: discEntries.count)
+                {
+                    findings.append(finding)
                 }
                 if discEntries.map(\.track) != Array(1...discEntries.count) {
                     report(
@@ -239,16 +232,7 @@ enum ExportCommand {
             var album = Album(album: name, discs: discs)
             hoist(&album, entries: entries.map(\.file), warnings: &warnings)
             if let artworkDirectory, let cover = cover(entries.map(\.file), album: album, warnings: &warnings) {
-                var base = Naming.component(
-                    [album.albumArtist, album.album].compactMap { $0 }.joined(separator: " - "))
-                if base.hasPrefix(".") { base = "_" + base.dropFirst() }
-                var fileName = "\(base).\(cover.format == .png ? "png" : "jpg")"
-                var counter = 2
-                while coverNames.contains(fileName.lowercased()) {
-                    fileName = "\(base) \(counter).\(cover.format == .png ? "png" : "jpg")"
-                    counter += 1
-                }
-                coverNames.insert(fileName.lowercased())
+                let fileName = coverFileName(for: album, format: cover.format, taken: &coverNames)
                 let url = artworkDirectory.appendingPathComponent(fileName)
                 covers.append(Cover(url: url, data: cover.data))
                 album.artwork = relativePath(url, from: catalogDirectory)
@@ -256,6 +240,34 @@ enum ExportCommand {
             albums.append(album)
         }
         return (Catalog(albums: albums), covers, warnings, findings)
+    }
+
+    /// A finding when the tracks declare different totals, or a total other than the number that would be exported.
+    static func totalFinding(_ entries: [Entry], key: MetadataKey, subject: String, noun: String, exported: Int)
+        -> String?
+    {
+        let totals = Set(entries.compactMap { LibraryFiles.pair($0.file.file, key)?.total }.filter { $0 > 0 })
+        if totals.count > 1 { return "\(subject) has tracks that declare different \(noun) totals \(totals.sorted())" }
+        if let total = totals.first, total != exported {
+            return "\(subject) declares \(total) \(noun)s but \(exported) would be exported"
+        }
+        return nil
+    }
+
+    /// A cover file name made from the album artist and album, distinct from the names taken so far. Names are
+    /// compared without regard to case, as case-insensitive volumes do.
+    static func coverFileName(for album: Album, format: ImageFormat, taken: inout Set<String>) -> String {
+        var base = Naming.component([album.albumArtist, album.album].compactMap { $0 }.joined(separator: " - "))
+        if base.hasPrefix(".") { base = "_" + base.dropFirst() }
+        let ext = format == .png ? "png" : "jpg"
+        var fileName = "\(base).\(ext)"
+        var counter = 2
+        while taken.contains(fileName.lowercased()) {
+            fileName = "\(base) \(counter).\(ext)"
+            counter += 1
+        }
+        taken.insert(fileName.lowercased())
+        return fileName
     }
 
     static func track(for file: AudioFile) -> Track {
