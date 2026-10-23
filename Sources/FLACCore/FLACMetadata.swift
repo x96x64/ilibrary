@@ -41,7 +41,7 @@ public struct FLACPicture: Equatable, Sendable {
     public var data: Data
 }
 
-/// The metadata of a FLAC stream, read without decoding audio. Foundation only (decision 6).
+/// The metadata of a FLAC stream, read without decoding audio.
 public struct FLACMetadata: Equatable, Sendable {
     public var streamInformation: FLACStreamInformation
     public var vendor: String?
