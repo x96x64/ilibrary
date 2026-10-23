@@ -21,11 +21,12 @@ from verify import historical_package_readme, tar_files
 class NewReleaseTests(unittest.TestCase):
     commit = "c" * 40
 
-    def tree(self, temporary, version="1.2.3", changelog="## [1.2.3] - 2026-11-01\n\n### Added\n\n- A change.\n"):
+    def tree(self, temporary, version="1.2.3",
+             changelog="## [1.2.3] - 1958-08-29\n\n### Added\n\n- **Example Capability:** A change.\n"):
         root = Path(temporary)
         (root / "Sources/ilibrary").mkdir(parents=True)
         (root / "Sources/ilibrary/CommandLineInterface.swift").write_text(f'let version = "{version}"\n')
-        (root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n" + changelog + "\n## [1.2.2] - 2026-10-01\n\n- Older.\n")
+        (root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n" + changelog + "\n## [1.2.2] - 1958-08-28\n\n- Older.\n")
         return root
 
     def test_a_new_release_of_an_integrated_versioned_commit_is_accepted(self):
@@ -43,7 +44,7 @@ class NewReleaseTests(unittest.TestCase):
                 check_release.check_new("v1.2.3", self.commit, self.tree(temporary))
 
     def test_a_mismatched_version_or_undated_changelog_is_refused(self):
-        for version, changelog in [("1.2.4", "## [1.2.3] - 2026-11-01\n\n- A change.\n"),
+        for version, changelog in [("1.2.4", "## [1.2.3] - 1958-08-29\n\n- A change.\n"),
                                    ("1.2.3", "## [1.2.3]\n\n- A change.\n")]:
             with tempfile.TemporaryDirectory() as temporary, \
                     patch.object(check_release, "exists", return_value=False) as exists:
@@ -54,18 +55,79 @@ class NewReleaseTests(unittest.TestCase):
     def test_release_notes_carry_the_version_section_only(self):
         with tempfile.TemporaryDirectory() as temporary:
             text = release_notes.notes("1.2.3", self.tree(temporary))
-        self.assertIn("## Highlights\n\n- **Added.** A change.\n", text)
+        self.assertIn("## Highlights\n\n- **Example Capability:** A change.\n", text)
         self.assertNotIn("Older.", text)
-        self.assertIn("## Installing and Upgrading", text)
         self.assertIn("@x96_64/ilibrary@1.2.3", text)
         self.assertIn("blob/v1.2.3/CHANGELOG.md", text)
+        self.assertEqual(release_notes.check(text, "1.2.3"), [])
         self.assertEqual(release_notes.TITLE.format(version="1.2.3"),
                          "iLibrary: v1.2.3, Catalog-Driven Music Libraries for Apple Music on macOS")
+
+    def test_release_notes_keep_the_section_order(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            text = release_notes.notes("1.2.3", self.tree(temporary))
+        markers = ["> [!IMPORTANT]", "## Highlights", "- **Example Capability:**", "Verification consists",
+                   "## Installing and Upgrading", "See the [changelog]"]
+        positions = [text.index(marker) for marker in markers]
+        self.assertEqual(positions, sorted(positions))
+        self.assertGreater(positions[0], 0)
+        self.assertNotRegex(text, r"\*\*[^*\n]+\.\*\*")
 
     def test_release_notes_require_a_section(self):
         with tempfile.TemporaryDirectory() as temporary:
             with self.assertRaises(SystemExit):
                 release_notes.notes("9.9.9", self.tree(temporary))
+
+    def test_release_notes_refuse_unlabeled_or_generic_entries(self):
+        for entry in ["- A change.", "- **Fixed:** A change.", "- **Example Capability.** A change.",
+                      "- **example capability:** A change.", "- **Example Capability**: A change."]:
+            changelog = f"## [1.2.3] - 1958-08-29\n\n### Added\n\n{entry}\n"
+            with self.subTest(entry=entry), tempfile.TemporaryDirectory() as temporary:
+                with self.assertRaises(SystemExit):
+                    release_notes.notes("1.2.3", self.tree(temporary, changelog=changelog))
+
+    def test_release_notes_refuse_text_outside_entries(self):
+        changelog = "## [1.2.3] - 1958-08-29\n\nA loose sentence.\n\n- **Example Capability:** A change.\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaises(SystemExit):
+                release_notes.notes("1.2.3", self.tree(temporary, changelog=changelog))
+
+
+class ReleaseBodyCheckTests(unittest.TestCase):
+    def body(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            return release_notes.notes("1.2.3", NewReleaseTests.tree(None, temporary))
+
+    def test_a_generated_body_conforms(self):
+        self.assertEqual(release_notes.check(self.body(), "1.2.3"), [])
+
+    def test_departures_from_the_layout_are_reported(self):
+        body = self.body()
+        cases = {
+            "period label": body.replace("**Example Capability:**", "**Example Capability.**"),
+            "generic label": body.replace("**Example Capability:**", "**Changed:**"),
+            "missing notice": body.replace("> [!IMPORTANT]\n", ""),
+            "extra heading": body.replace("## Highlights", "## Highlights\n\n### Added"),
+            "reordered sections": body.replace("## Highlights", "## Installing").replace(
+                "## Installing and Upgrading", "## Highlights").replace("## Installing\n", "## Installing and Upgrading\n"),
+            "other version": body.replace("@x96_64/ilibrary@1.2.3", "@x96_64/ilibrary@1.2.2"),
+            "changed closing": body.replace("for the complete change record", "for details"),
+            "no verification paragraph": body.replace("Verification consists", "- **Other Capability:** Verification"),
+        }
+        for name, text in cases.items():
+            with self.subTest(case=name):
+                self.assertNotEqual(release_notes.check(text, "1.2.3"), [])
+
+    def test_the_command_checks_a_body_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "body.md"
+            path.write_text(self.body())
+            release_notes.main(["--check", "1.2.3", str(path)])
+            path.write_text(self.body().replace("**Example Capability:**", "**Example Capability.**"))
+            with self.assertRaises(SystemExit):
+                release_notes.main(["--check", "1.2.3", str(path)])
+            with self.assertRaises(SystemExit):
+                release_notes.main(["1.2"])
 
 
 class ReleaseGuardTests(unittest.TestCase):
