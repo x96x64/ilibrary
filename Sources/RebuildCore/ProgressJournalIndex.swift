@@ -11,8 +11,6 @@ final class RecordIndex: Sendable {
     let recordChecksum: String
     /// The evacuation entries by the exact source path.
     let evacuationBySourcePath: [String: EvacuationEntry]
-    /// The evacuation entries by `PathKey.key` of the source path.
-    let evacuationBySourceKey: [String: EvacuationEntry]
     /// The evacuation entries by the exact staging path.
     let evacuationByStagingPath: [String: EvacuationEntry]
     /// `PathKey.key` of every staging path of the evacuation plan.
@@ -27,22 +25,17 @@ final class RecordIndex: Sendable {
     init(_ record: RecoveryRecord) {
         recordChecksum = record.checksum
         var bySource: [String: EvacuationEntry] = [:]
-        var bySourceKey: [String: EvacuationEntry] = [:]
         var byStaging: [String: EvacuationEntry] = [:]
         var stagingKeys = Set<String>()
         bySource.reserveCapacity(record.evacuation.count)
-        bySourceKey.reserveCapacity(record.evacuation.count)
         byStaging.reserveCapacity(record.evacuation.count)
         stagingKeys.reserveCapacity(record.evacuation.count)
         for entry in record.evacuation {
             if bySource[entry.sourcePath] == nil { bySource[entry.sourcePath] = entry }
-            let sourceKey = PathKey.key(entry.sourcePath)
-            if bySourceKey[sourceKey] == nil { bySourceKey[sourceKey] = entry }
             if byStaging[entry.stagingPath] == nil { byStaging[entry.stagingPath] = entry }
             stagingKeys.insert(PathKey.key(entry.stagingPath))
         }
         evacuationBySourcePath = bySource
-        evacuationBySourceKey = bySourceKey
         evacuationByStagingPath = byStaging
         self.stagingKeys = stagingKeys
 

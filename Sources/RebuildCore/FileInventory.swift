@@ -71,7 +71,6 @@ public struct VerificationMismatch: Equatable, Sendable {
 
 /// The outcome of verifying a copy: a success only when there is no mismatch.
 public struct VerificationReport: Equatable, Sendable {
-    public let policy: TimestampPolicy
     public let checkedCount: Int
     public let mismatches: [VerificationMismatch]
     public var isSuccess: Bool { mismatches.isEmpty }
@@ -375,7 +374,7 @@ public struct FileInventory: Equatable, Sendable {
         var extras: [VerificationMismatch] = []
         collectExtras(root: root.path, prefix: "", known: known, issues: &extras)
         mismatches += extras
-        return VerificationReport(policy: policy, checkedCount: parsed.count, mismatches: mismatches)
+        return VerificationReport(checkedCount: parsed.count, mismatches: mismatches)
     }
 
     /// Lists .m4a files of the copy that are not expected. Symbolic links are reported and never followed.

@@ -35,8 +35,6 @@ public struct JournalState: Equatable, Sendable {
 /// leave a torn final entry, which the reader then refuses and which this code never repairs. A failure after a
 /// write may have started is reported as uncertain and is never retried.
 public enum ProgressJournalFile {
-    public typealias JournalState = RebuildCore.JournalState
-
     /// The system calls used on an open descriptor, replaceable so that a test can fail any step.
     public struct Operations: Sendable {
         /// Writes all bytes, handling interruption and short writes.

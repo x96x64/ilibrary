@@ -223,12 +223,12 @@ import Testing
                 if fakes.isInside(path, fakes.backupPath) {
                     return StorageReport(
                         mountPoint: fakes.backupPath, volumeUUID: fakes.backupUUID,
-                        filesystemType: fakes.backupFacts.filesystemType ?? "", isReadOnly: false,
+                        filesystemType: fakes.backupFacts.filesystemType ?? "",
                         facts: fakes.backupFacts)
                 }
                 return StorageReport(
                     mountPoint: "/", volumeUUID: "00000000-0000-0000-0000-000000000000", filesystemType: "apfs",
-                    isReadOnly: false, facts: fakes.otherFacts)
+                    facts: fakes.otherFacts)
             }
             environment.timestampPolicy = { path in
                 if fakes.isInside(path, fakes.backupPath) { return fakes.backupPolicy }

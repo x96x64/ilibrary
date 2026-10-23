@@ -81,11 +81,6 @@
             return try perTrack()
         }
 
-        /// The version string of the Music application, read with `tell application "Music" to return version`.
-        public static func musicVersion() throws -> String {
-            try run("tell application \"Music\" to return version")
-        }
-
         /// Reads the file tracks, both track counts, and the date added of each file track. Throws when a
         /// bulk read other than location and cloud status fails. Equivalence with the per-track reader is
         /// measured only for cloud status `unknown`.
