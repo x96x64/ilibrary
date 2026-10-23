@@ -22,11 +22,11 @@ class NewReleaseTests(unittest.TestCase):
     commit = "c" * 40
 
     def tree(self, temporary, version="1.2.3",
-             changelog="## [1.2.3] - 1958-08-29\n\n### Added\n\n- **Example Capability:** A change.\n"):
+             changelog="## [1.2.3] - 2009-06-25\n\n### Added\n\n- **Example Capability:** A change.\n"):
         root = Path(temporary)
         (root / "Sources/ilibrary").mkdir(parents=True)
         (root / "Sources/ilibrary/CommandLineInterface.swift").write_text(f'let version = "{version}"\n')
-        (root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n" + changelog + "\n## [1.2.2] - 1958-08-28\n\n- Older.\n")
+        (root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n" + changelog + "\n## [1.2.2] - 2009-06-24\n\n- Older.\n")
         return root
 
     def test_a_new_release_of_an_integrated_versioned_commit_is_accepted(self):
@@ -44,7 +44,7 @@ class NewReleaseTests(unittest.TestCase):
                 check_release.check_new("v1.2.3", self.commit, self.tree(temporary))
 
     def test_a_mismatched_version_or_undated_changelog_is_refused(self):
-        for version, changelog in [("1.2.4", "## [1.2.3] - 1958-08-29\n\n- A change.\n"),
+        for version, changelog in [("1.2.4", "## [1.2.3] - 2009-06-25\n\n- A change.\n"),
                                    ("1.2.3", "## [1.2.3]\n\n- A change.\n")]:
             with tempfile.TemporaryDirectory() as temporary, \
                     patch.object(check_release, "exists", return_value=False) as exists:
@@ -81,13 +81,13 @@ class NewReleaseTests(unittest.TestCase):
     def test_release_notes_refuse_unlabeled_or_generic_entries(self):
         for entry in ["- A change.", "- **Fixed:** A change.", "- **Example Capability.** A change.",
                       "- **example capability:** A change.", "- **Example Capability**: A change."]:
-            changelog = f"## [1.2.3] - 1958-08-29\n\n### Added\n\n{entry}\n"
+            changelog = f"## [1.2.3] - 2009-06-25\n\n### Added\n\n{entry}\n"
             with self.subTest(entry=entry), tempfile.TemporaryDirectory() as temporary:
                 with self.assertRaises(SystemExit):
                     release_notes.notes("1.2.3", self.tree(temporary, changelog=changelog))
 
     def test_release_notes_refuse_text_outside_entries(self):
-        changelog = "## [1.2.3] - 1958-08-29\n\nA loose sentence.\n\n- **Example Capability:** A change.\n"
+        changelog = "## [1.2.3] - 2009-06-25\n\nA loose sentence.\n\n- **Example Capability:** A change.\n"
         with tempfile.TemporaryDirectory() as temporary:
             with self.assertRaises(SystemExit):
                 release_notes.notes("1.2.3", self.tree(temporary, changelog=changelog))
