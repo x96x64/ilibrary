@@ -1,7 +1,7 @@
 import Foundation
 
-/// File and folder names as the Music app creates them in its media folder: `NN Title.m4a` for single-disc
-/// albums, `D-NN Title.m4a` for multi-disc albums, and `_` in place of `:` and `/`. Other rules of the Music
+/// File and folder names as the Music app creates them in its media folder: `NN Song.m4a` for single-disc
+/// albums, `D-NN Song.m4a` for multi-disc albums, and `_` in place of `:` and `/`. Other rules of the Music
 /// app, such as length limits, are unknown.
 public enum Naming {
     /// Replaces the characters that the Music app replaces in path components.
