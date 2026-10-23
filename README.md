@@ -1,6 +1,6 @@
 # iLibrary
 
-[![Release](https://img.shields.io/github/v/release/x96x64/ilibrary?include_prereleases)](https://github.com/x96x64/ilibrary/releases)
+[![Release](https://img.shields.io/github/v/release/x96x64/ilibrary)](https://github.com/x96x64/ilibrary/releases)
 [![npm](https://img.shields.io/npm/v/%40x96_64%2Filibrary)](https://www.npmjs.com/package/@x96_64/ilibrary)
 [![PyPI](https://img.shields.io/pypi/v/x96-64-ilibrary)](https://pypi.org/project/x96_64-ilibrary/)
 [![Homebrew](https://img.shields.io/badge/Homebrew-x96x64%2Ftap-FBB040?logo=homebrew&logoColor=white)](https://github.com/x96x64/homebrew-tap)
@@ -8,19 +8,15 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
-[![AudioToolbox](https://img.shields.io/badge/AudioToolbox-lossless%20conversion-007AFF?logo=apple&logoColor=white)](https://developer.apple.com/documentation/audiotoolbox)
-[![Linux: Core targets](https://img.shields.io/badge/Linux-Core%20targets-FCC624?logo=linux&logoColor=black)](#how-it-works)
 
-iLibrary prepares downloaded music for a local Apple Music library and adds it in a controlled order. It converts lossless downloads to Apple Lossless, copies iTunes Store purchases without their purchase metadata, applies metadata from a catalog file without re-encoding, names files as the Music app does, and sets file dates to release dates. It adds albums to Music one at a time and diagnoses differences between files and library records.
+iLibrary prepares downloaded music for a local Apple Music library and adds it in a controlled order. It converts lossless downloads to Apple Lossless, copies iTunes Store purchases without their purchase metadata, applies metadata from a catalog file without re-encoding, names files as the Music app does, and sets file dates to release dates. It adds albums to Music one at a time so that Recently Added shows them in the chosen order, rebuilds an existing library from its files, and diagnoses differences between files and library records.
 
 ```bash
 ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary 0.3.0 is experimental. The source tree implements every planned command, including the staged rebuilding of an existing Music library, as the [Roadmap](docs/roadmap.md) describes. File processing is verified with synthetic tests, and Music operations are tested with a substitute library. The Music requests that iLibrary sends use forms measured in a separate macOS user on macOS 27.0.1 with Music 1.7, but the rebuilding stages have not been run against the Music application. Begin with copies and keep independent backups of your library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
->
-> A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a library or backup medium can be recovered. iLibrary does not prevent Apple Music cloud matching.
+> iLibrary moves and rewrites your music files and changes your Music library. Begin with copies, keep independent backups of your library, and review every dry run. File processing is verified with synthetic tests, and Music operations are tested with a substitute library; the requests that iLibrary sends to Music use forms measured on macOS 27.0.1 with Music 1.7, but the rebuilding stages have not been run against the Music application. iLibrary does not prevent Apple Music cloud matching and is not affiliated with, endorsed by, or sponsored by Apple.
 
 ## Contents
 
@@ -29,7 +25,8 @@ ilibrary apply catalog.json ./staging --dry-run
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
-- [Catalog Format](#catalog-format)
+- [Rebuilding a Library](#rebuilding-a-library)
+- [Catalogs](#catalogs)
 - [How It Works](#how-it-works)
 - [Apple Music and Cloud Matching](#apple-music-and-cloud-matching)
 - [Troubleshooting](#troubleshooting)
@@ -38,7 +35,6 @@ ilibrary apply catalog.json ./staging --dry-run
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [Star History](#star-history)
-- [Acknowledgments](#acknowledgments)
 - [License](#license)
 
 ## Features
@@ -46,7 +42,7 @@ ilibrary apply catalog.json ./staging --dry-run
 - **Ordered addition to Music.** `add` moves each album into the Music media folder, adds it there in place, and confirms one track per file before the next album, in release or artist order. Each album is added only after the clock has passed the previous album's addition second, so that Recently Added shows the intended order. It stops when the library already holds a matching track, never changes a track in Music, and resumes an interrupted run.
 - **Lossless import.** `import` converts FLAC, WAV, and AIFF downloads to Apple Lossless through AudioToolbox, verified by decoded PCM equality, and copies iTunes Store files without re-encoding while removing purchase metadata. Standard FLAC tags and the front cover are carried; with `--delete-originals`, originals are moved to the Trash only after every output has been verified.
 - **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files. `export --strict` refuses, without writing, an export that is not a complete inventory. Every planned change is listed first; `--dry-run` stops there, and every written file is read back and compared with the plan.
-- **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Song.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
+- **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Title.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
 - **MP4 metadata without re-encoding.** `MP4Core` reads and writes the item list of M4A files, rebuilds only the movie box, copies the audio data unchanged, relocates chunk offsets, and replaces items in place, so that repeated application yields identical bytes. Every rewrite goes through a hidden partial file that is parsed again and compared with the source before it replaces the destination.
 - **Removal of iTunes Store purchase metadata.** The purchaser's account, name, purchase date, store identifiers, and purchase information are removed, padding is zeroed, and the gapless information is kept. Encrypted files (`.m4p` and `drms` sample entries) are refused.
 - **FLAC metadata.** `FLACCore` reads stream information, Vorbis comments, and pictures without decoding audio, and rejects truncated metadata.
@@ -60,11 +56,11 @@ ilibrary apply catalog.json ./staging --dry-run
 - A Swift 6 toolchain supplied by Xcode or the Command Line Tools for source or Homebrew builds
 - npm or Python 3.9 or later for the corresponding package installer; neither is needed by the native executable
 
-The package declares macOS 14 as its deployment target; the current local verification used macOS 27.0.1 and Apple Swift 6.4 on Apple silicon. The minimum OS is not a claim of testing every intervening release. The Core and portable command tests also run on Linux with Swift 6.4. Music commands require the installed Music app and Automation permission. An Apple Music subscription and Apple Account are not required for the public tests or separate-user procedure.
+The package declares macOS 14 as its deployment target, which is not a claim of testing every release since. Continuous integration builds and tests every change on GitHub's macOS runner and, for the portable targets, on Linux with Swift 6.4; releases are built on the same macOS runner. Music behavior was measured on macOS 27.0.1 with Music 1.7. Music commands require the installed Music app and the Automation permission; an Apple Music subscription is not required.
 
 ## Installation
 
-The following commands install version 0.3.0, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version, such as 0.1.0, is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
+The following commands install version 1.0.0, the version of this source tree. The [releases page](https://github.com/x96x64/ilibrary/releases) and the package registries show which versions each channel provides; an earlier version is installed from npm or PyPI with the same commands and its version number. Choose one channel. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects.
 
 ### Homebrew
 
@@ -77,14 +73,14 @@ Homebrew builds from source and requires Swift 6.
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@0.3.0
+npm install -g @x96_64/ilibrary@1.0.0
 ```
 
 ### PyPI (pip)
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==0.3.0
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.0
 source .venv-ilibrary/bin/activate
 ```
 
@@ -106,7 +102,7 @@ The executable is `.build/release/ilibrary`. The `PATH` line makes it available 
 
 Use `brew upgrade ilibrary`, `npm update -g @x96_64/ilibrary`, or `python -m pip install --upgrade x96_64-ilibrary` in the selected virtual environment.
 
-In a clean source checkout, run `git pull --ff-only` and rebuild with `swift build -c release`. Review the [Roadmap](docs/roadmap.md) and [CHANGELOG.md](CHANGELOG.md) before adopting a new development commit. If Git reports local changes or divergent history, preserve those changes and resolve them before updating.
+In a clean source checkout, run `git pull --ff-only` and rebuild with `swift build -c release`. Review [CHANGELOG.md](CHANGELOG.md) before adopting a new version or development commit. If Git reports local changes or divergent history, preserve those changes and resolve them before updating.
 
 ### Uninstalling
 
@@ -125,7 +121,7 @@ ilibrary import ./downloads -o ./staging
 ilibrary export ./staging -o catalog.json --artwork covers --dry-run
 ilibrary export ./staging -o catalog.json --artwork covers
 
-# 3. Complete it with an AI agent or chat, or by hand
+# 3. Complete it by hand, or with an AI agent or chat
 ilibrary prompt catalog.json > prompt.md
 
 # 4. Validate it, and preview every change
@@ -165,45 +161,45 @@ The `rebuild` stages run in the order `prepare`, `stage`, `clear`, `apply`, and 
 
 Exit status is 0 on success, 1 on a failure or a finding from `check` or `doctor`, and 2 on a usage error. `check` requires at least one path or `--library`.
 
-## Catalog Format
+## Rebuilding a Library
 
-A catalog is a UTF-8 JSON document identified by `"format": "ilibrary-catalog-1"`. Album-level values apply to every track and may be overridden per track; an empty string means that a value is unknown. `ilibrary schema` prints the JSON Schema, and [Completing Catalogs with AI Agents](docs/catalog-for-agents.md) describes the authoring workflow.
+`rebuild` turns an existing local library into the state that a catalog describes: the files carry the catalog's metadata and Music's names, and Recently Added shows the albums in the chosen order. Playlists, ratings, play counts, and other library history are not kept, and iCloud Music Library is not supported.
 
-This excerpt illustrates the structure with "Bad" from Michael Jackson's *Bad*. The alias illustrates matching a remastered edition. It is not a complete album catalog; include every selected track before applying it.
+```bash
+ilibrary rebuild prepare catalog.json ~/Music/Music/Media.localized/Music --workspace ~/rebuild/work \
+    --backup /Volumes/Backup/Music --restore-test ~/rebuild/restore --staging ~/rebuild/staging \
+    --confirm-separate-device
+ilibrary rebuild stage --workspace ~/rebuild/work
+ilibrary rebuild clear --workspace ~/rebuild/work
+ilibrary rebuild apply --workspace ~/rebuild/work --timestamps
+ilibrary rebuild add --workspace ~/rebuild/work --timestamps
+```
+
+`prepare` verifies a backup that you made on a separate device, restores it into an empty test directory, asks you to eject the backup volume, and writes a private recovery record. The stages then move the files out of the media folder, remove exactly the recorded registrations and confirm that Music reports no tracks, write the catalog to the files while Music is closed, and add the albums again one at a time. Run each with `--dry-run` first; `rebuild status` reports where a rebuild stands. When a stage stops, run it again after correcting the cause: it completes the operation that was in progress, and it refuses to continue when the files or the library differ from the record. See [Rebuilding a Library](docs/library-operations.md#rebuilding-a-library) and the [command reference](docs/command-line-interface.md#rebuild).
+
+## Catalogs
+
+A catalog is a JSON document, `ilibrary-catalog-1`, that states the intended album names, artists, album artists, composers, genres, copyright lines, release dates, compilation flags, artwork, and track titles, with album-level values that tracks may override and empty strings for unknown values. Title rules remove qualifiers such as `(2012 Remaster)` and apply MLA, APA, or start case; files are matched to tracks by album name or alias, disc and track numbers, and title, and every match and refusal is reported. `ilibrary schema` prints the JSON Schema.
 
 ```json
 {
   "format": "ilibrary-catalog-1",
-  "titleRules": { "case": "keep", "removeQualifiers": ["Remaster"], "bracketNested": true },
   "albums": [
     {
       "album": "Bad",
-      "aliases": ["Bad (Remastered)"],
       "albumArtist": "Michael Jackson",
-      "copyright": "℗ 1987 MJJ Productions, Inc.",
       "releaseDate": "1987-08-31",
-      "discs": [
-        {
-          "tracks": [
-            { "title": "Bad", "composer": "Michael Jackson" }
-          ]
-        }
-      ]
+      "discs": [{ "tracks": [{ "title": "Bad", "composer": "Michael Jackson" }] }]
     }
   ]
 }
 ```
 
-- **Validation** reports unknown fields, wrong types, missing titles, invalid dates, and duplicate albums with their JSON paths, and rejects documents of other formats. The schema is published as [docs/schema/ilibrary-catalog-1.schema.json](docs/schema/ilibrary-catalog-1.schema.json).
-- **Matching** selects the album by name or alias, then the track by disc and track number, by numbering that continues across discs, and by title. A title that disagrees at a file's numbers is treated as a correction only when no other track carries it and more of the album's titles agree than differ; every match and refusal is reported.
-- **Naming** follows the Music app: `NN Song.m4a` on single-disc albums, `D-NN Song.m4a` on multi-disc albums, and `_` in place of `:` and `/`.
-- **Orders** are `release`, `artist` (albums by name), `artist-desc` (artists and albums descending), and `artist-release` (albums by release date).
-- **Title rules** remove listed qualifiers such as `(2012 Remaster)`, write nested parentheticals with square brackets, and apply the MLA, APA, or start-case style. Words whose capitalization depends on their grammatical role are left unchanged and reported.
-- **Dates** are written to files as `YYYY-MM-DDT00:00:00Z`; file timestamps use local midnight, or the first instant of the day where a time zone skips midnight.
+[Catalogs](docs/catalogs.md) describes every field, the title rules, matching, and the authoring workflow with `export` and `prompt`.
 
 ## How It Works
 
-The package separates domain logic from platform integration, as iLyrics does. No external package or run-time tool is required.
+The package separates domain logic from platform integration. No external package or run-time tool is required, and the Foundation-only targets build and test on Linux.
 
 | Target | Contents | Status |
 | --- | --- | --- |
@@ -212,6 +208,7 @@ The package separates domain logic from platform integration, as iLyrics does. N
 | `CatalogCore` | Catalog format, validation, matching, naming, ordering, title rules, dates | Implemented; Foundation only |
 | `ConversionMac` | Conversion to Apple Lossless through AudioToolbox and PCM verification | Implemented; macOS only |
 | `LibraryMac` | File dates, Music automation, media folder, permission state | Implemented; macOS only |
+| `RebuildCore` | Backup inventory and verification, recovery record, progress journal | Implemented; Foundation only |
 | `ilibrary` | Command parsing, plans, and reports | Implemented; Foundation logic with conditional Mac adapters |
 
 The design rests on technical spikes made with synthetic files and with private copies of purchased and downloaded files, and on live measurements of Music summarized in [Measured Music Behavior](docs/library-operations.md#measured-music-behavior).
@@ -245,7 +242,7 @@ Use audio and artwork that you are entitled to process. The repository contains 
 - Conversion supports mono and stereo only, and refuses floating-point PCM. FLAC fields outside the standard set are not carried.
 - Files that would need chunk offsets beyond 32 bits are refused rather than converted to 64-bit offsets.
 - Protected audio (`.m4p`) is out of scope. iLibrary does not download audio.
-- Further naming rules of the Music app, such as length limits, are unknown; affected names are reported instead of changed.
+- Further naming rules of the Music app, such as length limits, are unknown and are not applied.
 - Library comparison covers the file tracks and thirteen fields exposed by the adapter. Artwork, copyright, full release dates, and cloud-only entries not exposed as file tracks are not compared.
 - Mutating batches are not transactions: a later failure can leave earlier files or albums completed. Keep backups and the addition journal; no automatic library rollback is attempted.
 - Real Trash operations remain untested; public tests use a substitute Trash.
@@ -255,16 +252,16 @@ Use audio and artwork that you are entitled to process. The repository contains 
 ## Documentation
 
 - [Distribution](docs/distribution.md): package names, contents, installation, and publication
-- [Library Operations and Recovery](docs/library-operations.md): dry runs, interrupted runs, privacy, and measured Music behavior
+- [Library Operations and Recovery](docs/library-operations.md): dry runs, interrupted runs, rebuilding, privacy, and measured Music behavior
 - [Command-Line Interface](docs/command-line-interface.md): commands, options, and exit status
-- [Completing Catalogs with AI Agents](docs/catalog-for-agents.md): the authoring workflow
-- [Roadmap to iLibrary 1.0.0](docs/roadmap.md): remaining work, rebuilding safety boundary, and verification limits
+- [Catalogs](docs/catalogs.md): the catalog format, title rules, matching, and authoring
+- [Roadmap](docs/roadmap.md): the product's scope, rebuilding safety boundary, and verification limits
 - [Catalog JSON Schema](docs/schema/ilibrary-catalog-1.schema.json)
 - [Security Policy](SECURITY.md): supported versions and private reporting
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for build commands, tests, and pull requests, and [AGENTS.md](AGENTS.md) for the engineering constraints. The public test suite uses original synthetic data and needs neither network access, private files, nor a Music library. Commits follow Conventional Commits and preserve human authorship with contribution trailers.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for build commands, tests, and pull requests, and [AGENTS.md](AGENTS.md) for the engineering constraints. The public test suite uses original synthetic data and needs neither network access, private files, nor a Music library. Commits follow Conventional Commits.
 
 ## Star History
 
@@ -274,10 +271,6 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for build commands, tests, and pull requ
 </picture>
 
 Star counts are recorded daily in UTC, beginning on October 17, 2026. Lines connect recorded observations; dates before the first observation and missed observations are not reconstructed. The [recorded counts](docs/media/stars/history.json) include decreases when stars are removed.
-
-## Acknowledgments
-
-iLibrary is developed with [Codex](https://openai.com/codex) by OpenAI and [Claude](https://claude.ai) by Anthropic, credited as co-authors in the commit history.
 
 ## License
 
