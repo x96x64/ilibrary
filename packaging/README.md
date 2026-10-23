@@ -32,7 +32,7 @@ The package declares macOS 14 as its deployment target, which is not a claim of 
 
 ## Installation
 
-The following commands install version 1.0.0. Choose one channel, and use only that channel in a given shell or environment, so that updating it updates the command you run. Every channel installs the same command, `ilibrary`. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects, and PyPI does not support npm scopes.
+The following commands install version 1.0.1. Choose one channel, and use only that channel in a given shell or environment, so that updating it updates the command you run. Every channel installs the same command, `ilibrary`. The package names include the author because `ilibrary` on npm and PyPI belongs to other projects, and PyPI does not support npm scopes.
 
 ### Homebrew
 
@@ -46,7 +46,7 @@ The formula downloads the release source archive, which Homebrew checks against 
 ### npm
 
 ```bash
-npm install -g @x96_64/ilibrary@1.0.0
+npm install -g @x96_64/ilibrary@1.0.1
 ilibrary --version
 ```
 
@@ -58,7 +58,7 @@ Install in a virtual environment to avoid changing the system Python:
 
 ```bash
 python3 -m venv .venv-ilibrary
-.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.0
+.venv-ilibrary/bin/python -m pip install x96_64-ilibrary==1.0.1
 .venv-ilibrary/bin/ilibrary --version
 source .venv-ilibrary/bin/activate
 ```
