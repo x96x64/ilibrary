@@ -169,9 +169,22 @@ final class Run {
     var errorText: String { errors.joined(separator: "\n") }
 }
 
+/// A clock that advances only when paused, shared by the test environments and the substitute libraries, so that
+/// waits for later addition seconds take no real time.
+final class SimulatedClock: @unchecked Sendable {
+    static let shared = SimulatedClock()
+    private let lock = NSLock()
+    private var time: TimeInterval = 1_900_000_000
+
+    var now: Date { lock.withLock { Date(timeIntervalSince1970: time) } }
+    func advance(_ seconds: TimeInterval) { lock.withLock { time += max(0, seconds) } }
+}
+
 extension Environment {
     static var testing: Environment {
         var environment = Environment.system
+        environment.now = { SimulatedClock.shared.now }
+        environment.pause = { SimulatedClock.shared.advance($0) }
         environment.timeZone = TimeZone(identifier: "Asia/Tokyo")!
         // Tests never reach the real Music app; each test that needs a library supplies a substitute.
         environment.music = nil

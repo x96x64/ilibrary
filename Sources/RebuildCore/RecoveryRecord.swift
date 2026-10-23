@@ -6,10 +6,8 @@ import Foundation
     import Glibc
 #endif
 
-/// The stage of a rebuild. Only `prepared` is reachable in M11.
-///
-/// Later stages are reserved for M12 and M13 and are intentionally not declared: evacuating, evacuated, clearing,
-/// cleared, adding, added, verified, and completed. A record naming any of them is refused by this version.
+/// The stage of a rebuild as recorded in the recovery record. Only `prepared` is recorded in the record; later
+/// progress is recorded in the progress journal. A record naming any other stage is refused.
 public enum RecoveryStage: String, Codable, Equatable, Sendable {
     case prepared
 }
@@ -256,10 +254,38 @@ public struct RecoveryRecord: Codable, Equatable, Sendable {
         return formatter.string(from: date)
     }
 
+    /// True when `text` is a UTC ISO 8601 time with a "Z" suffix. The exact form "YYYY-MM-DDTHH:MM:SSZ" naming a
+    /// valid calendar instant of the years 1900 to 2999 is recognized directly, because creating a formatter for
+    /// each of the tens of thousands of entries of a journal dominated its parsing; every other text is decided by
+    /// the formatter as before.
     static func isUTCTimestamp(_ text: String) -> Bool {
+        if isPlainUTCInstant(text) { return true }
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return text.hasSuffix("Z") && formatter.date(from: text) != nil
+    }
+
+    private static func isPlainUTCInstant(_ text: String) -> Bool {
+        let bytes = Array(text.utf8)
+        guard bytes.count == 20, bytes[4] == 0x2D, bytes[7] == 0x2D, bytes[10] == 0x54, bytes[13] == 0x3A,
+            bytes[16] == 0x3A, bytes[19] == 0x5A
+        else { return false }
+        func number(_ range: Range<Int>) -> Int? {
+            var value = 0
+            for index in range {
+                let digit = Int(bytes[index]) - 0x30
+                guard digit >= 0 && digit <= 9 else { return nil }
+                value = value * 10 + digit
+            }
+            return value
+        }
+        guard let year = number(0..<4), let month = number(5..<7), let day = number(8..<10),
+            let hour = number(11..<13), let minute = number(14..<16), let second = number(17..<19),
+            (1900...2999).contains(year), (1...12).contains(month), hour < 24, minute < 60, second < 60
+        else { return false }
+        let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+        let days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+        return (1...days).contains(day)
     }
 
     // MARK: Encoding and checksum

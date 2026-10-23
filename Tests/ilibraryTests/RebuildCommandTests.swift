@@ -8,7 +8,7 @@ import Testing
         let group = Run(["rebuild", "--help"])
         #expect(group.status == 0)
         #expect(group.text.contains("Usage: ilibrary rebuild SUBCOMMAND"))
-        #expect(group.text.contains("planned; not implemented in this version"))
+        #expect(!group.text.contains("not implemented"))
         #expect(Run(["help", "rebuild"]).text == group.text)
         #expect(Run(["rebuild", "-h"]).text == group.text)
         let prepare = Run(["rebuild", "prepare", "--help"])
@@ -17,11 +17,12 @@ import Testing
         #expect(prepare.text.contains("--confirm-separate-device"))
         #expect(prepare.text.contains("multiple sources are not supported yet"))
         #expect(Run(["help", "rebuild", "prepare"]).text == prepare.text)
-        let status = Run(["rebuild", "status", "--help"])
-        #expect(status.status == 0)
-        #expect(status.text.contains("Usage: ilibrary rebuild status --workspace DIR"))
-        #expect(Run(["help", "rebuild", "status"]).text == status.text)
-        #expect(Run(["rebuild", "stage", "--help"]).text == group.text)
+        for subcommand in ["stage", "clear", "apply", "add", "status"] {
+            let help = Run(["rebuild", subcommand, "--help"])
+            #expect(help.status == 0)
+            #expect(help.text.contains("Usage: ilibrary rebuild \(subcommand) --workspace DIR"))
+            #expect(Run(["help", "rebuild", subcommand]).text == help.text)
+        }
     }
 
     @Test func theCommandTableAndOverviewListRebuild() {
@@ -31,14 +32,11 @@ import Testing
     }
 
     @Test(arguments: ["stage", "clear", "apply", "add"])
-    func plannedSubcommandsAreReserved(subcommand: String) {
+    func stagesRequireAWorkspace(subcommand: String) {
         let run = Run(["rebuild", subcommand])
         #expect(run.status == 2)
-        #expect(run.errorText.contains("rebuild \(subcommand) is planned and not implemented in version"))
-        #expect(run.text.isEmpty)
-        let withArguments = Run(["rebuild", subcommand, "catalog.json", "--workspace", "w"])
-        #expect(withArguments.status == 2)
-        #expect(withArguments.errorText.contains("planned and not implemented"))
+        #expect(run.errorText.contains("--workspace DIR is required"))
+        #expect(Run(["rebuild", subcommand, "--workspace", "w", "extra"]).status == 2)
     }
 
     @Test func unknownAndMissingSubcommandsAreUsageErrors() {
@@ -118,6 +116,11 @@ import Testing
             addCalls += 1
             throw CocoaError(.fileWriteUnknown)
         }
+        func datesAdded(_ persistentIDs: [String]) throws -> [String: Int] { throw CocoaError(.fileReadUnknown) }
+        func remove(persistentID: String, name: String, album: String, artist: String) throws {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        func quit() throws { throw CocoaError(.fileWriteUnknown) }
         func librarySnapshot() throws -> LibrarySnapshot {
             snapshotReads += 1
             if readFails { throw CocoaError(.fileReadUnknown) }
@@ -370,12 +373,12 @@ import Testing
 
             let status = Run(["rebuild", "status", "--workspace", fixture.workspace])
             #expect(status.status == 0, "\(status.errorText)")
-            #expect(status.text.contains("Stage: prepared"))
+            #expect(status.text.contains("Record stage: prepared"))
             #expect(status.text.contains("Counts: 9 files"))
             #expect(status.text.contains("9 registrations, 3 albums"))
             #expect(status.text.contains("Backup disconnected: yes, confirmed at"))
             #expect(status.text.contains("Restoration test: verified 9 files"))
-            #expect(status.text.contains("Next required action: keep the recovery record and the backup."))
+            #expect(status.text.contains("Next required action: run 'ilibrary rebuild stage' with Music closed"))
             #expect(status.text.contains("private"))
         }
 

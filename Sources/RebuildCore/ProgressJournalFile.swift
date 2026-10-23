@@ -6,6 +6,28 @@ import Foundation
     import Glibc
 #endif
 
+/// The progress that a journal file implies, together with the size of the file that it describes, so that a
+/// writer appends without reading the file again. The state is an observation of one moment: the append that
+/// takes it refuses to write when the file no longer ends as the state says.
+public struct JournalState: Equatable, Sendable {
+    public let progress: RebuildProgress
+    /// The size in bytes of the journal file that `progress` describes.
+    public let byteCount: Int
+    /// The index of the record that `progress` was replayed against. It is derived data and takes no part in
+    /// equality.
+    let index: RecordIndex
+
+    init(progress: RebuildProgress, byteCount: Int, index: RecordIndex) {
+        self.progress = progress
+        self.byteCount = byteCount
+        self.index = index
+    }
+
+    public static func == (lhs: JournalState, rhs: JournalState) -> Bool {
+        lhs.progress == rhs.progress && lhs.byteCount == rhs.byteCount
+    }
+}
+
 /// Creating, reading, and appending to `rebuild-journal.jsonl` in the workspace directory.
 ///
 /// What is not guaranteed: the advisory lock taken with `flock` does not stop a writer that does not cooperate;
@@ -13,6 +35,8 @@ import Foundation
 /// leave a torn final entry, which the reader then refuses and which this code never repairs. A failure after a
 /// write may have started is reported as uncertain and is never retried.
 public enum ProgressJournalFile {
+    public typealias JournalState = RebuildCore.JournalState
+
     /// The system calls used on an open descriptor, replaceable so that a test can fail any step.
     public struct Operations: Sendable {
         /// Writes all bytes, handling interruption and short writes.
@@ -188,6 +212,19 @@ public enum ProgressJournalFile {
         return try ProgressJournal.load(data: data, record: record, recordBytes: recordBytes)
     }
 
+    /// Reads, parses, and replays the whole journal once, like `read`, and returns the progress with the byte count
+    /// of the file, for the incremental `append(_:to:state:...)`.
+    public static func readState(in directory: URL, record: RecoveryRecord, recordBytes: Data) throws -> JournalState {
+        let path = directory.appendingPathComponent(ProgressJournal.fileName).path
+        let descriptor = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
+        defer { close(descriptor) }
+        try requireRegular(descriptor, path: path)
+        let data = try Operations.system.readAll(descriptor)
+        let loaded = try ProgressJournal.loadIndexed(data: data, record: record, recordBytes: recordBytes)
+        return JournalState(progress: loaded.progress, byteCount: data.count, index: loaded.index)
+    }
+
     // MARK: Appending
 
     /// Appends one entry to the journal.
@@ -221,14 +258,16 @@ public enum ProgressJournalFile {
         }
 
         let before = try operations.readAll(descriptor)
-        let (_, progress) = try ProgressJournal.load(data: before, record: record, recordBytes: recordBytes)
+        let (_, progress, index) = try ProgressJournal.loadIndexed(
+            data: before, record: record, recordBytes: recordBytes)
         guard progress.head == expectedHead else {
             throw ProgressJournalError.concurrentModification(expected: expectedHead, found: progress.head)
         }
         let entry = try JournalEntry(
             sequence: progress.head.sequence + 1, previous: progress.head.checksum, body: body,
             recordedAt: RecoveryRecord.timestampString(recordedAt))
-        let problems = ProgressJournal.nextEntryProblems(record: record, progress: progress, entry: entry)
+        let problems = ProgressJournal.nextEntryProblems(
+            index: index, record: record, progress: progress, entry: entry)
         guard problems.isEmpty else { throw ProgressJournalError.invalidEntry(problems) }
 
         let line = try entry.line()
@@ -249,7 +288,134 @@ public enum ProgressJournalFile {
         return JournalHead(sequence: entry.sequence, checksum: entry.checksum)
     }
 
+    /// Appends one entry to the journal that `state` describes, without reading the whole file again.
+    ///
+    /// The file is opened and locked exactly as by `append(_:to:expectedHead:...)`. Under the lock the file size
+    /// must equal `state.byteCount`, and the final line, read from the end of the file only, must be an entry whose
+    /// sequence and checksum equal `state.progress.head`; otherwise `concurrentModification` is thrown and nothing
+    /// is written. When the final line cannot be read or parsed, the head reported as found has sequence -1 and an
+    /// empty checksum. The entry that follows from `body` must satisfy the transition rules (`invalidEntry`
+    /// otherwise, with nothing written). The line is then written and synchronized, and the bytes from offset
+    /// `state.byteCount` onward must equal exactly that line, with the file ending there. A failure after the write
+    /// may have started is reported as `appendUncertain` and is not retried. The returned state describes the file
+    /// after the append.
+    ///
+    /// The check detects a writer that appended or truncated, and a change of the final line. It does not detect
+    /// a change of an earlier line, which only a full `readState` examines. `record` must be the record of the
+    /// replay that produced `state` (`recordMismatch` otherwise); `recordBytes` is accepted for symmetry with
+    /// `readState`, because the state already carries the replay that bound the journal to those bytes.
+    @discardableResult
+    public static func append(
+        _ body: JournalBody, to directory: URL, state: JournalState, record: RecoveryRecord, recordBytes: Data,
+        recordedAt: Date = Date(), operations: Operations = .system
+    ) throws -> JournalState {
+        guard state.index.recordChecksum == record.checksum else { throw ProgressJournalError.recordMismatch }
+        let path = directory.appendingPathComponent(ProgressJournal.fileName).path
+        if let status = try? FileStatus.read(atPath: path), status.kind != .regular {
+            throw ProgressJournalError.notARegularFile(path: path)
+        }
+        let descriptor = open(path, O_RDWR | O_APPEND | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else { throw ProgressJournalError.notARegularFile(path: path) }
+        defer { close(descriptor) }
+        try requireRegular(descriptor, path: path, strict: true)
+        guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {
+            // EWOULDBLOCK equals EAGAIN on Darwin and Linux; EAGAIN alone avoids depending on the alias.
+            if errno == EAGAIN { throw ProgressJournalError.locked(path: path) }
+            throw ProgressJournalError.unreadable(path: path, reason: "flock: errno \(errno)")
+        }
+
+        let head = state.progress.head
+        let size = try fileSize(descriptor, path: path)
+        let tail = try finalHead(descriptor, size: size, path: path)
+        guard size == state.byteCount, tail == head else {
+            throw ProgressJournalError.concurrentModification(expected: head, found: tail ?? unreadableHead)
+        }
+
+        let entry = try JournalEntry(
+            sequence: head.sequence + 1, previous: head.checksum, body: body,
+            recordedAt: RecoveryRecord.timestampString(recordedAt))
+        let problems = ProgressJournal.nextEntryProblems(
+            index: state.index, record: record, progress: state.progress, entry: entry)
+        guard problems.isEmpty else { throw ProgressJournalError.invalidEntry(problems) }
+
+        let line = try entry.line()
+        let expectedSize = state.byteCount + line.count
+        do {
+            try operations.write(descriptor, line)
+            try operations.synchronize(descriptor)
+            guard try fileSize(descriptor, path: path) == expectedSize,
+                try readExactly(descriptor, offset: state.byteCount, count: line.count, path: path) == line
+            else {
+                throw ProgressJournalError.appendUncertain(
+                    "the journal after the append differs from the expected bytes")
+            }
+        } catch let error as ProgressJournalError {
+            if case .appendUncertain = error { throw error }
+            throw ProgressJournalError.appendUncertain("\(error)")
+        } catch {
+            throw ProgressJournalError.appendUncertain("\(error)")
+        }
+        var progress = state.progress
+        progress.advance(with: entry, record: record)
+        return JournalState(progress: progress, byteCount: expectedSize, index: state.index)
+    }
+
     // MARK: Descriptor checks
+
+    /// The head reported when the final line of the journal cannot be read or parsed.
+    private static let unreadableHead = JournalHead(sequence: -1, checksum: "")
+
+    private static func fileSize(_ descriptor: Int32, path: String) throws -> Int {
+        var buffer = stat()
+        guard fstat(descriptor, &buffer) == 0 else {
+            throw ProgressJournalError.unreadable(path: path, reason: "fstat: errno \(errno)")
+        }
+        return Int(buffer.st_size)
+    }
+
+    /// Reads `count` bytes at `offset` through `pread`, handling interruption and short reads. The result is
+    /// shorter than `count` only when the file ends first.
+    private static func readExactly(_ descriptor: Int32, offset: Int, count: Int, path: String) throws -> Data {
+        var data = Data(count: count)
+        var done = 0
+        while done < count {
+            let read = data.withUnsafeMutableBytes { buffer in
+                pread(descriptor, buffer.baseAddress! + done, count - done, off_t(offset + done))
+            }
+            if read < 0 {
+                if errno == EINTR { continue }
+                throw ProgressJournalError.unreadable(path: path, reason: "read: errno \(errno)")
+            }
+            if read == 0 { break }
+            done += read
+        }
+        return done == count ? data : Data(data.prefix(done))
+    }
+
+    /// The head that the final line of a file of `size` bytes states, or nil when the file is empty, does not end
+    /// with a newline, or its final line is not a valid entry. Only the end of the file is read.
+    private static func finalHead(_ descriptor: Int32, size: Int, path: String) throws -> JournalHead? {
+        guard size > 0,
+            try readExactly(descriptor, offset: size - 1, count: 1, path: path) == Data([0x0A])
+        else { return nil }
+        let block = 1 << 12
+        var tail = Data()
+        var start = size
+        var lineStart = 0
+        while start > 0 {
+            let length = min(block, start)
+            start -= length
+            tail = try readExactly(descriptor, offset: start, count: length, path: path) + tail
+            // The final newline ends the final line; the newline before it, if any, ends the previous line.
+            if let newline = tail.dropLast().lastIndex(of: 0x0A) {
+                lineStart = start + newline + 1
+                break
+            }
+        }
+        let line = Data(tail.suffix(size - lineStart).dropLast())
+        guard let entry = try? ProgressJournal.parseLine(line, index: 0, isFinal: true) else { return nil }
+        return JournalHead(sequence: entry.sequence, checksum: entry.checksum)
+    }
 
     private static func requireRegular(_ descriptor: Int32, path: String, strict: Bool = false) throws {
         var buffer = stat()

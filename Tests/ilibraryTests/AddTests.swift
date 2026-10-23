@@ -14,6 +14,19 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
     var failOnAdd: Int?
     /// Report tracks at other places, as Music would after copying files.
     var misplace = false
+    /// The addition second of each track, from the simulated clock unless a test sets it.
+    var dates: [String: Int] = [:]
+    var removals: [String] = []
+    var quitCalls = 0
+    var failOnRemove: String?
+    /// Removes this track and then fails, as when a run is interrupted before it records the removal.
+    var failAfterRemove: String?
+    /// When set, every track added receives this addition second, as if albums shared one.
+    var fixedDate: Int?
+    /// Whether the app runs: adding launches it, and quitting ends it.
+    var running = false
+    /// Tracks of the library that are not file tracks.
+    var otherTracks = 0
     private var counter = 0
 
     init(media: URL?) { self.media = media }
@@ -22,13 +35,16 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
     func allTracks() throws -> [LibraryTrack] { library }
     func tracks(album: String) throws -> [LibraryTrack] { library.filter { $0.album == album } }
     func librarySnapshot() throws -> LibrarySnapshot {
-        LibrarySnapshot(
-            tracks: library, trackCount: library.count, fileTrackCount: library.count, dateAddedSeconds: [:])
+        running = true
+        return LibrarySnapshot(
+            tracks: library, trackCount: library.count + otherTracks, fileTrackCount: library.count,
+            dateAddedSeconds: dates.filter { id, _ in library.contains { $0.persistentID == id } })
     }
     func track(persistentID: String) throws -> LibraryTrack? { library.first { $0.persistentID == persistentID } }
 
     func add(_ files: [URL]) throws -> [LibraryTrack] {
         addCalls.append(files.map(\.lastPathComponent))
+        running = true
         if failOnAdd == addCalls.count { throw CocoaError(.fileReadUnknown) }
         return try files.map { file in
             if let existing = library.first(where: { $0.location == file.path }) { return existing }
@@ -49,8 +65,35 @@ final class FakeMusic: MusicLibrary, @unchecked Sendable {
                 discCount: LibraryFiles.pair(tags.file, .discNumber)?.total ?? 0,
                 compilation: tags.file.metadataValues(.compilation).contains(.integer(1)), location: location)
             library.append(track)
+            dates[track.persistentID] = fixedDate ?? Int(SimulatedClock.shared.now.timeIntervalSince1970)
             return track
         }
+    }
+
+    func datesAdded(_ persistentIDs: [String]) throws -> [String: Int] {
+        try Dictionary(
+            uniqueKeysWithValues: persistentIDs.map { id in
+                guard let date = dates[id] else { throw CocoaError(.fileReadUnknown) }
+                return (id, date)
+            })
+    }
+
+    func remove(persistentID: String, name: String, album: String, artist: String) throws {
+        if failOnRemove == persistentID { throw CocoaError(.fileWriteUnknown) }
+        let matches = library.filter { $0.persistentID == persistentID }
+        guard matches.count == 1, matches[0].name == name, matches[0].album == album, matches[0].artist == artist
+        else { throw CocoaError(.fileWriteUnknown) }
+        library.removeAll { $0.persistentID == persistentID }
+        removals.append(persistentID)
+        if failAfterRemove == persistentID { throw CocoaError(.fileWriteUnknown) }
+    }
+
+    /// When set, a request to quit is answered but Music keeps running.
+    var ignoreQuit = false
+
+    func quit() throws {
+        quitCalls += 1
+        if !ignoreQuit { running = false }
     }
 }
 
@@ -175,6 +218,33 @@ struct AddFixture {
         #expect(fixture.journal.entries.map(\.state) == [.added, .added, .added])
         #expect(fixture.music.library.count == 9)
         #expect(fixture.mediaFiles().count == 9)
+    }
+
+    @Test func eachAlbumIsAddedAfterThePreviousAlbumsAdditionSecond() throws {
+        let fixture = try AddFixture()
+        defer { fixture.remove() }
+        let run = fixture.run([])
+        #expect(run.status == 0, "\(run.errorText)")
+        let albums = fixture.journal.entries.map { entry in entry.persistentIDs.map { fixture.music.dates[$0]! } }
+        #expect(albums.count == 3)
+        for (earlier, later) in zip(albums, albums.dropFirst()) {
+            #expect(later.min()! > earlier.max()!)
+        }
+    }
+
+    @Test func anAlbumSharingAnAdditionSecondStopsTheRun() throws {
+        let fixture = try AddFixture()
+        defer { fixture.remove() }
+        fixture.music.fixedDate = 1_900_000_000
+        let run = fixture.run([])
+        #expect(run.status == 1)
+        #expect(run.errorText.contains("its addition dates do not follow those of the album before it"))
+        #expect(fixture.journal.entries.map(\.state) == [.added, .added])
+        #expect(fixture.music.addCalls.count == 2)
+        let again = fixture.run([])
+        #expect(again.status == 1)
+        #expect(again.errorText.contains("this run cannot continue in order"))
+        #expect(fixture.music.addCalls.count == 2)
     }
 
     @Test func anAlbumAddedButNotRecordedIsRecognizedOnResumption() throws {

@@ -62,12 +62,48 @@ enum ApplyCommand {
         return values
     }
 
+    /// A complete, printed plan of an application.
+    struct Prepared {
+        var plans: [FilePlan]
+        var changed: [FilePlan]
+        var moves: [FilePlan]
+        var datePlan: TimestampPlan?
+        var shown: (URL) -> String
+    }
+
     static func run(_ arguments: [String], console: Console, environment: Environment) throws -> Int32 {
         let parsed = try syntax.parse(arguments)
-        let dryRun = parsed.flag("--dry-run")
-        let rename = parsed.flag("--rename")
         let timestamps = parsed.flag("--timestamps")
-        let paths = Array(parsed.positionals.dropFirst())
+        let prepared = try prepare(
+            catalogPath: parsed.positionals[0], paths: Array(parsed.positionals.dropFirst()),
+            rename: parsed.flag("--rename"), timestamps: timestamps, console: console, environment: environment)
+        if parsed.flag("--dry-run") {
+            console.print("Dry run: nothing was changed.")
+            return 0
+        }
+        var written = 0
+        for plan in prepared.changed {
+            do {
+                try rewrite(plan)
+            } catch let error as CommandError {
+                throw CommandError.failure("\(error.message) (\(written) files were written before this failure)")
+            }
+            written += 1
+        }
+        let moved = try executeMoves(prepared.moves, console: console, shown: prepared.shown)
+        var dated = 0
+        if let datePlan = prepared.datePlan { dated = try TimestampPlanner.execute(datePlan, environment: environment) }
+        console.print(
+            "Applied: \(written) files rewritten and verified, \(moved) moved\(timestamps ? ", \(dated) paths dated" : "")"
+        )
+        return 0
+    }
+
+    /// Matches the files under the paths to the catalog, plans every change, prints the plan, and changes nothing.
+    static func prepare(
+        catalogPath: String, paths: [String], rename: Bool, timestamps: Bool, console: Console,
+        environment: Environment
+    ) throws -> Prepared {
         let roots = paths.map { URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL }.filter {
             pathKind($0) == .directory
         }
@@ -78,12 +114,11 @@ enum ApplyCommand {
             throw CommandError.failure(
                 "--timestamps requires macOS, where creation dates can be set; nothing was changed")
         }
-        let (catalog, directory) = try loadCatalog(parsed.positionals[0], console: console)
+        let (catalog, directory) = try loadCatalog(catalogPath, console: console)
         let correspondence = try Correspondence.build(paths, catalog: catalog)
         guard correspondence.print(to: console, catalog: catalog) else {
             throw CommandError.failure("some files are unmatched or refused; nothing was changed")
         }
-
         var artwork: [Int: MetadataValue] = [:]
         for (index, album) in catalog.albums.enumerated() {
             if let path = album.artwork, !path.isEmpty {
@@ -103,17 +138,14 @@ enum ApplyCommand {
         }
         plans.sort { $0.file.url.path < $1.file.url.path }
         if rename { try planMoves(&plans, roots: roots) }
-
         try checkFreeSpace(plans.filter { !$0.changes.isEmpty }, environment: environment, console: console)
-
         let finalFiles = plans.map { ($0.destination ?? $0.file.url, $0.track) }
         let datePlan =
             timestamps
             ? TimestampPlanner.plan(files: finalFiles, catalog: catalog, roots: roots, timeZone: environment.timeZone)
             : nil
-
         let root = roots.count == 1 ? roots[0] : nil
-        func shown(_ url: URL) -> String { root.map { relativePath(url, from: $0) } ?? url.path }
+        let shown: (URL) -> String = { url in root.map { relativePath(url, from: $0) } ?? url.path }
         let changed = plans.filter { !$0.changes.isEmpty }
         console.print("Tag changes: \(changed.count) of \(plans.count) files")
         for plan in changed {
@@ -134,36 +166,24 @@ enum ApplyCommand {
             }
             for note in datePlan.notes { console.print("  note: \(note)") }
         }
-        if dryRun {
-            console.print("Dry run: nothing was changed.")
-            return 0
-        }
+        return Prepared(plans: plans, changed: changed, moves: moves, datePlan: datePlan, shown: shown)
+    }
 
-        var written = 0
-        for plan in changed {
-            var file = plan.file.file
-            for change in plan.changes { try file.setMetadata(change.value.key, change.value.values) }
-            do {
-                try MP4Writer.write(file, to: plan.file.url)
-            } catch {
-                throw CommandError.failure(
-                    "\(plan.file.url.path): \(error) (\(written) files were written before this failure)")
-            }
-            let reread = try MP4File(contentsOf: plan.file.url)
-            let mismatched = plan.values.filter { reread.metadataValues($0.key) != $0.values }.map(\.label)
-            guard mismatched.isEmpty else {
-                throw CommandError.failure(
-                    "\(plan.file.url.path): \(mismatched.joined(separator: ", ")) did not read back as written")
-            }
-            written += 1
+    /// Writes the planned values to one file in place and confirms that they read back.
+    static func rewrite(_ plan: FilePlan) throws {
+        var file = plan.file.file
+        for change in plan.changes { try file.setMetadata(change.value.key, change.value.values) }
+        do {
+            try MP4Writer.write(file, to: plan.file.url)
+        } catch {
+            throw CommandError.failure("\(plan.file.url.path): \(error)")
         }
-        let moved = try executeMoves(moves, console: console, shown: shown)
-        var dated = 0
-        if let datePlan { dated = try TimestampPlanner.execute(datePlan, environment: environment) }
-        console.print(
-            "Applied: \(written) files rewritten and verified, \(moved) moved\(timestamps ? ", \(dated) paths dated" : "")"
-        )
-        return 0
+        let reread = try MP4File(contentsOf: plan.file.url)
+        let mismatched = plan.values.filter { reread.metadataValues($0.key) != $0.values }.map(\.label)
+        guard mismatched.isEmpty else {
+            throw CommandError.failure(
+                "\(plan.file.url.path): \(mismatched.joined(separator: ", ")) did not read back as written")
+        }
     }
 
     /// Each rewrite writes a complete new copy of its file beside it before replacing it (decision 8). For every

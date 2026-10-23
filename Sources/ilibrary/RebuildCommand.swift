@@ -2,30 +2,92 @@ import CatalogCore
 import Foundation
 import RebuildCore
 
-/// The `rebuild` command group. Only `prepare` and `status` exist in this version; the other planned subcommands
-/// are reserved and refuse to run.
+/// The `rebuild` command group: preparation, the four stages that rebuild the library, and status.
 enum RebuildCommand {
-    static let reserved = ["stage", "clear", "apply", "add"]
-
     static let syntax = CommandSyntax(
         name: "rebuild",
         usage: """
             Usage: ilibrary rebuild SUBCOMMAND [OPTIONS] [ARGUMENTS]
 
-            Prepares the rebuilding of a Music library from its files: it inventories the files and the
-            registrations, verifies a backup on separate storage, tests the restoration of the backup, and
-            records the verified plan. It does not change Music, the source files, or the backup.
+            Rebuilds a Music library from its files in stages. Preparation inventories the files and the
+            registrations, verifies a backup on separate storage, tests its restoration, and records the plan.
+            The stages then move the files out of the media folder, remove their registrations, write the
+            catalog to the files while Music is closed, and add the albums again in the planned order. Each stage
+            records its progress in the workspace, resumes after an interruption, and refuses to run out of order.
 
             Subcommands:
               prepare   inventory, verify the backup, test restoration, and write a recovery record
-              status    report a recovery record
-              stage     planned; not implemented in this version
-              clear     planned; not implemented in this version
-              apply     planned; not implemented in this version
-              add       planned; not implemented in this version
+              stage     move the inventoried files from the media folder to the staging directory
+              clear     remove the recorded registrations, confirm that none remain, and quit Music
+              apply     write the catalog, names, and optional dates to the staged files
+              add       add the albums in the recorded order and confirm their addition dates
+              status    report the recovery record and the progress of the stages
 
             Run 'ilibrary rebuild SUBCOMMAND --help' for the options of a subcommand.
             """, positionals: 0...Int.max)
+
+    static let stageSyntax = CommandSyntax(
+        name: "rebuild stage",
+        usage: """
+            Usage: ilibrary rebuild stage --workspace DIR [--dry-run]
+
+            Moves every inventoried file from the media folder to its place in the staging directory, which keeps
+            its relative path, and confirms that the moved file has the size, SHA-256, and dates of the inventory.
+            Music must be closed, the staging directory must be on the volume of the media folder, and no staged
+            path may exist. Registrations are not changed.
+
+            Options:
+              --workspace DIR   the directory that holds the recovery record
+              --dry-run         check every file, list the moves, and change nothing
+            """, valued: ["--workspace": []], flags: ["--dry-run"], positionals: 0...0)
+
+    static let clearSyntax = CommandSyntax(
+        name: "rebuild clear",
+        usage: """
+            Usage: ilibrary rebuild clear --workspace DIR [--dry-run]
+
+            Removes the registrations recorded by rebuild prepare, one persistent ID per request, after confirming
+            that each track still has its recorded name, album, and artist and that its file is still staged. It
+            refuses to start when the library holds any other track or a staged file is missing or changed. It then confirms that Music reports no tracks and quits Music. The Music window is
+            not inspected. Requires a completed stage, macOS, and the Automation permission for Music.
+
+            Options:
+              --workspace DIR   the directory that holds the recovery record
+              --dry-run         compare the files and the library with the record, list the removals, and change
+                                nothing; reading the library launches Music
+            """, valued: ["--workspace": []], flags: ["--dry-run"], positionals: 0...0)
+
+    static let applySyntax = CommandSyntax(
+        name: "rebuild apply",
+        usage: """
+            Usage: ilibrary rebuild apply --workspace DIR [--timestamps] [--dry-run]
+
+            Writes the recorded catalog to the staged files, as 'ilibrary apply --rename' does, and arranges them
+            as Album Artist/Album/NN Title.m4a in the staging directory. Music must stay closed. The catalog must be
+            the file that rebuild prepare recorded. Requires a completed clear.
+
+            Options:
+              --workspace DIR   the directory that holds the recovery record
+              --timestamps      also set file dates to release dates at local midnight (macOS)
+              --dry-run         list the planned changes and change nothing
+            """, valued: ["--workspace": []], flags: ["--timestamps", "--dry-run"], positionals: 0...0)
+
+    static let addSyntax = CommandSyntax(
+        name: "rebuild add",
+        usage: """
+            Usage: ilibrary rebuild add --workspace DIR [--timestamps] [--dry-run]
+
+            Moves each album's staged files into the media folder and adds them in place, one album per request,
+            in the order recorded by rebuild prepare. Each album is added only after the clock has passed the
+            latest addition second of the album before it, and its own addition seconds must be later. Finally the
+            albums' addition dates, newest first, are compared with the expected Recently Added order. Requires a
+            completed apply, macOS, and the Automation permission for Music; reading the library launches Music.
+
+            Options:
+              --workspace DIR   the directory that holds the recovery record
+              --timestamps      afterwards, set album and artist folder dates in the media folder (macOS)
+              --dry-run         list the albums and moves and change nothing
+            """, valued: ["--workspace": []], flags: ["--timestamps", "--dry-run"], positionals: 0...0)
 
     static let prepareSyntax = CommandSyntax(
         name: "rebuild prepare",
@@ -81,13 +143,22 @@ enum RebuildCommand {
               --workspace DIR   the directory that holds the recovery record
             """, valued: ["--workspace": []], positionals: 0...0)
 
+    static let subcommands: [String: CommandSyntax] = [
+        "prepare": prepareSyntax, "stage": stageSyntax, "clear": clearSyntax, "apply": applySyntax,
+        "add": addSyntax, "status": statusSyntax,
+    ]
+
     /// The help text of a subcommand, or of the group when the subcommand is nil or unknown.
     static func usage(for subcommand: String?) -> String {
-        switch subcommand {
-        case "prepare": return prepareSyntax.usage
-        case "status": return statusSyntax.usage
-        default: return syntax.usage
+        subcommand.flatMap { subcommands[$0]?.usage } ?? syntax.usage
+    }
+
+    /// The resolved workspace option of a stage.
+    static func workspace(_ parsed: ParsedArguments, _ name: String) throws -> String {
+        guard let option = parsed.value("--workspace") else {
+            throw CommandError.usage("rebuild \(name): --workspace DIR is required")
         }
+        return option
     }
 
     static func run(_ arguments: [String], console: Console, environment: Environment) throws -> Int32 {
@@ -99,22 +170,20 @@ enum RebuildCommand {
             console.print(syntax.usage)
             return 0
         }
-        if rest.contains("--help") || rest.contains("-h"), subcommand == "prepare" || subcommand == "status" {
+        guard subcommands[subcommand] != nil else {
+            throw CommandError.usage("rebuild: unknown subcommand \(subcommand)\n\n\(syntax.usage)")
+        }
+        if rest.contains("--help") || rest.contains("-h") {
             console.print(usage(for: subcommand))
             return 0
         }
         switch subcommand {
         case "prepare": return try RebuildPrepare.run(rest, console: console, environment: environment)
-        case "status": return try RebuildStatus.run(rest, console: console)
-        default:
-            if reserved.contains(subcommand) {
-                if rest.contains("--help") || rest.contains("-h") {
-                    console.print(syntax.usage)
-                    return 0
-                }
-                throw CommandError.usage("rebuild \(subcommand) is planned and not implemented in version \(version)")
-            }
-            throw CommandError.usage("rebuild: unknown subcommand \(subcommand)\n\n\(syntax.usage)")
+        case "stage": return try RebuildStages.stage(rest, console: console, environment: environment)
+        case "clear": return try RebuildStages.clear(rest, console: console, environment: environment)
+        case "apply": return try RebuildStages.apply(rest, console: console, environment: environment)
+        case "add": return try RebuildStages.add(rest, console: console, environment: environment)
+        default: return try RebuildStatus.run(rest, console: console)
         }
     }
 
@@ -248,10 +317,49 @@ enum RebuildStatus {
         console.print(
             "Restoration test: \(restoration.verification.map { $0.success ? "verified \($0.checkedCount) files" : "verification failed" } ?? "not verified")"
                 + (restoration.verifiedAt.map { " at \($0)" } ?? "") + "; directory \(restoration.directory) (kept)")
-        console.print("Stage: \(record.stage.rawValue)")
-        console.print(
-            "Next required action: keep the recovery record and the backup. The later stages (rebuild stage, clear, "
-                + "apply, and add) are planned and not implemented in version \(version).")
+        console.print("Record stage: \(record.stage.rawValue)")
+        let journalPath = workspace + "/" + ProgressJournal.fileName
+        var progress: RebuildProgress?
+        if pathKind(URL(fileURLWithPath: journalPath)) != .missing {
+            do {
+                let recordBytes = try ProgressJournalFile.loadRecord(from: URL(fileURLWithPath: workspace)).bytes
+                progress = try ProgressJournalFile.read(
+                    in: URL(fileURLWithPath: workspace), record: record, recordBytes: recordBytes
+                ).progress
+            } catch {
+                console.error("the progress journal cannot be used: \(error)")
+                throw CommandError.failure("rebuild status: the progress journal is invalid; nothing was changed")
+            }
+        }
+        console.print("Progress journal: " + (progress == nil ? "none; no stage has begun" : journalPath))
+        if let progress {
+            let completed = progress.completedStages.map(\.rawValue)
+            console.print("Completed stages: " + (completed.isEmpty ? "none" : completed.joined(separator: ", ")))
+            if let current = progress.currentStage { console.print("Stage in progress: \(current.rawValue)") }
+            if let open = progress.openOperation {
+                console.print(
+                    "Open operation: \(open.operation.rawValue) \(open.target)"
+                        + (open.returned ? " (performed, not yet verified)" : " (not yet performed)"))
+            }
+            let counts: [(RebuildOperation, Int, String)] = [
+                (.evacuateFile, record.evacuation.count, "files staged"),
+                (.removeRegistration, record.mapping.count, "registrations removed"),
+                (.applyFile, record.evacuation.count, "files applied"),
+                (.addAlbum, record.additionList.count, "albums added"),
+            ]
+            for (operation, total, label) in counts {
+                console.print("  \(progress.verifiedTargets[operation]?.count ?? 0) of \(total) \(label)")
+            }
+        }
+        let next: String
+        switch progress?.completedStages.last {
+        case nil: next = "run 'ilibrary rebuild stage' with Music closed"
+        case .evacuation: next = "run 'ilibrary rebuild clear'"
+        case .clearing: next = "run 'ilibrary rebuild apply' while Music stays closed"
+        case .application, .addition: next = "run 'ilibrary rebuild add'"
+        case .display: next = "none; the rebuild is complete. Keep the backup until you have checked the library"
+        }
+        console.print("Next required action: \(next)")
         return 0
     }
 }

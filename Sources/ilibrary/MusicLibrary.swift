@@ -51,6 +51,12 @@ protocol MusicLibrary: Sendable {
     func track(persistentID: String) throws -> LibraryTrack?
     /// Adds files in one call and returns the tracks that Music reports for them.
     func add(_ files: [URL]) throws -> [LibraryTrack]
+    /// The date added of each track, in whole seconds since 1970. Reads only.
+    func datesAdded(_ persistentIDs: [String]) throws -> [String: Int]
+    /// Deletes the one file track with the persistent ID after confirming its name, album, and artist.
+    func remove(persistentID: String, name: String, album: String, artist: String) throws
+    /// Asks Music to quit.
+    func quit() throws
 }
 
 #if canImport(LibraryMac) && os(macOS)
@@ -79,5 +85,12 @@ protocol MusicLibrary: Sendable {
             try MusicApp.track(persistentID: persistentID).map(Self.convert)
         }
         func add(_ files: [URL]) throws -> [LibraryTrack] { try MusicApp.add(files).map(Self.convert) }
+        func datesAdded(_ persistentIDs: [String]) throws -> [String: Int] {
+            try MusicApp.datesAdded(persistentIDs: persistentIDs)
+        }
+        func remove(persistentID: String, name: String, album: String, artist: String) throws {
+            try MusicApp.remove(persistentID: persistentID, name: name, album: album, artist: artist)
+        }
+        func quit() throws { try MusicApp.quit() }
     }
 #endif

@@ -26,13 +26,16 @@ public enum TransitionProblem: Equatable, Sendable {
     case targetNotInPlan(operation: RebuildOperation, target: String)
     case targetOutOfOrder(operation: RebuildOperation, expected: String, found: String)
     case prerequisiteMissing(operation: RebuildOperation, requires: String)
-    /// No detector for the emptiness of the Music window has been qualified. This is the unresolved M12 gate.
-    case guiEmptinessMethodNotQualified
+    /// The reported result path of an `applyFile` operation is not an absolute, normalized path strictly inside
+    /// the staging directory, or it equals the result of an earlier application or a staging path of another file.
+    case resultPathInvalid(target: String, resultPath: String)
     case observationShape(operation: RebuildOperation, missing: [String], unexpected: [String])
     case unknownEvacuationMethod(String)
     case stagedFileDiffers(target: String)
     case sourceStateInconsistent(target: String, method: String)
-    case remainingSetWrong(expected: [String], found: [String])
+    /// The reported number of mapped registrations not yet verified as removed differs from the number that the
+    /// journal and the record imply, counting the target of the operation as removed.
+    case remainingCountWrong(expected: Int, found: Int)
     case registrationCountNotZero(Int)
     case musicRunning(operation: RebuildOperation)
     case newPersistentIDsEmpty
@@ -99,7 +102,7 @@ public struct OpenOperation: Equatable, Sendable {
     public let target: String
     public let returned: Bool
     /// True when the recorded return reported failure. This phase offers no entry that resolves such an
-    /// operation; resolution belongs to the reconciliation of M13.
+    /// operation in this format, so the journal cannot proceed past it.
     public let returnFailed: Bool
 }
 
@@ -117,30 +120,49 @@ public struct RebuildProgress: Equatable, Sendable {
     public internal(set) var newPersistentIDs: [String] = []
     /// The method of each verified evacuation, by source path.
     public internal(set) var evacuationMethods: [String: String] = [:]
+    /// The result path of each verified `applyFile` operation, by its target (the staging path). The result path is
+    /// the `resultPath` of the observation when present and otherwise the target itself.
+    public internal(set) var appliedPaths: [String: String] = [:]
     public internal(set) var stopCount = 0
+
+    // Derived lookups. They are maintained by `advance` alongside the ordered collections above, they carry no
+    // information that those collections lack, and they are excluded from equality.
+
+    /// The verified targets of each operation in their canonical form, as a set.
+    var verifiedSets: [RebuildOperation: Set<String>] = [:]
+    /// Every element of `newPersistentIDs`.
+    var newPersistentIDSet: Set<String> = []
+    /// The `PathKey.key` of every value of `appliedPaths`.
+    var appliedPathKeys: Set<String> = []
 
     /// False when an operation is open or unresolved.
     public var canProceed: Bool { openOperation == nil }
 
+    /// True when `target` (in its canonical form) has been verified for `operation`. The cost is constant in
+    /// expectation.
     public func isVerified(_ operation: RebuildOperation, _ target: String) -> Bool {
-        verifiedTargets[operation]?.contains(target) ?? false
+        verifiedSets[operation]?.contains(target) ?? false
     }
 
     func verified(_ operation: RebuildOperation) -> [String] { verifiedTargets[operation] ?? [] }
+
+    func verifiedCount(_ operation: RebuildOperation) -> Int { verifiedSets[operation]?.count ?? 0 }
+
+    public static func == (lhs: RebuildProgress, rhs: RebuildProgress) -> Bool {
+        lhs.head == rhs.head && lhs.completedStages == rhs.completedStages && lhs.currentStage == rhs.currentStage
+            && lhs.verifiedTargets == rhs.verifiedTargets && lhs.openOperation == rhs.openOperation
+            && lhs.newPersistentIDs == rhs.newPersistentIDs && lhs.evacuationMethods == rhs.evacuationMethods
+            && lhs.appliedPaths == rhs.appliedPaths && lhs.stopCount == rhs.stopCount
+    }
 }
 
 /// Writing, parsing, and replaying the journal as pure functions of bytes, entries, and the recovery record.
 public enum ProgressJournal {
     public static let fileName = "rebuild-journal.jsonl"
 
-    /// The methods that qualify as evidence that the Music window shows an empty library.
-    ///
-    /// This set is empty, and that is the unresolved M12 gate. No detector for the emptiness of the graphical
-    /// library has been qualified, and a manual confirmation is deliberately not accepted as a substitute.
-    /// While the set is empty, every intent of `establishGUIEmptiness` is refused, so that neither
-    /// `terminateMusic` nor the completion of the clearing stage can be recorded. The set is a constant: no
-    /// production code path adds a method.
-    static let qualifiedGUIEmptinessMethods: Set<String> = []
+    /// The only target of a `confirmDisplay` operation. The `observed` list of its verification is the order of
+    /// the exposed addition dates of the albums, newest first. It is not an observation of the Music window.
+    public static let displayTarget = "date-added-order"
 
     // MARK: Parsing
 
@@ -172,7 +194,7 @@ public enum ProgressJournal {
         return entries
     }
 
-    private static func parseLine(_ line: Data, index: Int, isFinal: Bool) throws -> JournalEntry {
+    static func parseLine(_ line: Data, index: Int, isFinal: Bool) throws -> JournalEntry {
         let invalid: ProgressJournalError = isFinal ? .tornFinalEntry : .corruptEntry(index)
         guard let object = (try? JSONSerialization.jsonObject(with: line)) as? [String: Any] else { throw invalid }
         guard let format = object["format"] as? String else {
@@ -220,14 +242,13 @@ public enum ProgressJournal {
     public static func replay(record: RecoveryRecord, recordBytes: Data, entries: [JournalEntry]) throws
         -> RebuildProgress
     {
-        try replay(
-            record: record, recordBytes: recordBytes, entries: entries,
-            acceptedGUIEmptinessMethods: qualifiedGUIEmptinessMethods)
+        try replayIndexed(record: record, recordBytes: recordBytes, entries: entries).progress
     }
 
-    static func replay(
-        record: RecoveryRecord, recordBytes: Data, entries: [JournalEntry], acceptedGUIEmptinessMethods: Set<String>
-    ) throws -> RebuildProgress {
+    /// The replay together with the index of the record that it built, which a caller may keep for later entries.
+    static func replayIndexed(record: RecoveryRecord, recordBytes: Data, entries: [JournalEntry]) throws
+        -> (progress: RebuildProgress, index: RecordIndex)
+    {
         guard let first = entries.first, first.sequence == 0, case .header(let header) = first.body else {
             throw ProgressJournalError.headerMissing
         }
@@ -238,51 +259,60 @@ public enum ProgressJournal {
         guard header.scope == JournalHeader.wholeLibraryScope else {
             throw ProgressJournalError.unsupportedScope(header.scope)
         }
+        let index = RecordIndex(record)
         var progress = RebuildProgress(head: JournalHead(sequence: 0, checksum: first.checksum))
         for entry in entries.dropFirst() {
-            let found = nextEntryProblems(
-                record: record, progress: progress, entry: entry,
-                acceptedGUIEmptinessMethods: acceptedGUIEmptinessMethods)
+            let found = nextEntryProblems(index: index, record: record, progress: progress, entry: entry)
             if let problem = found.first { throw ProgressJournalError.invalidTransition(entry.sequence, problem) }
             progress.advance(with: entry, record: record)
         }
-        return progress
+        return (progress, index)
     }
 
     /// Parses and replays in one step.
     public static func load(data: Data, record: RecoveryRecord, recordBytes: Data) throws
         -> (entries: [JournalEntry], progress: RebuildProgress)
     {
+        let loaded = try loadIndexed(data: data, record: record, recordBytes: recordBytes)
+        return (loaded.entries, loaded.progress)
+    }
+
+    static func loadIndexed(data: Data, record: RecoveryRecord, recordBytes: Data) throws
+        -> (entries: [JournalEntry], progress: RebuildProgress, index: RecordIndex)
+    {
         let entries = try parse(data)
-        return (entries, try replay(record: record, recordBytes: recordBytes, entries: entries))
+        let replayed = try replayIndexed(record: record, recordBytes: recordBytes, entries: entries)
+        return (entries, replayed.progress, replayed.index)
     }
 
     // MARK: Transition rules
 
     /// Every reason for which `entry` may not follow `progress`. The replay and the writer share this function,
     /// so the writer refuses an invalid entry before anything is written.
+    ///
+    /// This entry point indexes the record on every call, at a cost proportional to the size of the record. A
+    /// caller that checks many entries uses the replay or `ProgressJournalFile.append(_:to:state:...)`, which build
+    /// the index once.
     public static func nextEntryProblems(record: RecoveryRecord, progress: RebuildProgress, entry: JournalEntry)
         -> [TransitionProblem]
     {
-        nextEntryProblems(
-            record: record, progress: progress, entry: entry, acceptedGUIEmptinessMethods: qualifiedGUIEmptinessMethods)
+        nextEntryProblems(index: RecordIndex(record), record: record, progress: progress, entry: entry)
     }
 
     static func nextEntryProblems(
-        record: RecoveryRecord, progress: RebuildProgress, entry: JournalEntry, acceptedGUIEmptinessMethods: Set<String>
+        index: RecordIndex, record: RecoveryRecord, progress: RebuildProgress, entry: JournalEntry
     ) -> [TransitionProblem] {
         var found: [TransitionProblem] = []
         if entry.sequence != progress.head.sequence + 1 {
             found.append(.notNextSequence(expected: progress.head.sequence + 1, found: entry.sequence))
         }
         if entry.previous != progress.head.checksum { found.append(.notChained) }
-        found += bodyProblems(
-            record: record, progress: progress, body: entry.body, accepted: acceptedGUIEmptinessMethods)
+        found += bodyProblems(index: index, record: record, progress: progress, body: entry.body)
         return found
     }
 
     private static func bodyProblems(
-        record: RecoveryRecord, progress: RebuildProgress, body: JournalBody, accepted: Set<String>
+        index: RecordIndex, record: RecoveryRecord, progress: RebuildProgress, body: JournalBody
     ) -> [TransitionProblem] {
         switch body {
         case .header: return [.headerRepeated]
@@ -295,15 +325,15 @@ public enum ProgressJournal {
         case .stageCompleted(let stage): return completionProblems(record: record, progress: progress, stage: stage)
         case .intent(let operation, let target):
             return intentProblems(
-                record: record, progress: progress, operation: operation, target: target, accepted: accepted)
+                index: index, record: record, progress: progress, operation: operation, target: target)
         case .returned(let operation, let target, _, _):
             return resolutionProblems(progress: progress, operation: operation, target: target, verifying: false)
         case .verified(let operation, let target, let observation):
             let found = resolutionProblems(progress: progress, operation: operation, target: target, verifying: true)
             if !found.isEmpty { return found }
             return observationProblems(
-                record: record, progress: progress, operation: operation, target: target, observation: observation,
-                accepted: accepted)
+                index: index, record: record, progress: progress, operation: operation, target: target,
+                observation: observation)
         case .header, .stopped: return []
         }
     }
@@ -334,10 +364,10 @@ public enum ProgressJournal {
         case .evacuation:
             missing = record.evacuation.map(\.sourcePath).filter { !progress.isVerified(.evacuateFile, $0) }
         case .clearing:
-            let removed = Set(progress.verified(.removeRegistration))
+            let removed = progress.verifiedSets[.removeRegistration] ?? []
             missing = record.mapping.map { $0.persistentID.uppercased() }.filter { !removed.contains($0) }
-            for operation in [RebuildOperation.confirmLibraryEmpty, .establishGUIEmptiness, .terminateMusic]
-            where progress.verified(operation).isEmpty {
+            for operation in [RebuildOperation.confirmLibraryEmpty, .terminateMusic]
+            where progress.verifiedCount(operation) == 0 {
                 missing.append(operation.rawValue)
             }
         case .application:
@@ -345,14 +375,14 @@ public enum ProgressJournal {
         case .addition:
             missing = record.additionList.filter { !progress.isVerified(.addAlbum, $0) }
         case .display:
-            missing = ["before-relaunch", "after-relaunch"].filter { !progress.isVerified(.confirmDisplay, $0) }
+            missing = progress.isVerified(.confirmDisplay, displayTarget) ? [] : [displayTarget]
         }
         return missing.isEmpty ? [] : [.stageIncomplete(stage: stage, missing: missing)]
     }
 
     private static func intentProblems(
-        record: RecoveryRecord, progress: RebuildProgress, operation: RebuildOperation, target: String,
-        accepted: Set<String>
+        index: RecordIndex, record: RecoveryRecord, progress: RebuildProgress, operation: RebuildOperation,
+        target: String
     ) -> [TransitionProblem] {
         if let open = progress.openOperation {
             return [.unresolvedOperation(operation: open.operation, target: open.target)]
@@ -361,28 +391,27 @@ public enum ProgressJournal {
         guard operation.stage == current else {
             return [.operationNotInStage(operation: operation, stage: operation.stage, current: current)]
         }
-        if operation == .establishGUIEmptiness && accepted.isEmpty { return [.guiEmptinessMethodNotQualified] }
         switch operation {
         case .evacuateFile:
-            guard record.evacuation.contains(where: { $0.sourcePath == target }) else {
+            guard index.evacuationBySourcePath[target] != nil else {
                 return [.targetNotInPlan(operation: operation, target: target)]
             }
         case .removeRegistration:
-            guard record.mapping.contains(where: { $0.persistentID.uppercased() == target.uppercased() }) else {
+            guard index.mappedIDs.contains(target.uppercased()) else {
                 return [.targetNotInPlan(operation: operation, target: target)]
             }
-        case .confirmLibraryEmpty, .establishGUIEmptiness, .terminateMusic:
+        case .confirmLibraryEmpty, .terminateMusic:
             guard target.isEmpty else { return [.targetNotInPlan(operation: operation, target: target)] }
         case .applyFile:
-            guard record.evacuation.contains(where: { $0.stagingPath == target }) else {
+            guard index.evacuationByStagingPath[target] != nil else {
                 return [.targetNotInPlan(operation: operation, target: target)]
             }
         case .addAlbum:
-            guard record.additionList.contains(target) else {
+            guard index.additionPositions[target] != nil else {
                 return [.targetNotInPlan(operation: operation, target: target)]
             }
         case .confirmDisplay:
-            guard target == "before-relaunch" || target == "after-relaunch" else {
+            guard target == displayTarget else {
                 return [.targetNotInPlan(operation: operation, target: target)]
             }
         }
@@ -392,30 +421,20 @@ public enum ProgressJournal {
         }
         switch operation {
         case .confirmLibraryEmpty:
-            let removed = Set(progress.verified(.removeRegistration))
-            if record.mapping.contains(where: { !removed.contains($0.persistentID.uppercased()) }) {
+            // Every verified removal is a mapped registration, so the counts are equal exactly when all are removed.
+            if progress.verifiedCount(.removeRegistration) < index.mappedIDs.count {
                 return [.prerequisiteMissing(operation: operation, requires: "removal of every mapped registration")]
             }
         case .terminateMusic:
-            if progress.verified(.confirmLibraryEmpty).isEmpty {
+            if progress.verifiedCount(.confirmLibraryEmpty) == 0 {
                 return [
                     .prerequisiteMissing(operation: operation, requires: RebuildOperation.confirmLibraryEmpty.rawValue)
                 ]
             }
-            if progress.verified(.establishGUIEmptiness).isEmpty {
-                return [
-                    .prerequisiteMissing(
-                        operation: operation, requires: RebuildOperation.establishGUIEmptiness.rawValue)
-                ]
-            }
         case .addAlbum:
-            let next = progress.verified(.addAlbum).count
+            let next = progress.verifiedCount(.addAlbum)
             if next < record.additionList.count, record.additionList[next] != target {
                 return [.targetOutOfOrder(operation: operation, expected: record.additionList[next], found: target)]
-            }
-        case .confirmDisplay:
-            if target == "after-relaunch" && !progress.isVerified(.confirmDisplay, "before-relaunch") {
-                return [.prerequisiteMissing(operation: operation, requires: "before-relaunch")]
             }
         default: break
         }
@@ -423,7 +442,7 @@ public enum ProgressJournal {
     }
 
     /// The stored spelling of a target: persistent IDs are compared case-insensitively and kept in uppercase.
-    static func canonicalTarget(_ operation: RebuildOperation, _ target: String) -> String {
+    public static func canonicalTarget(_ operation: RebuildOperation, _ target: String) -> String {
         operation == .removeRegistration ? target.uppercased() : target
     }
 
@@ -461,19 +480,18 @@ public enum ProgressJournal {
     private static func fieldRules(_ operation: RebuildOperation) -> (required: Set<String>, optional: Set<String>) {
         switch operation {
         case .evacuateFile: (["method", "staged", "sourcePresent"], ["source"])
-        case .removeRegistration: (["remaining"], [])
+        case .removeRegistration: (["remainingCount"], [])
         case .confirmLibraryEmpty: (["registrationCount"], [])
-        case .establishGUIEmptiness: (["method"], [])
         case .terminateMusic: (["musicRunning"], [])
-        case .applyFile: (["musicRunning", "result"], [])
+        case .applyFile: (["musicRunning", "result"], ["resultPath"])
         case .addAlbum: (["newPersistentIDs", "laterThanPreviousAlbum"], [])
         case .confirmDisplay: (["observed"], [])
         }
     }
 
     private static func observationProblems(
-        record: RecoveryRecord, progress: RebuildProgress, operation: RebuildOperation, target: String,
-        observation: JournalObservation, accepted: Set<String>
+        index: RecordIndex, record: RecoveryRecord, progress: RebuildProgress, operation: RebuildOperation,
+        target: String, observation: JournalObservation
     ) -> [TransitionProblem] {
         let rules = fieldRules(operation)
         let present = observation.presentFields
@@ -484,9 +502,8 @@ public enum ProgressJournal {
         }
         switch operation {
         case .evacuateFile:
-            guard let entry = record.inventory.first(where: { PathKey.key($0.absolutePath) == PathKey.key(target) })
+            guard let expected = index.inventoryByKey[PathKey.key(target)]
             else { return [.targetNotInPlan(operation: operation, target: target)] }
-            let expected = entry.record
             let method = observation.method ?? ""
             guard observation.staged?.matches(expected) == true else { return [.stagedFileDiffers(target: target)] }
             switch method {
@@ -501,26 +518,32 @@ public enum ProgressJournal {
             default: return [.unknownEvacuationMethod(method)]
             }
         case .removeRegistration:
-            let removed = Set(progress.verified(.removeRegistration)).union([target.uppercased()])
-            let expected = Set(record.mapping.map { $0.persistentID.uppercased() }).subtracting(removed)
-            let reported = (observation.remaining ?? []).map { $0.uppercased() }
-            if Set(reported).count != reported.count || Set(reported) != expected {
-                return [.remainingSetWrong(expected: expected.sorted(), found: reported.sorted())]
-            }
+            // The target is a mapped registration that has not been verified yet, because its intent was accepted.
+            let removed = progress.verifiedCount(.removeRegistration)
+            let targetIsNew = progress.isVerified(.removeRegistration, target.uppercased()) ? 0 : 1
+            let expected = index.mappedIDs.count - removed - targetIsNew
+            let reported = observation.remainingCount ?? 0
+            if reported != expected { return [.remainingCountWrong(expected: expected, found: reported)] }
         case .confirmLibraryEmpty:
             if let count = observation.registrationCount, count != 0 { return [.registrationCountNotZero(count)] }
-        case .establishGUIEmptiness:
-            if !accepted.contains(observation.method ?? "") { return [.guiEmptinessMethodNotQualified] }
-        case .terminateMusic, .applyFile:
+        case .terminateMusic:
             if observation.musicRunning != false { return [.musicRunning(operation: operation)] }
+        case .applyFile:
+            if observation.musicRunning != false { return [.musicRunning(operation: operation)] }
+            if let resultPath = observation.resultPath,
+                !resultPathIsAcceptable(
+                    index: index, record: record, progress: progress, target: target, resultPath: resultPath)
+            {
+                return [.resultPathInvalid(target: target, resultPath: resultPath)]
+            }
         case .addAlbum:
             let ids = (observation.newPersistentIDs ?? []).map { $0.uppercased() }
             if ids.isEmpty { return [.newPersistentIDsEmpty] }
-            let original = Set(record.mapping.map { $0.persistentID.uppercased() })
-            var seen = Set(progress.newPersistentIDs)
+            var batch = Set<String>()
             for (id, raw) in zip(ids, observation.newPersistentIDs ?? []) {
                 if !RegistrationRecord.isWellFormedID(raw) { return [.newPersistentIDMalformed(raw)] }
-                if original.contains(id) || !seen.insert(id).inserted { return [.newPersistentIDNotDisjoint(raw)] }
+                let known = index.mappedIDs.contains(id) || progress.newPersistentIDSet.contains(id)
+                if known || !batch.insert(id).inserted { return [.newPersistentIDNotDisjoint(raw)] }
             }
             if observation.laterThanPreviousAlbum != true { return [.albumNotLater(target: target)] }
         case .confirmDisplay:
@@ -530,6 +553,19 @@ public enum ProgressJournal {
             }
         }
         return []
+    }
+
+    /// True when `resultPath` is an absolute, normalized path strictly inside the staging directory that differs
+    /// from every earlier result and from every staging path of the record other than `target`.
+    private static func resultPathIsAcceptable(
+        index: RecordIndex, record: RecoveryRecord, progress: RebuildProgress, target: String, resultPath: String
+    ) -> Bool {
+        guard PathKey.invalidReason(resultPath) == nil, resultPath != "/",
+            PathKey.relation(resultPath, record.locations.stagingDirectory) == .firstInsideSecond
+        else { return false }
+        let key = PathKey.key(resultPath)
+        if progress.appliedPathKeys.contains(key) { return false }
+        return key == PathKey.key(target) || !index.stagingKeys.contains(key)
     }
 }
 
@@ -553,11 +589,20 @@ extension RebuildProgress {
                     operation: open.operation, target: open.target, returned: true, returnFailed: !succeeded)
             }
         case .verified(let operation, let target, let observation):
-            verifiedTargets[operation, default: []].append(ProgressJournal.canonicalTarget(operation, target))
+            let canonical = ProgressJournal.canonicalTarget(operation, target)
+            verifiedTargets[operation, default: []].append(canonical)
+            verifiedSets[operation, default: []].insert(canonical)
             openOperation = nil
             if operation == .evacuateFile { evacuationMethods[target] = observation.method ?? "" }
+            if operation == .applyFile {
+                let result = observation.resultPath ?? target
+                appliedPaths[target] = result
+                appliedPathKeys.insert(PathKey.key(result))
+            }
             if operation == .addAlbum {
-                newPersistentIDs += (observation.newPersistentIDs ?? []).map { $0.uppercased() }
+                let added = (observation.newPersistentIDs ?? []).map { $0.uppercased() }
+                newPersistentIDs += added
+                newPersistentIDSet.formUnion(added)
             }
         case .stopped: stopCount += 1
         }

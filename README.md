@@ -18,7 +18,7 @@ ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary 0.2.0 is experimental. Eleven top-level commands are implemented; within `rebuild`, only `prepare` and `status` are implemented, and the staged rebuilding of a Music library is planned for version 0.3.0, as the [Roadmap](docs/roadmap.md) describes. File processing is verified with synthetic tests, and Music operations are tested with a substitute library; the Music commands were also exercised in a separate macOS user on macOS 27.0.1 with Music 1.7. Begin with copies and keep independent backups of your library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary 0.2.0 is experimental. The source tree implements every planned command, including the staged rebuilding of an existing Music library, as the [Roadmap](docs/roadmap.md) describes. File processing is verified with synthetic tests, and Music operations are tested with a substitute library. The Music requests that iLibrary sends use forms measured in a separate macOS user on macOS 27.0.1 with Music 1.7, but the rebuilding stages have not been run against the Music application. Begin with copies and keep independent backups of your library. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 >
 > A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a library or backup medium can be recovered. iLibrary does not prevent Apple Music cloud matching.
 
@@ -43,7 +43,7 @@ ilibrary apply catalog.json ./staging --dry-run
 
 ## Features
 
-- **Ordered addition to Music.** `add` moves each album into the Music media folder, adds it there in place, and confirms one track per file before the next album, in release or artist order. It stops when the library already holds a matching track, never changes a track in Music, and resumes an interrupted run.
+- **Ordered addition to Music.** `add` moves each album into the Music media folder, adds it there in place, and confirms one track per file before the next album, in release or artist order. Each album is added only after the clock has passed the previous album's addition second, so that Recently Added shows the intended order. It stops when the library already holds a matching track, never changes a track in Music, and resumes an interrupted run.
 - **Lossless import.** `import` converts FLAC, WAV, and AIFF downloads to Apple Lossless through AudioToolbox, verified by decoded PCM equality, and copies iTunes Store files without re-encoding while removing purchase metadata. Standard FLAC tags and the front cover are carried; with `--delete-originals`, originals are moved to the Trash only after every output has been verified.
 - **Catalog commands.** `export` drafts a catalog from existing tags, `prompt` prepares it for completion by an AI agent or chat, `validate` checks it and its correspondence with files, and `apply` writes it to the files. `export --strict` refuses, without writing, an export that is not a complete inventory. Every planned change is listed first; `--dry-run` stops there, and every written file is read back and compared with the plan.
 - **Music-style names and release dates.** `apply --rename` arranges files as `Album Artist/Album/NN Song.m4a`, and `timestamps` sets file and folder dates to release dates at local midnight. Missing paths are never created, and symbolic links are refused.
@@ -51,7 +51,7 @@ ilibrary apply catalog.json ./staging --dry-run
 - **Removal of iTunes Store purchase metadata.** The purchaser's account, name, purchase date, store identifiers, and purchase information are removed, padding is zeroed, and the gapless information is kept. Encrypted files (`.m4p` and `drms` sample entries) are refused.
 - **FLAC metadata.** `FLACCore` reads stream information, Vorbis comments, and pictures without decoding audio, and rejects truncated metadata.
 - **Catalogs.** `CatalogCore` validates the `ilibrary-catalog-1` format with located diagnostics, and provides matching of files to catalog tracks, Music-style naming, four album orders, title rules, and release-date handling.
-- **Backup verification and recovery records.** `rebuild prepare` inventories the selected files and Music registrations, verifies a backup on separate storage, performs a restoration test, confirms that the backup volume is ejected, and writes a private recovery record that `rebuild status` reports. Neither subcommand changes Music, the source files, or the backup; the staged rebuilding of a Music library is not implemented.
+- **Library rebuilding.** `rebuild prepare` inventories the selected files and Music registrations, verifies a backup on separate storage, performs a restoration test, confirms that the backup volume is ejected, and writes a private recovery record. `rebuild stage` then moves the files out of the media folder, `rebuild clear` removes exactly the recorded registrations and confirms that Music reports no tracks, `rebuild apply` writes the catalog to the files while Music is closed, and `rebuild add` adds the albums again in the chosen order. Every stage records its progress, resumes after an interruption, and refuses to run out of order.
 - **Checks and diagnostics.** `check` reports missing tags, duplicate tracks, and incorrect dates; `check --library` compares files with Music by location and reports stale metadata, missing files, and notable cloud statuses. `doctor` reports environment problems and recovery steps without launching Music or reading its library.
 
 ## Requirements
@@ -152,6 +152,8 @@ ilibrary apply CATALOG.json PATH... [--dry-run] [--rename] [--timestamps]
 ilibrary import SOURCE... -o DIR [--from mora|itunes|auto] [--delete-originals] [--dry-run]
 ilibrary add PATH... [--order release|artist|artist-desc|artist-release] [--dry-run]
 ilibrary rebuild prepare CATALOG.json SOURCE --workspace DIR --backup DIR --restore-test DIR --staging DIR [--dry-run]
+ilibrary rebuild stage|clear --workspace DIR [--dry-run]
+ilibrary rebuild apply|add --workspace DIR [--timestamps] [--dry-run]
 ilibrary rebuild status --workspace DIR
 ilibrary timestamps CATALOG.json PATH... [--dry-run] [--script FILE]
 ilibrary check [PATH...] [--library]
@@ -159,7 +161,7 @@ ilibrary doctor
 ilibrary help [COMMAND] | --help | --version
 ```
 
-`rebuild prepare` and `rebuild status` are new in version 0.2.0. The subcommands `rebuild stage`, `rebuild clear`, `rebuild apply`, and `rebuild add` are reserved: each reports that it is planned and exits with status 2. They are distinct from the implemented top-level `ilibrary add` and `ilibrary apply`. See [Command-Line Interface](docs/command-line-interface.md#rebuild).
+The `rebuild` stages run in the order `prepare`, `stage`, `clear`, `apply`, and `add`, and `status` reports where a rebuild stands. They are distinct from the top-level `ilibrary add` and `ilibrary apply`, which they reuse. See [Command-Line Interface](docs/command-line-interface.md#rebuild).
 
 Exit status is 0 on success, 1 on a failure or a finding from `check` or `doctor`, and 2 on a usage error. `check` requires at least one path or `--library`.
 
@@ -247,7 +249,7 @@ Use audio and artwork that you are entitled to process. The repository contains 
 - Library comparison covers the file tracks and thirteen fields exposed by the adapter. Artwork, copyright, full release dates, and cloud-only entries not exposed as file tracks are not compared.
 - Mutating batches are not transactions: a later failure can leave earlier files or albums completed. Keep backups and the addition journal; no automatic library rollback is attempted.
 - Real Trash operations remain untested; public tests use a substitute Trash.
-- `rebuild prepare` was exercised once on a synthetic library of 12 tracks with one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests only.
+- `rebuild prepare` was exercised once on a synthetic library of 12 tracks with one external HFS+ backup drive; APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests only. The later stages are tested with a substitute library and have not been run against Music. `rebuild clear` establishes an empty library by Music's track count, not by inspecting the Music window, and `rebuild add` compares exposed addition dates with the intended Recently Added order rather than observing the display. The staging directory must be on the volume of the media folder.
 - `check --library` uses a bulk read only when its result is consistent and every track's cloud status is `unknown`, and otherwise uses the previous per-track read. In one maintainer-run comparison on a synthetic library of 12 tracks with macOS 27.0.1 and Music 1.7, its results matched those of the per-track read. Which read was used, its speed with larger libraries, and its behavior with other cloud statuses were not measured; libraries with other statuses keep the per-track read and its speed.
 
 ## Documentation

@@ -117,6 +117,9 @@ struct Environment: Sendable {
     /// Waits until the volume with a UUID is confirmed to be no longer mounted, for at most the given seconds. It
     /// never unmounts anything; nil where unavailable.
     var waitUntilUnmounted: (@Sendable (String, TimeInterval) -> DisconnectionCheck)? = Environment.systemUnmountWait
+    /// The current time, and a pause of the given seconds; tests replace both with a simulated clock.
+    var now: @Sendable () -> Date = { Date() }
+    var pause: @Sendable (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) }
 
     static var system: Environment {
         #if canImport(LibraryMac) && os(macOS)
