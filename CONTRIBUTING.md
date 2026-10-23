@@ -2,7 +2,7 @@
 
 ## Development Setup
 
-Read [AGENTS.md](AGENTS.md), [Current Status](docs/roadmap-to-stable.md), and the historical [Technical Planning Study](docs/planning-study.md) before architectural changes. Work in this repository and use a focused branch. The source build requires Swift 6; current verification uses Apple Swift 6.4 on macOS and Swift 6.4 on Linux.
+Read [AGENTS.md](AGENTS.md), [Roadmap](docs/roadmap.md), and the historical [Technical Planning Study](docs/planning-study.md) before architectural changes. Work in this repository and use a focused branch. The source build requires Swift 6; current verification uses Apple Swift 6.4 on macOS and Swift 6.4 on Linux.
 
 ```sh
 swift build -c release

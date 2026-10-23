@@ -1,5 +1,8 @@
 # Plan for the Stable Release
 
+> [!NOTE]
+> This plan is superseded by the [Roadmap to iLibrary 1.0.0](roadmap.md) and is retained only until the repository consolidation described there.
+
 ## Status and Evidence
 
 Approved by the maintainer on October 17, 2026, and revised on the same date after the M10 timestamp measurements. The maintainer accepts differences in addition timestamps when Recently Added presents the intended album order. Decisions 34 to 36 authorize guarded probe preparation and separate-user handoffs, including the isolated timing comparison and the separated-addition qualification, with a stop before the maintainer's Music operations; they do not authorize product implementation, personal-library operations, or publication. Version 0.1.0 is published. This plan supersedes the prospective version assignments in the [historical study](planning-study.md#outlook-to-version-100), not its completed measurements.

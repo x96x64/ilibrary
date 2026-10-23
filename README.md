@@ -18,7 +18,7 @@ ilibrary apply catalog.json ./staging --dry-run
 ```
 
 > [!IMPORTANT]
-> iLibrary 0.2.0 is experimental. See [Current Status](docs/roadmap-to-stable.md) for publication and verification results. Eleven top-level commands are implemented; within `rebuild`, only `prepare` and `status` are implemented, and the staged rebuilding of a Music library is not implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
+> iLibrary 0.2.0 is experimental. See the [Roadmap](docs/roadmap.md) for the remaining work and its verification limits. Eleven top-level commands are implemented; within `rebuild`, only `prepare` and `status` are implemented, and the staged rebuilding of a Music library is not implemented. File processing is verified with synthetic tests, and Music operations use a substitute library in the public suite. The implemented Music commands passed [separate-user validation](docs/reports/library-command-validation.md), and 301 real-file copies passed [copy qualification](docs/reports/library-qualification.md). Follow [Test Library Validation](docs/test-library-validation.md) in a separate macOS user before considering personal-library use. iLibrary is not affiliated with, endorsed by, or sponsored by Apple.
 >
 > `rebuild prepare` was qualified once by the maintainer, on a synthetic library of 12 tracks on one Mac with macOS 27.0.1 and Music 1.7 and one external HFS+ backup drive. APFS backups and the refusal of partitions, disk images, and network volumes are covered by tests, not by that live run. A successful `rebuild prepare` shows only that the checks it reports passed for the selected files, backup, and environment at that time; it does not guarantee that a personal library or backup medium can be recovered. Keep independent backups and complete the separate-user validation before any personal-library use; iLibrary does not prevent Apple Music cloud matching.
 
@@ -106,7 +106,7 @@ The executable is `.build/release/ilibrary`. The `PATH` line makes it available 
 
 Use `brew upgrade ilibrary`, `npm update -g @x96_64/ilibrary`, or `python -m pip install --upgrade x96_64-ilibrary` in the selected virtual environment.
 
-In a clean source checkout, run `git pull --ff-only` and rebuild with `swift build -c release`. Review [Current Status](docs/roadmap-to-stable.md) and [CHANGELOG.md](CHANGELOG.md) before adopting a new development commit. If Git reports local changes or divergent history, preserve those changes and resolve them before updating.
+In a clean source checkout, run `git pull --ff-only` and rebuild with `swift build -c release`. Review the [Roadmap](docs/roadmap.md) and [CHANGELOG.md](CHANGELOG.md) before adopting a new development commit. If Git reports local changes or divergent history, preserve those changes and resolve them before updating.
 
 ### Uninstalling
 
@@ -258,7 +258,7 @@ Use audio and artwork that you are entitled to process. The repository contains 
 - [Technical Planning Study](docs/planning-study.md): the approved plan, preserved as a historical record
 - [Command-Line Interface](docs/command-line-interface.md): commands, options, and exit status
 - [Completing Catalogs with AI Agents](docs/catalog-for-agents.md): the authoring workflow
-- [Roadmap to the Stable Release](docs/roadmap-to-stable.md): current status and decisions in force
+- [Roadmap to iLibrary 1.0.0](docs/roadmap.md): remaining work, rebuilding safety boundary, and verification limits
 - [Catalog JSON Schema](docs/schema/ilibrary-catalog-1.schema.json)
 - [Documentation Index](docs/README.md): every engineering report, in chronological order
 

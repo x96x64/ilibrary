@@ -65,7 +65,7 @@ npm and PyPI install the same native executable. To build from source instead, f
 
 ### Updating
 
-Read the [changelog](https://github.com/x96x64/ilibrary/blob/main/CHANGELOG.md) and [Current Status](https://github.com/x96x64/ilibrary/blob/main/docs/roadmap-to-stable.md) before updating. Use `brew upgrade ilibrary`, `npm update -g @x96_64/ilibrary`, or `python -m pip install --upgrade x96_64-ilibrary` in the selected virtual environment.
+Read the [changelog](https://github.com/x96x64/ilibrary/blob/main/CHANGELOG.md) and [Roadmap](https://github.com/x96x64/ilibrary/blob/main/docs/roadmap.md) before updating. Use `brew upgrade ilibrary`, `npm update -g @x96_64/ilibrary`, or `python -m pip install --upgrade x96_64-ilibrary` in the selected virtual environment.
 
 ### Uninstalling
 
@@ -165,7 +165,7 @@ See [Limitations](https://github.com/x96x64/ilibrary#limitations) in the iLibrar
 - [Command-Line Interface](https://github.com/x96x64/ilibrary/blob/main/docs/command-line-interface.md): commands, options, and exit status
 - [Library Operations and Recovery](https://github.com/x96x64/ilibrary/blob/main/docs/library-operations.md): dry runs, interrupted runs, and privacy
 - [Distribution](https://github.com/x96x64/ilibrary/blob/main/docs/distribution.md): package names, contents, installation, and publication
-- [Roadmap to the Stable Release](https://github.com/x96x64/ilibrary/blob/main/docs/roadmap-to-stable.md): current status and decisions in force
+- [Roadmap to iLibrary 1.0.0](https://github.com/x96x64/ilibrary/blob/main/docs/roadmap.md): remaining work, rebuilding safety boundary, and verification limits
 - [Changelog](https://github.com/x96x64/ilibrary/blob/main/CHANGELOG.md) and [releases](https://github.com/x96x64/ilibrary/releases)
 - [Support](https://github.com/x96x64/ilibrary/blob/main/SUPPORT.md) and the [issue tracker](https://github.com/x96x64/ilibrary/issues)
 
