@@ -13,8 +13,58 @@ import unittest
 from unittest.mock import patch
 
 import check_release
+import release_notes
 import repackage
 from verify import historical_package_readme, tar_files
+
+
+class NewReleaseTests(unittest.TestCase):
+    commit = "c" * 40
+
+    def tree(self, temporary, version="1.2.3", changelog="## [1.2.3] - 2026-11-01\n\n### Added\n\n- A change.\n"):
+        root = Path(temporary)
+        (root / "Sources/ilibrary").mkdir(parents=True)
+        (root / "Sources/ilibrary/CommandLineInterface.swift").write_text(f'let version = "{version}"\n')
+        (root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n" + changelog + "\n## [1.2.2] - 2026-10-01\n\n- Older.\n")
+        return root
+
+    def test_a_new_release_of_an_integrated_versioned_commit_is_accepted(self):
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.object(check_release, "exists", return_value=False), \
+                patch.object(check_release, "api", return_value={"status": "identical"}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            check_release.check_new("v1.2.3", self.commit, self.tree(temporary))
+
+    def test_an_existing_tag_or_release_is_never_replaced(self):
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.object(check_release, "exists", return_value=True), \
+                patch.object(check_release, "api", return_value={"status": "identical"}):
+            with self.assertRaises(SystemExit):
+                check_release.check_new("v1.2.3", self.commit, self.tree(temporary))
+
+    def test_a_mismatched_version_or_undated_changelog_is_refused(self):
+        for version, changelog in [("1.2.4", "## [1.2.3] - 2026-11-01\n\n- A change.\n"),
+                                   ("1.2.3", "## [1.2.3]\n\n- A change.\n")]:
+            with tempfile.TemporaryDirectory() as temporary, \
+                    patch.object(check_release, "exists", return_value=False) as exists:
+                with self.assertRaises(SystemExit):
+                    check_release.check_new("v1.2.3", self.commit, self.tree(temporary, version, changelog))
+                exists.assert_not_called()
+
+    def test_release_notes_carry_the_version_section_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            text = release_notes.notes("1.2.3", self.tree(temporary))
+        self.assertIn("- A change.", text)
+        self.assertNotIn("Older.", text)
+        self.assertIn("@x96_64/ilibrary@1.2.3", text)
+        self.assertIn("blob/v1.2.3/CHANGELOG.md", text)
+        self.assertEqual(release_notes.TITLE.format(version="1.2.3"),
+                         "iLibrary: v1.2.3, Catalog-Driven Music Libraries for Apple Music on macOS")
+
+    def test_release_notes_require_a_section(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaises(SystemExit):
+                release_notes.notes("9.9.9", self.tree(temporary))
 
 
 class ReleaseGuardTests(unittest.TestCase):
@@ -67,7 +117,7 @@ class ReleaseGuardTests(unittest.TestCase):
 
     def test_invalid_identifiers_make_no_request(self):
         with patch.object(check_release, "api") as api:
-            for tag, commit in [("v1.0.0", self.commit), ("v0.1.0;bad", self.commit), ("v0.1.0", "main")]:
+            for tag, commit in [("v1.0", self.commit), ("v0.1.0;bad", self.commit), ("v0.1.0", "main")]:
                 with self.assertRaises(SystemExit):
                     check_release.main(tag, commit)
             api.assert_not_called()

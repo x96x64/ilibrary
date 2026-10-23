@@ -10,19 +10,17 @@ This document supersedes the earlier stable-release plan, the M10 to M15 milesto
 
 ## Implemented Capabilities
 
-Version 0.2.0 implements the file side of the workflow and ordinary addition. `import` converts lossless downloads with decoded PCM verification and copies iTunes Store files without purchase metadata. `export`, `prompt`, `schema`, `validate`, and `apply` draft, complete, check, and write catalogs, with Music-style renaming and release-date timestamps. `add` moves albums into the media folder and adds them one at a time in four orders, with resumption. `check` and `doctor` diagnose files, the library, and the environment.
+Version 0.3.0 implements the complete workflow. `import` converts lossless downloads with decoded PCM verification and copies iTunes Store files without purchase metadata. `export`, `prompt`, `schema`, `validate`, and `apply` draft, complete, check, and write catalogs, with Music-style renaming and release-date timestamps. `add` moves albums into the media folder and adds them one at a time in four orders, each after the previous album's addition second, with resumption. `check` and `doctor` diagnose files, the library, and the environment.
 
-`rebuild prepare` inventories the selected files and every Music registration, verifies a backup on separate storage, tests restoration, confirms that the backup volume is disconnected, and writes an immutable recovery record. `rebuild status` reports that record. `RebuildCore` also contains an append-only, hash-chained progress journal for the later stages, which no command writes yet.
+`rebuild prepare` inventories the selected files and every Music registration, verifies a backup on separate storage, tests restoration, confirms that the backup volume is disconnected, and writes an immutable recovery record. `rebuild stage`, `clear`, `apply`, and `add` then move the files out of the media folder, remove exactly the recorded registrations, write the catalog to the files while Music is closed, and add the albums again in the recorded order, recording every operation in an append-only progress journal that `rebuild status` reports.
 
 The Foundation-only targets (`MP4Core`, `FLACCore`, `CatalogCore`, `RebuildCore`) and the command logic build and test on Linux. Conversion, file dates, and Music automation are confined to the macOS targets `ConversionMac` and `LibraryMac` and are verified by macOS CI with substitute libraries.
 
 ## Remaining Product Work
 
-The only missing user-facing capability is the staged rebuilding of an existing library: `rebuild stage`, `rebuild clear`, `rebuild apply`, and `rebuild add`. Each reads the recovery record and appends to the progress journal, offers `--dry-run`, states its changes before making them, verifies its result, and refuses to run out of order. `rebuild status` reports the journal as well as the record.
+No planned user-facing capability remains unimplemented. The rebuilding stages are tested with a substitute library and have not been run against the Music application; their Music requests use the forms measured in the separate-user qualifications, except the reading of addition dates by persistent ID and the request to quit, which were not among the measured forms. These are documented limitations rather than gaps in the workflow.
 
-`stage` moves every inventoried file from the media folder to the staging directory, verifying size, digest, and dates. `clear` requires a completed evacuation and an unchanged library, removes exactly the recorded registrations by persistent ID, one per call, confirms that Music reports no remaining tracks, quits Music, and confirms that it is no longer running. `apply` requires Music to be closed, verifies that the catalog is the one recorded, and writes tags, names, and optional timestamps to the staged files. `add` adds the albums in the recorded order, one per request, and confirms that each album's addition dates are strictly later than those of the previous album.
-
-Ordinary `add` adopts the same separated addition: before each album it waits until the clock has passed the latest addition second of the previous album, and it stops if the new album does not follow it. This is the technique that produced the intended Recently Added order in every measured case.
+The work before 1.0.0 is engineering quality: a final pass over all production code, comments, and documentation, and the distribution review described below.
 
 ## Rebuilding Safety Boundary
 
@@ -36,7 +34,7 @@ Agents never run `rebuild` against the maintainer's library. Its Music-facing be
 
 The repository consolidation precedes product work and is not a release. Completed in October 2026, it replaced the historical plans, reports, procedures, probes, and validation scripts with this roadmap and a small set of canonical documents and removed the qualification-only executables `GUIProbeMac`, `M11Probe`, and `ReferenceProbe`, after consolidating their essential findings. Removing the merged branches and enabling automatic deletion of merged head branches remain to be completed.
 
-Version 0.3.0 completes the workflow: the four rebuilding stages, journal reporting in `rebuild status`, separated addition in ordinary `add`, and updated command reference and recovery guidance. It is released when Linux and macOS CI pass and an independent review of the removal and evacuation paths finds no blocking defect.
+Version 0.3.0 completes the workflow: the four rebuilding stages, journal reporting in `rebuild status`, separated addition in ordinary `add`, and updated command reference and recovery guidance. Linux and macOS CI passed, and an independent review of the removal and evacuation paths and an automated review found defects that were corrected before integration.
 
 Version 1.0.0 follows a final engineering pass over all production code: removal of duplicated and dead code and of unnecessary comments, measured performance changes where they matter, comparison of command behavior before and after, a final documentation and distribution review, and publication through the established channels. Releases keep the title defined in [Release Titles](distribution.md#release-titles).
 
