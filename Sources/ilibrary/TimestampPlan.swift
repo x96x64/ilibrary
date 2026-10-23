@@ -119,8 +119,13 @@ enum TimestampPlanner {
         for note in plan.notes { console.print("  note: \(note)") }
     }
 
+    /// The dates that `SetFile -d` stores correctly. It keeps a creation date as an unsigned 32-bit count of seconds
+    /// since 1970, so an earlier date was measured to wrap to a date in 2094; the script refuses such dates instead.
+    static let scriptableDates = Date(timeIntervalSince1970: 0)...Date(timeIntervalSince1970: 4_294_967_295)
+
     /// A shell script that sets the same dates with SetFile and touch. Each path is checked first; a missing path
-    /// or a symbolic link is reported and skipped, so that the script never creates a path.
+    /// or a symbolic link is reported and skipped, so that the script never creates a path. A date that SetFile
+    /// cannot store is reported and skipped as well.
     static func script(_ plan: TimestampPlan, timeZone: TimeZone) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
@@ -141,8 +146,16 @@ enum TimestampPlanner {
             "    fi",
             "    SetFile -d \"$2\" \"$1\" && touch -c -m -t \"$3\" \"$1\" || status=1",
             "}",
+            "refuse_date() {",
+            "    echo \"skipped (SetFile cannot store $2 as a creation date): $1\" >&2",
+            "    status=1",
+            "}",
         ]
         for target in plan.targets {
+            guard scriptableDates.contains(target.date) else {
+                lines.append("refuse_date \(quoted(target.url.path)) \(quoted(target.releaseDate.description))")
+                continue
+            }
             let c = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: target.date)
             let setFile = String(
                 format: "%02d/%02d/%04d %02d:%02d:%02d", c.month!, c.day!, c.year!, c.hour!, c.minute!, c.second!)

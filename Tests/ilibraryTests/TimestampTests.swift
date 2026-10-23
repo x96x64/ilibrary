@@ -79,7 +79,7 @@ import Testing
     }
 
     @Test func theScriptChecksEveryPathAndQuotes() {
-        let catalog = catalog(folderDate: "1957-08-29")
+        let catalog = catalog(folderDate: "1971-08-29")
         let root = URL(fileURLWithPath: "/Staging/It's Here")
         let plan = TimestampPlanner.plan(
             files: files(catalog, root: root), catalog: catalog, roots: [root], timeZone: TimestampPlanTests.zone)
@@ -89,13 +89,25 @@ import Testing
         #expect(script.contains("if [ -L \"$1\" ] || [ ! -e \"$1\" ]; then"))
         #expect(script.contains("touch -c -m -t"))
         #expect(
-            script.contains(
-                "set_dates '/Staging/It'\\''s Here/Example Artist/Synthetic Album/01 One.m4a' '08/29/1958 00:00:00' '195808290000.00'"
-            ))
-        #expect(
-            script.contains("set_dates '/Staging/It'\\''s Here/Example Artist' '08/29/1957 00:00:00' '195708290000.00'")
+            script.contains("set_dates '/Staging/It'\\''s Here/Example Artist' '08/29/1971 00:00:00' '197108290000.00'")
         )
         #expect(script.hasSuffix("exit $status\n"))
+    }
+
+    @Test func theScriptRefusesDatesThatSetFileCannotStore() {
+        let catalog = catalog(folderDate: "1971-08-29")
+        let root = URL(fileURLWithPath: "/Staging")
+        let plan = TimestampPlanner.plan(
+            files: files(catalog, root: root), catalog: catalog, roots: [root], timeZone: TimestampPlanTests.zone)
+        let script = TimestampPlanner.script(plan, timeZone: TimestampPlanTests.zone)
+        #expect(script.contains("refuse_date '/Staging/Example Artist/Synthetic Album/01 One.m4a' '1958-08-29'"))
+        #expect(script.contains("refuse_date '/Staging/Example Artist/Synthetic Album/02 Two.m4a' '1959-08-29'"))
+        #expect(!script.contains("set_dates '/Staging/Example Artist/Synthetic Album/01 One.m4a'"))
+        #expect(!script.contains("08/29/1958"))
+        #expect(script.contains("set_dates '/Staging/Example Artist' '08/29/1971 00:00:00' '197108290000.00'"))
+        #expect(TimestampPlanner.scriptableDates.contains(Date(timeIntervalSince1970: 0)))
+        #expect(!TimestampPlanner.scriptableDates.contains(Date(timeIntervalSince1970: -1)))
+        #expect(!TimestampPlanner.scriptableDates.contains(Date(timeIntervalSince1970: 4_294_967_296)))
     }
 
     @Test func withoutCreationDatesOnlyDryRunsAndScriptsAreAvailable() throws {
@@ -113,7 +125,8 @@ import Testing
             ["timestamps", url.path, library.root.path, "--dry-run", "--script", script.path], environment: environment)
         #expect(preview.status == 0, "\(preview.errorText)")
         #expect(preview.text.contains("Dates: 12 paths"))
-        #expect(try String(contentsOf: script, encoding: .utf8).contains("set_dates"))
+        #expect(try String(contentsOf: script, encoding: .utf8).contains("refuse_date"))
+        #expect(preview.errorText.contains("the script skips 12 paths whose dates SetFile cannot store"))
         #expect(Run(["apply", url.path, library.root.path, "--timestamps"], environment: environment).status == 1)
     }
 }
@@ -186,6 +199,13 @@ import Testing
             defer { library.remove() }
             let url = library.root.appendingPathComponent("catalog.json")
             #expect(Run(["export", library.root.path, "-o", url.path]).status == 0)
+            var catalog = try #require(Catalog.validate(try Data(contentsOf: url)).catalog)
+            let album = try #require(catalog.albums.firstIndex { $0.album == "Synthetic Album" })
+            catalog.albums[album].releaseDate = "1971-08-29"
+            try FileManager.default.removeItem(at: url)
+            try catalog.encoded().write(to: url)
+            let older = library.root.appendingPathComponent("Download Two")
+            let olderDates = try dates(older)
             let script = library.root.appendingPathComponent("dates.sh")
             #expect(Run(["timestamps", url.path, library.root.path, "--dry-run", "--script", script.path]).status == 0)
             let removed = library.root.appendingPathComponent("Download Three/02-Another Version_1002.m4a")
@@ -198,13 +218,15 @@ import Testing
             process.waitUntilExit()
             #expect(process.terminationStatus == 1)
             #expect(pathKind(removed) == .missing)
-            let release = Date(timeIntervalSince1970: -357_987_600)
+            let release = Date(timeIntervalSince1970: 52_239_600)
             let song = library.root.appendingPathComponent("Download One/01-First Song_1001.m4a")
             for url in [song, library.root.appendingPathComponent("Download One")] {
                 let (created, modified) = try dates(url)
                 #expect(created == release, "creation date of \(url.lastPathComponent)")
                 #expect(modified == release, "modification date of \(url.lastPathComponent)")
             }
+            // The other albums are dated before 1970, which SetFile cannot store, so the script leaves them alone.
+            #expect(try dates(older) == olderDates)
         }
     }
 #endif

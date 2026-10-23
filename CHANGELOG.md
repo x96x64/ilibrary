@@ -6,6 +6,10 @@ All notable changes to iLibrary are recorded here. The format follows [Keep a Ch
 
 ## [1.0.2] - 2026-10-23
 
+### Fixed
+
+- **Script Dates Before 1970:** A script written by `timestamps --script` reports and skips every path dated before 1970 instead of letting `SetFile`, which stores creation dates as unsigned 32-bit seconds since 1970, set a wrapped creation date in the future, and `timestamps` warns when the script skips paths. `timestamps` and `apply --timestamps` on macOS, which set dates directly, were not affected.
+
 ### Changed
 
 - **Synthetic Examples:** Tests, fixtures, help text, and documentation use synthetic artists, albums, and song titles, with 1958-08-29 as the ordinary example date; the catalog reference no longer reproduces a commercial album. Boundary dates for leap years, daylight saving time, and invalid input keep their roles.
