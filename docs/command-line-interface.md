@@ -46,6 +46,8 @@ Paths may be files or directories. Directories are searched recursively for `.m4
 
 ## Commands
 
+The commands follow the order of the workflow in the README. `import` prepares a staging folder, `add` and the `rebuild` group change the Music library, `export`, `prompt`, `schema`, `validate`, `apply`, and `timestamps` draft, check, and write catalogs, and `check` and `doctor` diagnose files, the library, and the environment. Every command that changes files or the library offers `--dry-run`, states what it will change before changing it, and verifies its result afterwards.
+
 ### import
 
 ```bash
@@ -55,14 +57,14 @@ ilibrary import ~/Downloads/mora -o ~/Music/Staging --delete-originals
 
 Converts lossless downloads to Apple Lossless and copies iTunes Store files without re-encoding, into a staging folder.
 
-- **Conversion.** FLAC, WAV, and AIFF files are converted through AudioToolbox at their own bit depth and sample rate. Each output is verified against its source by equal decoded PCM digests and frame counts, by declared against decoded lengths, and, for WAV and AIFF, by the length of the sample chunk (decision 7). Floating-point PCM, more than two channels, and incomplete files are refused. Conversion requires macOS.
+- **Conversion.** FLAC, WAV, and AIFF files are converted through AudioToolbox at their own bit depth and sample rate. Each output is verified against its source by equal decoded PCM digests and frame counts, by declared against decoded lengths, and, for WAV and AIFF, by the length of the sample chunk. Floating-point PCM, more than two channels, and incomplete files are refused. Conversion requires macOS.
 - **FLAC tags.** The standard fields TITLE, ARTIST, ALBUMARTIST (or ALBUM ARTIST), ALBUM, GENRE, COMPOSER, COPYRIGHT, DATE, TRACKNUMBER with TRACKTOTAL, and DISCNUMBER with DISCTOTAL are carried, with several values of one field joined by `, `; a complete DATE is written as `YYYY-MM-DDT00:00:00Z`, and a year alone is kept as written. The front cover (picture type 3) is carried when it is a JPEG or PNG image. Track and disc numbers outside the range that MP4 stores (1 to 65535) are not carried and are reported by field name. COMMENT, ORGANIZATION, PERFORMER, and other recognized fields are not carried, and are named in the report; fields outside the standard set are dropped and only counted, because their names may identify a purchase.
-- **Copies.** M4A files are copied without re-encoding, and purchase metadata is removed as by MP4Core (decisions 10 and 12). The copy's media data and sample tables are compared with the source. Encrypted sample entries and `.m4p` files are refused.
+- **Copies.** M4A files are copied without re-encoding, and purchase metadata is removed as by MP4Core. The copy's media data and sample tables are compared with the source. Encrypted sample entries and `.m4p` files are refused.
 - **Output paths.** The files under a `SOURCE` directory keep their paths relative to that directory under `DIR`; a `SOURCE` file is placed directly in `DIR`. The extension becomes `.m4a`. Music-style names are applied later with `apply --rename`.
 
 Sources may not lie within one another; each file is selected through exactly one `SOURCE`. `--from` selects what is imported: `mora` imports FLAC files, `itunes` imports M4A files, and `auto`, the default, imports both and WAV and AIFF. Other files, such as WAV files under `--from mora`, are left untouched and counted.
 
-Every file is planned and checked before anything is written. Nothing is changed when any file is refused, when two sources would produce the same output, when an output exists, when an existing folder on the way to an output is a file or a symbolic link, when `DIR` lies inside a `SOURCE` directory, or when the volume of `DIR` lacks room for all outputs, including carried covers, plus one further copy of the largest output for writing tags (decision 8). Each output is written under a hidden temporary name beside its destination, verified, and only then moved into place; a failure removes the temporary file and stops the import, and outputs completed before it remain.
+Every file is planned and checked before anything is written. Nothing is changed when any file is refused, when two sources would produce the same output, when an output exists, when an existing folder on the way to an output is a file or a symbolic link, when `DIR` lies inside a `SOURCE` directory, or when the volume of `DIR` lacks room for all outputs, including carried covers, plus one further copy of the largest output for writing tags. Each output is written under a hidden temporary name beside its destination, verified, and only then moved into place; a failure removes the temporary file and stops the import, and outputs completed before it remain.
 
 - `-o`, `--output DIR` names the staging folder. It is created if it does not exist, provided that its parent exists.
 - `--dry-run` lists every planned conversion and copy and changes nothing.
@@ -167,7 +169,7 @@ Writes a draft catalog from the tags of the `.m4a` files. Files are grouped into
 
 - `-o`, `--output FILE` names the catalog to write. It is required, and an existing file is never overwritten.
 - `--dry-run` lists the catalog and covers that would be written and writes nothing. Without it, the same list is printed before writing, and every written file is read back. The catalog's folder and the artwork location must be writable directories; when a write or readback fails, the files and the directory that the export created are removed.
-- `--artwork DIR` writes each album's cover to `DIR` in its embedded JPEG or PNG format, without re-encoding (decision 14), and references it from the catalog by a path relative to the catalog. Without this option, the catalog names no artwork, and `apply` leaves the files' covers unchanged.
+- `--artwork DIR` writes each album's cover to `DIR` in its embedded JPEG or PNG format, without re-encoding, and references it from the catalog by a path relative to the catalog. Without this option, the catalog names no artwork, and `apply` leaves the files' covers unchanged.
 - `--strict` refuses the export, with status 1 and without writing a catalog, artwork, or directory, when it would not be a complete inventory. Every reason is listed on standard error, followed by a line stating that nothing was changed. The check runs before any write and also under `--dry-run`; when it passes, the usual plan is printed.
 
 Files without an album tag or a track number are not exported. Gaps or repetitions in disc and track numbers are reported, because a catalog numbers its discs and tracks by position.
@@ -184,7 +186,11 @@ Prints instructions for completing the catalog with an AI agent or AI chat: the 
 
 ### schema
 
-Prints the JSON Schema of the `ilibrary-catalog-1` format, identical to [docs/schema/ilibrary-catalog-1.schema.json](schema/ilibrary-catalog-1.schema.json).
+```bash
+ilibrary schema > ilibrary-catalog-1.schema.json
+```
+
+Prints the JSON Schema of the `ilibrary-catalog-1` format, identical to [docs/schema/ilibrary-catalog-1.schema.json](schema/ilibrary-catalog-1.schema.json). The schema is built into the executable, so that the printed version always matches the catalogs that the installed command accepts. An editor that supports JSON Schema can use it to complete and check a catalog while it is written. `validate` remains the authoritative check, because it also examines artwork files, duplicate albums, and the matching of files, which a schema cannot express.
 
 ### validate
 
@@ -215,7 +221,7 @@ The fields written are the title, artist, album artist, album, genre, composer, 
 - `--rename` moves each file to `PATH/Album Artist/Album/NN Song.m4a`, or `D-NN Song.m4a` on multi-disc albums, with `_` in place of `:` and `/`. Every `PATH` must be a directory. Nothing is changed when a destination exists, when two files would share one, when a name derived from the catalog is empty, `.`, `..`, or longer than 255 bytes, or when a destination would lie outside its `PATH`. Folders left empty are reported and not removed.
 - `--timestamps` sets dates as `timestamps` does, after every write and move. It requires macOS.
 
-Each rewrite writes a complete new copy of its file before replacing it. Before anything is written, the plain available capacity of every volume that holds a changed file must cover the largest rewritten file plus the growth of all changed files on that volume, with a margin of 1 MiB; the sizes come from the exact write plans, so that added artwork is counted (decision 8).
+Each rewrite writes a complete new copy of its file before replacing it. Before anything is written, the plain available capacity of every volume that holds a changed file must cover the largest rewritten file plus the growth of all changed files on that volume, with a margin of 1 MiB; the sizes come from the exact write plans, so that added artwork is counted.
 
 ### timestamps
 
@@ -223,11 +229,11 @@ Each rewrite writes a complete new copy of its file before replacing it. Before 
 ilibrary timestamps catalog.json ~/Music/Staging --dry-run --script dates.sh
 ```
 
-Sets the creation and modification dates to each release date at local midnight, in this order (decision 9):
+Sets the creation and modification dates to each release date at local midnight, in this order:
 
 1. Matched files, from the track's release date.
 2. Album folders that hold the files of exactly one album, from the album's release date.
-3. Artist folders named after the album artist, from the artist's `folderDate` in the catalog. Without a `folderDate`, an artist folder is left unchanged (decision 15).
+3. Artist folders named after the album artist, from the artist's `folderDate` in the catalog. Without a `folderDate`, an artist folder is left unchanged.
 
 Folders outside the given directories are never changed. Where a time zone skips midnight, the first instant of the day is used and reported. Every path is checked before any date is set: a missing path is reported and never created, and a symbolic link is refused. Each date is read back after it is set. Setting creation dates requires macOS; elsewhere, use `--dry-run`, optionally with `--script`.
 
@@ -260,7 +266,7 @@ The command reads installed application information, preferences, and existing p
 
 ## Environment
 
-Dates use the time zone of the process, which the `TZ` environment variable selects.
+Dates use the time zone of the process, which the `TZ` environment variable selects, as in `TZ=Asia/Tokyo ilibrary timestamps catalog.json ~/Music/Staging --dry-run`. The time zone determines the instant of local midnight that `apply --timestamps`, `timestamps`, and the rebuild stages assign to each release date, the times that their plans print, and the expected dates with which `check` compares the files. A script written by `timestamps --script` records the zone and sets `TZ` itself. Set and check dates under the same zone, because a file dated under one zone is reported as different under another. iLibrary reads no other environment variables.
 
 ## Rights
 
