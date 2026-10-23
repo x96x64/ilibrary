@@ -1,20 +1,19 @@
 // Bulk reading of the Music library. Built only on macOS; on other platforms it is empty.
 //
-// Equivalence status: the bulk reader is designed to return, field for field, what the per-track reader
-// (`describeHandler`, `MusicApp.parse`) returns. Live field-level equivalence was measured for 12 synthetic
-// tracks in the backup qualification on macOS 27.0.1 with Music 1.7, all of whose cloud
-// statuses were `unknown`; the text produced by coercing other bulk-read cloud statuses outside the `tell`
-// block is unmeasured. The use of the bulk reader in `check --library` through `allTracksPreferringBulk()`
-// is verified only by synthetic tests that send no Apple Event; its live behaviour is not measured. The
-// speed of the bulk read (0.482 s against 40.092 s for 300 tracks) was measured in the M10 qualification.
+// The bulk reader is designed to return, field for field, what the per-track reader (`describeHandler`,
+// `MusicApp.parse`) returns. Field-level equivalence was measured for 12 synthetic tracks with Music 1.7 on
+// macOS 27.0.1, all with cloud status `unknown`; the text produced by coercing other cloud statuses outside the
+// `tell` block is unmeasured. `allTracksPreferringBulk()`, used by `check --library`, is verified only by
+// synthetic tests that send no Apple Event; its behavior with Music is unmeasured. Reading 300 tracks took
+// 0.482 s in bulk against 40.092 s per track.
 //
 // Date conversion: AppleScript integers are limited to about plus or minus 536870911, so the difference
 // between a date and the base date is a real for dates after early January 2017, and coercing it to text
 // yields a rounded exponent string. The script therefore never coerces that difference to text. It splits
 // the difference `x` into whole days `d = x div 86400` and the remainder `r = (x - d * 86400) as integer`,
 // each small enough to be an integer, and emits "d r" (two plain integers separated by one space). The
-// reader recombines `d * 86400 + r` with overflow checking. The live behaviour of this conversion with
-// Music remains unmeasured; the arithmetic was checked only on constructed dates without Music.
+// reader recombines `d * 86400 + r` with overflow checking. The behavior of this conversion with Music is
+// unmeasured; the arithmetic was checked only on constructed dates without Music.
 #if os(macOS)
     import Foundation
 
@@ -49,13 +48,6 @@
         /// properties in the field order of the per-track record, and the persistent IDs read last.
         static let bulkSectionCount = 18
 
-        /// Reads every file track with a fixed number of Apple Events. Intended to replace `allTracks()`.
-        /// When a bulk read of a property other than location and cloud status raises an error, the result
-        /// is that of `allTracks()`. Live equivalence with the per-track reader has not been measured.
-        public static func allTracksBulk() throws -> [MusicTrackInfo] {
-            try allTracksBulkReportingFallback().tracks
-        }
-
         /// Reads every file track in bulk when the bulk output is available and consistent, and otherwise
         /// exactly as `allTracks()` does. Any failure of the bulk read, including a thrown error, the
         /// unavailable marker, a wrong section count, an item count mismatch, a first and last identifier
@@ -68,17 +60,15 @@
             try allTracksPreferringBulk(bulk: { try run(bulkScript(includeDates: false)) }, perTrack: allTracks)
         }
 
-        /// The only cloud status text observed from the bulk read in the M11 live comparison (12 synthetic
-        /// tracks). The rendering of every other status by the bulk read is unmeasured.
+        /// The only cloud status text observed from the bulk read (12 synthetic tracks, Music 1.7). The rendering
+        /// of every other status by the bulk read is unmeasured.
         static let bulkAcceptedCloudStatus = "unknown"
 
         /// The selection of `allTracksPreferringBulk()` with both readers supplied. After a successful
         /// assembly, the bulk tracks are accepted only if every track's `cloudStatus` equals
         /// `bulkAcceptedCloudStatus` byte for byte, without case folding or trimming; an empty library is
-        /// accepted. In every other case `perTrack` supplies the result. The guard examines only the parsed
-        /// status text and does not prove that Music's underlying status is represented correctly; the value
-        /// is the only status observed in the M11 live comparison, so libraries with other statuses keep the
-        /// per-track reader and its speed. Errors thrown by `perTrack` propagate unchanged.
+        /// accepted. In every other case `perTrack` supplies the result, so libraries with other statuses keep
+        /// the per-track reader and its speed. Errors thrown by `perTrack` propagate unchanged.
         static func allTracksPreferringBulk(
             bulk: () throws -> String, perTrack: () throws -> [MusicTrackInfo]
         ) throws -> [MusicTrackInfo] {
@@ -91,24 +81,14 @@
             return try perTrack()
         }
 
-        /// The same read as `allTracksBulk()`, also reporting whether the per-track fallback produced the
-        /// result because a bulk read was unavailable.
-        public static func allTracksBulkReportingFallback() throws -> (
-            tracks: [MusicTrackInfo], usedFallback: Bool
-        ) {
-            let text = try run(bulkScript(includeDates: false))
-            if text == bulkUnavailable { return (try allTracks(), true) }
-            return (try assembleBulk(splitSections(text, expected: bulkSectionCount)), false)
-        }
-
         /// The version string of the Music application, read with `tell application "Music" to return version`.
         public static func musicVersion() throws -> String {
             try run("tell application \"Music\" to return version")
         }
 
         /// Reads the file tracks, both track counts, and the date added of each file track. Throws when a
-        /// bulk read other than location and cloud status fails. Live equivalence with the per-track reader
-        /// has not been measured.
+        /// bulk read other than location and cloud status fails. Equivalence with the per-track reader is
+        /// measured only for cloud status `unknown`.
         public static func librarySnapshot() throws -> MusicLibrarySnapshot {
             let text = try run(bulkScript(includeDates: true))
             if text == bulkUnavailable {
@@ -210,9 +190,9 @@
             return Int(text)
         }
 
-        /// Converts a date added to whole seconds since 1970. The script, like the probe's `stamp` handler,
-        /// subtracts the local time 2000-01-01 00:00:00 from the date, which yields elapsed seconds from that
-        /// instant. The instant is 946684800 s after 1970 in UTC, less the zone's offset at that time.
+        /// Converts a date added to whole seconds since 1970. The script subtracts the local time
+        /// 2000-01-01 00:00:00 from the date, which yields elapsed seconds from that instant. The instant is
+        /// 946684800 s after 1970 in UTC, less the zone's offset at that time.
         static func unixSeconds(offsetFromYear2000 offset: Int, timeZone: TimeZone) -> Int {
             var calendar = Calendar(identifier: .gregorian)
             calendar.timeZone = timeZone
