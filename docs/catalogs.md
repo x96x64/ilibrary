@@ -44,9 +44,9 @@ Validation reports unknown fields, wrong types, missing titles, invalid dates, a
 
 ## Title Rules
 
-`titleRules` applies to every title before it is written. `removeQualifiers` removes trailing parenthesized qualifiers that contain one of the listed terms, such as `(2012 Remaster)`. `bracketNested` writes a parenthetical that contains another parenthetical with square brackets. `preserve` lists words that are never changed.
+`titleRules` applies to every title before it is written to a file or used in a file name; the catalog itself keeps the titles as written, and the default rules change nothing. `removeQualifiers` removes trailing parenthesized qualifiers that contain one of the listed terms, such as `(2012 Remaster)`. `bracketNested` writes a parenthetical that contains another parenthetical with square brackets. `preserve` lists words that are never changed.
 
-`case` selects the capitalization: `keep` leaves titles as written, and `mla`, `apa`, and `start` apply MLA headline style, APA title case, and start case. APA lowercases articles, prepositions, and conjunctions of three letters or fewer. Words whose capitalization depends on their grammatical role, such as a word that may be a preposition or an adverb, are left unchanged and reported, so that a title is never changed on a guess.
+`case` selects the capitalization: `keep` leaves titles as written, and `mla`, `apa`, and `start` apply MLA headline style, APA title case, and start case. APA lowercases articles, prepositions, and conjunctions of three letters or fewer. Words whose capitalization depends on their grammatical role, such as a word that may be a preposition or an adverb, are left unchanged and reported as warnings by `validate` and `apply`, so that a title is never changed on a guess. `apply --dry-run` shows each title as it will be written.
 
 ## Matching Files
 
