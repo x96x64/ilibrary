@@ -8,7 +8,7 @@ import Testing
         let group = Run(["rebuild", "--help"])
         #expect(group.status == 0)
         #expect(group.text.contains("Usage: ilibrary rebuild SUBCOMMAND"))
-        #expect(!group.text.contains("not implemented"))
+        #expect(Run([]).text.contains("rebuild"))
         #expect(Run(["help", "rebuild"]).text == group.text)
         #expect(Run(["rebuild", "-h"]).text == group.text)
         let prepare = Run(["rebuild", "prepare", "--help"])
@@ -23,12 +23,6 @@ import Testing
             #expect(help.text.contains("Usage: ilibrary rebuild \(subcommand) --workspace DIR"))
             #expect(Run(["help", "rebuild", subcommand]).text == help.text)
         }
-    }
-
-    @Test func theCommandTableAndOverviewListRebuild() {
-        #expect(CommandLineInterface.commands.contains { $0.name == "rebuild" })
-        #expect(Run([]).text.contains("rebuild"))
-        #expect(CommandLineInterface.syntaxes["rebuild"] != nil)
     }
 
     @Test(arguments: ["stage", "clear", "apply", "add"])

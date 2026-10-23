@@ -15,10 +15,8 @@ import Testing
         let spec = album.tracks[trackIndex]
         var fixture = SyntheticLibrary.fixture(album, spec)
         for item in items.sorted(by: >) { fixture.items.remove(at: item) }
-        let fileName = String(
-            format: "%02d-%@_%d.m4a", spec.track + (spec.disc - 1) * 10,
-            spec.title.replacingOccurrences(of: "/", with: "-"), 1000 + spec.track)
-        let name = library.root.appendingPathComponent(album.folder).appendingPathComponent(fileName)
+        let name = library.root.appendingPathComponent(album.folder).appendingPathComponent(
+            SyntheticLibrary.fileName(spec))
         try fixture.data.write(to: name)
     }
 

@@ -79,6 +79,13 @@ struct SyntheticLibrary {
             ]),
     ]
 
+    /// The name of a track's file, as a download would name it.
+    static func fileName(_ track: TrackSpec) -> String {
+        String(
+            format: "%02d-%@_%d.m4a", track.track + (track.disc - 1) * 10,
+            track.title.replacingOccurrences(of: "/", with: "-"), 1000 + track.track)
+    }
+
     static func pairItem(_ type: String, _ number: Int, _ total: Int) -> Data {
         var payload = Data()
         payload.appendUInt32(0)
@@ -126,10 +133,8 @@ struct SyntheticLibrary {
             let folder = root.appendingPathComponent(album.folder)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             for track in album.tracks {
-                let name = String(
-                    format: "%02d-%@_%d.m4a", track.track + (track.disc - 1) * 10,
-                    track.title.replacingOccurrences(of: "/", with: "-"), 1000 + track.track)
-                try SyntheticLibrary.fixture(album, track).data.write(to: folder.appendingPathComponent(name))
+                try SyntheticLibrary.fixture(album, track).data.write(
+                    to: folder.appendingPathComponent(SyntheticLibrary.fileName(track)))
             }
         }
     }
@@ -152,8 +157,8 @@ struct SyntheticLibrary {
 
 /// Runs the command line with captured output.
 final class Run {
-    var output: [String] = []
-    var errors: [String] = []
+    let output: [String]
+    let errors: [String]
     let status: Int32
 
     init(_ arguments: [String], environment: Environment = .testing) {
