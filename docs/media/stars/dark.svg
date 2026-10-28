@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300" role="img" aria-labelledby="title desc">
 <title id="title">iLibrary Star History</title>
-<desc id="desc">Daily observations since 2026-10-17. Latest observation: 0 stars on 2026-10-27 UTC. Unobserved dates are not reconstructed.</desc>
+<desc id="desc">Daily observations since 2026-10-17. Latest observation: 0 stars on 2026-10-28 UTC. Unobserved dates are not reconstructed.</desc>
 <style>text { font-family: system-ui, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; fill: #9198a1; font-size: 12px; }</style>
 <rect width="720" height="300" rx="8" fill="#0d1117"/>
 <text x="32" y="36" style="fill:#f0f6fc;font-size:18px;font-weight:600">Star History</text>
@@ -15,9 +15,9 @@
 <text x="50" y="120" text-anchor="end">3</text>
 <path d="M64 80 H688" stroke="#3d444d" stroke-width="1"/>
 <text x="50" y="84" text-anchor="end">4</text>
-<polyline points="64.00,224.00 126.40,224.00 188.80,224.00 251.20,224.00 313.60,224.00 376.00,224.00 438.40,224.00 500.80,224.00 563.20,224.00 625.60,224.00 688.00,224.00" fill="none" stroke="#4493f8" stroke-width="2.5"/>
+<polyline points="64.00,224.00 120.73,224.00 177.45,224.00 234.18,224.00 290.91,224.00 347.64,224.00 404.36,224.00 461.09,224.00 517.82,224.00 574.55,224.00 631.27,224.00 688.00,224.00" fill="none" stroke="#4493f8" stroke-width="2.5"/>
 <circle cx="688.00" cy="224.00" r="4" fill="#4493f8"/>
 <text x="64" y="248">2026-10-17</text>
-<text x="688" y="248" text-anchor="end">2026-10-27</text>
+<text x="688" y="248" text-anchor="end">2026-10-28</text>
 <text x="32" y="280">Daily observations · UTC · Lines connect recorded counts.</text>
 </svg>
